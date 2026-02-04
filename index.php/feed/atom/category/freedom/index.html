@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+xmlns:thr="http://purl.org/syndication/thread/1.0"
+xml:lang="zh-CN"
+xml:base="/"
+>
+<title type="text">Quinn Ye ' Blog</title>
+<subtitle type="text"></subtitle>
+<updated>2023-04-22T21:53:00+08:00</updated>
+<generator uri="http://typecho.org/" version="1.2.1">Typecho</generator>
+<link rel="alternate" type="text/html" href="/" />
+<id>http://10.0.0.8:88/index.php/feed/atom/</id>
+<link rel="self" type="application/atom+xml" href="http://10.0.0.8:88/index.php/feed/atom/" />
+<entry>
+<title type="html"><![CDATA[宝塔面板7.7.0安装&amp;指令]]></title>
+<link rel="alternate" type="text/html" href="http://10.0.0.8:88/index.php/bt.html" />
+<id>http://10.0.0.8:88/index.php/bt.html</id>
+<updated>2023-04-22T21:53:00+08:00</updated>
+<published>2023-04-22T21:53:00+08:00</published>
+<author>
+    <name>Quinn Ye</name>
+    <uri></uri>
+</author>
+<summary type="html"><![CDATA[简述现在的宝塔臃肿有广告，我只能选择老版本，又怕网上下的有后台....于是我在github上找到了老版本。github上的项目地址：https://github.com/8838/btpanel...]]></summary>
+<content type="html" xml:base="http://10.0.0.8:88/index.php/bt.html" xml:lang="zh-CN"><![CDATA[
+<h2>简述</h2><p>现在的宝塔臃肿有广告，我只能选择老版本，又怕网上下的有后台....于是我在github上找到了老版本。<br>github上的项目地址：<a href="https://github.com/8838/btpanel-v7.7.0"><a href="https://github.com/8838/btpanel-v7.7.0">https://github.com/8838/btpanel-v7.7.0</a></a></p><h2>安装链接：</h2><pre><code class="lang-other">curl -sSO https://gitee.com/yedadtop/bt7.7.0/raw/master/install/install_panel.sh &amp;&amp; bash install_panel.sh
+curl -sSO http://www.yedad.top/main/install/install_panel.sh &amp;&amp; bash install_panel.sh
+curl -sSO http://10.0.0.6/main/install/install_panel.sh &amp;&amp; bash install_panel.sh</code></pre><h2>面板卸载</h2><pre><code class="lang-other">curl -sSO https://gitee.com/yedadtop/bt7.7.0/raw/master/btuninstall.sh &amp;&amp; bash btuninstall.sh
+curl -sSO http://www.yedad.top/main/btuninstall.sh &amp;&amp; bash btuninstall.sh
+curl -sSO http://10.0.0.6/main/btuninstall.sh &amp;&amp; bash btuninstall.sh</code></pre><h2>优化指令</h2><p>1.一键优化(解锁专业版插件，去倒计时，延时等待，关闭客服活动推荐，去除强制绑定等等等等......)：</p><pre><code class="lang-other">curl -sSO https://gitee.com/yedadtop/bt7.7.0/raw/master/mendbt.sh &amp;&amp; chmod +x mendbt.sh &amp;&amp; bash mendbt.sh
+curl -sSO http://www.yedad.top/main/mendbt.sh &amp;&amp; chmod +x mendbt.sh &amp;&amp; bash mendbt.sh
+curl -sSO http://10.0.0.6/main/mendbt.sh &amp;&amp; chmod +x mendbt.sh &amp;&amp; bash mendbt.sh</code></pre><p>2.给plugin.json文件上锁防止自动修复为免费版。注意！这会导致文件不可被修改</p><pre><code class="lang-other">chattr +i /www/server/panel/data/plugin.json</code></pre><p>3.解锁</p><pre><code class="lang-other">chattr -i /www/server/panel/data/plugin.json</code></pre><h2>注意</h2><p>1.解锁宝塔所有付费插件为永不过期的原理：（优化指令有）<br>文件路径：<code>/www/server/panel/data/plugin.json</code>搜索字符串：<code>&quot;endtime&quot;: -1</code>全部替换为<code>&quot;endtime&quot;: 999999999999</code><br>2.需要手动打开<code>/www/server/panel/data/plugin.json</code>文件之后再使用<code>mendbt.sh</code>才能成功破解付费插件。</p><h2>宝塔面板历史版本</h2><p><a href="https://github.com/wei/baota/releases"><a href="https://github.com/wei/baota/releases">https://github.com/wei/baota/releases</a></a></p>
+]]></content>
+<link rel="replies" type="text/html" href="http://10.0.0.8:88/index.php/bt.html#comments" thr:count="0" />
+<link rel="replies" type="application/atom+xml" href="http://10.0.0.8:88/index.php/feed/atom/" thr:count="0"/>
+</entry>
+<entry>
+<title type="html"><![CDATA[我的世界服务器搭建]]></title>
+<link rel="alternate" type="text/html" href="http://10.0.0.8:88/index.php/mc.html" />
+<id>http://10.0.0.8:88/index.php/mc.html</id>
+<updated>2022-08-05T17:13:00+08:00</updated>
+<published>2022-08-05T17:13:00+08:00</published>
+<author>
+    <name>Quinn Ye</name>
+    <uri></uri>
+</author>
+<summary type="html"><![CDATA[1.下载服务端注意:本次安装服务器为Ubuntu 20.04 LTS，1h2g6m规格,版本为1.16.4首先你得想好安装哪个版本--&amp;gt;服务端软件镜像站。不过我建议安装跟我一样的版本,因为...]]></summary>
+<content type="html" xml:base="http://10.0.0.8:88/index.php/mc.html" xml:lang="zh-CN"><![CDATA[
+<h2>1.下载服务端</h2><p><strong>注意</strong>:本次安装服务器为Ubuntu 20.04 LTS，1h2g6m规格,版本为1.16.4<br>首先你得想好安装哪个版本--&gt;<a href="https://mirror.zerodream.net/">服务端软件镜像站</a>。<br>不过我建议安装跟我一样的版本,因为本篇是以此为基础的。<br>文件我已压缩打包至天翼网盘（有两个文件，一个是服务端，一个是start.sh,都会用到）--&gt;<a href="https://cloud.189.cn/t/vumIvqjyauim">Paper-1.16.4-latest.jar</a> (访问码:yyy4)。</p><h2>2.安装java</h2><p>不同的游戏版本所安装的java版本也不同，1.16.5以前用java8，1.17版本就得用java17了，这也是推荐1.16.4版本的原因。<br>ssh登陆你的服务器，输入下面命令安装java8。<br><code>sudo apt install openjdk-8-jre-headless</code><br>安装完成后查看java版本<br><code>java -version</code><br>显示这样就可以了<br><img src="/usr/uploads/2023/08/2731709997.jpg" alt="java8" title="java8"></p><h2>3.运行</h2><p>（建议使用宝塔面板操作，更方便）<br>  1.在home目录下新建名为“mc”的文件夹，然后在mc文件夹里上传刚下载的服务端（文件名Paper-1.16.4-latest.jar）。<br>  2.在mc文件夹新建start.sh文件<br>  3.编辑start.sh<br><code>java -Xms1024m -Xmx1024m -jar 此处修改成服务端名称 nogui</code></p><p><img src="/usr/uploads/2023/08/1012177442.jpg" alt="baota" title="baota"><br>  3.登录ssh，输入<br><code>cd /home/mc</code><br><code>sh start.sh</code><br>即可完成第一次启动。</p><h2>4.启动失败</h2><p>第一次启动都会启动失败，这时候目录会多出一些文件<br><img src="/usr/uploads/2023/08/4094063166.png" alt="启动失败" title="启动失败"> <img src="/usr/uploads/2023/08/757887868.png" alt="多出的文件" title="多出的文件"><br>这里回到文件夹，修改文件夹里的eula.txt文件，将最后一行flase改为true<br>还要修改文件夹里的server.properties文件（一行一行慢慢找，下面有全部代码）<br><code>gamemode=survival</code>   游戏模式<br><code>online-mode=false</code>   正版验证<br><code>max-players=6</code>       最多在线人数<br><code>view-distance=6</code>     可视距离<br>最后开启服务就好了。<br>server.properties文件这里我全写在这，避免一个个找，建议直接复制</p><pre><code class="lang-other">#Minecraft server properties
+#Tue Aug 23 14:41:16 UTC 2022
+spawn-protection=0
+max-tick-time=60000
+query.port=25565
+generator-settings=
+sync-chunk-writes=true
+force-gamemode=false
+allow-nether=true
+enforce-whitelist=false
+gamemode=survival
+broadcast-console-to-ops=true
+enable-query=false
+player-idle-timeout=0
+text-filtering-config=
+difficulty=easy
+spawn-monsters=true
+broadcast-rcon-to-ops=true
+op-permission-level=4
+pvp=true
+entity-broadcast-range-percentage=100
+snooper-enabled=true
+level-type=default
+hardcore=false
+enable-status=true
+enable-command-block=false
+max-players=6
+network-compression-threshold=256
+resource-pack-sha1=
+max-world-size=29999984
+function-permission-level=2
+rcon.port=25575
+server-port=25565
+debug=false
+server-ip=
+spawn-npcs=true
+allow-flight=false
+level-name=world
+view-distance=6
+resource-pack=
+spawn-animals=true
+white-list=false
+rcon.password=
+generate-structures=true
+online-mode=false
+max-build-height=256
+level-seed=
+prevent-proxy-connections=false
+use-native-transport=true
+enable-jmx-monitoring=false
+motd=Novice survival
+rate-limit=0
+enable-rcon=false
+</code></pre><h2>5.screen的使用</h2><p>大家都知道，这样的话关掉ssh软件程序就会停。这时候我们需要screen软件来保持服务端运行！！<br>至于如何使用screen点击这篇文章--&gt;<a href="/index.php/screen.html">screen的使用</a></p><h2>相关下载</h2><p><a href="https://cloud.189.cn/t/aUfA3uAJf2m2">我的世界hcml启动器</a>(访问码:hyf3)</p>
+]]></content>
+<link rel="replies" type="text/html" href="http://10.0.0.8:88/index.php/mc.html#comments" thr:count="0" />
+<link rel="replies" type="application/atom+xml" href="http://10.0.0.8:88/index.php/feed/atom/" thr:count="0"/>
+</entry>
+</feed>

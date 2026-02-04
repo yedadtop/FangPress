@@ -1,0 +1,189 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="renderer" content="webkit">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+        <title>登录到Quinn Ye ' Blog - Quinn Ye ' Blog - Powered by Typecho</title>
+        <meta name="robots" content="noindex, nofollow">
+        <link rel="icon" type="image/x-icon" href="http://10.0.0.8:88/picture/logo/set.ico">
+        <link rel="stylesheet" href="http://10.0.0.8:88/admin/css/normalize.css?v=1.2.1">
+<link rel="stylesheet" href="http://10.0.0.8:88/admin/css/grid.css?v=1.2.1">
+<link rel="stylesheet" href="http://10.0.0.8:88/admin/css/style.css?v=1.2.1">    </head>
+    <body class="body-100">
+<div class="typecho-login-wrap">
+    <div class="typecho-login">
+        <form action="http://10.0.0.8:88/index.php/action/login?_=ee80afe61bae26c7547547cc5104e27d" method="post" name="login" role="form">
+            <p>
+                <label for="name" class="sr-only">用户名</label>
+                <input type="text" id="name" name="name" value="" placeholder="用户名" class="text-l w-100" autofocus />
+            </p>
+            <p>
+                <label for="password" class="sr-only">密码</label>
+                <input type="password" id="password" name="password" class="text-l w-100" placeholder="密码" />
+            </p>
+            <p class="submit">
+                <button type="submit" class="btn btn-l w-100 primary">登录</button>
+                <input type="hidden" name="referer" value="" />
+            </p>
+            <p>
+                <label for="remember">
+                    <input type="checkbox" name="remember" class="checkbox" value="1" id="remember" /> 下次自动登录                </label>
+            </p>
+        </form>
+        
+        <p class="more-link">
+            <a href="../index.html">返回首页</a>
+                        &bull;
+            <a href="http://10.0.0.8:88/admin/register.php">用户注册</a>
+                    </p>
+    </div>
+</div>
+<script src="http://10.0.0.8:88/admin/js/jquery.js?v=1.2.1"></script>
+<script src="http://10.0.0.8:88/admin/js/jquery-ui.js?v=1.2.1"></script>
+<script src="http://10.0.0.8:88/admin/js/typecho.js?v=1.2.1"></script>
+<script>
+    (function () {
+        $(document).ready(function() {
+            // 处理消息机制
+            (function () {
+                var prefix = '5b727a1e6a4c9a42bb8a5f337dfc3973',
+                    cookies = {
+                        notice      :   $.cookie(prefix + '__typecho_notice'),
+                        noticeType  :   $.cookie(prefix + '__typecho_notice_type'),
+                        highlight   :   $.cookie(prefix + '__typecho_notice_highlight')
+                    },
+                    path = '/',
+                    domain = '10.0.0.8',
+                    secure = false;
+
+                if (!!cookies.notice && 'success|notice|error'.indexOf(cookies.noticeType) >= 0) {
+                    var head = $('.typecho-head-nav'),
+                        p = $('<div class="message popup ' + cookies.noticeType + '">'
+                        + '<ul><li>' + $.parseJSON(cookies.notice).join('</li><li>') 
+                        + '</li></ul></div>'), offset = 0;
+
+                    if (head.length > 0) {
+                        p.insertAfter(head);
+                        offset = head.outerHeight();
+                    } else {
+                        p.prependTo(document.body);
+                    }
+
+                    function checkScroll () {
+                        if ($(window).scrollTop() >= offset) {
+                            p.css({
+                                'position'  :   'fixed',
+                                'top'       :   0
+                            });
+                        } else {
+                            p.css({
+                                'position'  :   'absolute',
+                                'top'       :   offset
+                            });
+                        }
+                    }
+
+                    $(window).scroll(function () {
+                        checkScroll();
+                    });
+
+                    checkScroll();
+
+                    p.slideDown(function () {
+                        var t = $(this), color = '#C6D880';
+                        
+                        if (t.hasClass('error')) {
+                            color = '#FBC2C4';
+                        } else if (t.hasClass('notice')) {
+                            color = '#FFD324';
+                        }
+
+                        t.effect('highlight', {color : color})
+                            .delay(5000).fadeOut(function () {
+                            $(this).remove();
+                        });
+                    });
+
+                    $.cookie(prefix + '__typecho_notice', null, {path : path, domain: domain, secure: secure});
+                    $.cookie(prefix + '__typecho_notice_type', null, {path : path, domain: domain, secure: secure});
+                }
+
+                if (cookies.highlight) {
+                    $('#' + cookies.highlight).effect('highlight', 1000);
+                    $.cookie(prefix + '__typecho_notice_highlight', null, {path : path, domain: domain, secure: secure});
+                }
+            })();
+
+
+            // 导航菜单 tab 聚焦时展开下拉菜单
+            const menuBar = $('.menu-bar').click(function () {
+                const nav = $(this).next('#typecho-nav-list');
+                if (!$(this).toggleClass('focus').hasClass('focus')) {
+                    nav.removeClass('expanded noexpanded');
+                }
+            });
+
+            $('.main, .typecho-foot').on('click touchstart', function () {
+                if (menuBar.hasClass('focus')) {
+                    menuBar.trigger('click');
+                }
+            });
+
+            $('#typecho-nav-list ul.root').each(function () {
+                const ul = $(this), nav = ul.parent();
+                let focused = false;
+
+                ul.on('click touchend', '.parent a', function (e) {
+                    nav.removeClass('noexpanded').addClass('expanded');
+                    if ($(window).width() < 576 && e.type == 'click') {
+                        return false;
+                    }
+                }).find('.child')
+                .append($('<li class="return"><a>返回</a></li>').click(function () {
+                    nav.removeClass('expanded').addClass('noexpanded');
+                    return false;
+                }));
+
+                $('a', ul).focus(function () {
+                    ul.addClass('expanded');
+                    focused = true;
+                }).blur(function () {
+                    focused = false;
+
+                    setTimeout(function () {
+                        if (!focused) {
+                            ul.removeClass('expanded');
+                        }
+                    });
+                });
+            });
+
+            if ($('.typecho-login').length == 0) {
+                $('a').each(function () {
+                    var t = $(this), href = t.attr('href');
+
+                    if ((href && href[0] == '#')
+                        || /^http\:\/\/10\.0\.0\.8\:88\/admin\/.*$/.exec(href) 
+                            || /^http\:\/\/10\.0\.0\.8\:88\/index\.php\/action\/[_a-zA-Z0-9\/]+.*$/.exec(href)) {
+                        return;
+                    }
+
+                    t.attr('target', '_blank')
+                        .attr('rel', 'noopener noreferrer');
+                });
+            }
+
+            $('.main form').submit(function () {
+                $('button[type=submit]', this).attr('disabled', 'disabled');
+            });
+        });
+    })();
+</script>
+<script>
+$(document).ready(function () {
+    $('#name').focus();
+});
+</script>
+    </body>
+</html>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+xmlns:thr="http://purl.org/syndication/thread/1.0"
+xml:lang="zh-CN"
+xml:base="http://10.0.0.8:88/index.php/tag/%E5%AE%9D%E5%A1%94%E9%9D%A2%E6%9D%BF/"
+>
+<title type="text">Quinn Ye ' Blog - 宝塔面板</title>
+<subtitle type="text"></subtitle>
+<updated>2023-04-22T21:53:00+08:00</updated>
+<generator uri="http://typecho.org/" version="1.2.1">Typecho</generator>
+<link rel="alternate" type="text/html" href="http://10.0.0.8:88/index.php/tag/%E5%AE%9D%E5%A1%94%E9%9D%A2%E6%9D%BF/" />
+<id>http://10.0.0.8:88/index.php/feed/atom/tag/%E5%AE%9D%E5%A1%94%E9%9D%A2%E6%9D%BF/</id>
+<link rel="self" type="application/atom+xml" href="http://10.0.0.8:88/index.php/feed/atom/tag/%E5%AE%9D%E5%A1%94%E9%9D%A2%E6%9D%BF/" />
+<entry>
+<title type="html"><![CDATA[宝塔面板7.7.0安装&amp;指令]]></title>
+<link rel="alternate" type="text/html" href="http://10.0.0.8:88/index.php/bt.html" />
+<id>http://10.0.0.8:88/index.php/bt.html</id>
+<updated>2023-04-22T21:53:00+08:00</updated>
+<published>2023-04-22T21:53:00+08:00</published>
+<author>
+    <name>Quinn Ye</name>
+    <uri></uri>
+</author>
+<summary type="html"><![CDATA[简述现在的宝塔臃肿有广告，我只能选择老版本，又怕网上下的有后台....于是我在github上找到了老版本。github上的项目地址：https://github.com/8838/btpanel...]]></summary>
+<content type="html" xml:base="http://10.0.0.8:88/index.php/bt.html" xml:lang="zh-CN"><![CDATA[
+<h2>简述</h2><p>现在的宝塔臃肿有广告，我只能选择老版本，又怕网上下的有后台....于是我在github上找到了老版本。<br>github上的项目地址：<a href="https://github.com/8838/btpanel-v7.7.0"><a href="https://github.com/8838/btpanel-v7.7.0">https://github.com/8838/btpanel-v7.7.0</a></a></p><h2>安装链接：</h2><pre><code class="lang-other">curl -sSO https://gitee.com/yedadtop/bt7.7.0/raw/master/install/install_panel.sh &amp;&amp; bash install_panel.sh
+curl -sSO http://www.yedad.top/main/install/install_panel.sh &amp;&amp; bash install_panel.sh
+curl -sSO http://10.0.0.6/main/install/install_panel.sh &amp;&amp; bash install_panel.sh</code></pre><h2>面板卸载</h2><pre><code class="lang-other">curl -sSO https://gitee.com/yedadtop/bt7.7.0/raw/master/btuninstall.sh &amp;&amp; bash btuninstall.sh
+curl -sSO http://www.yedad.top/main/btuninstall.sh &amp;&amp; bash btuninstall.sh
+curl -sSO http://10.0.0.6/main/btuninstall.sh &amp;&amp; bash btuninstall.sh</code></pre><h2>优化指令</h2><p>1.一键优化(解锁专业版插件，去倒计时，延时等待，关闭客服活动推荐，去除强制绑定等等等等......)：</p><pre><code class="lang-other">curl -sSO https://gitee.com/yedadtop/bt7.7.0/raw/master/mendbt.sh &amp;&amp; chmod +x mendbt.sh &amp;&amp; bash mendbt.sh
+curl -sSO http://www.yedad.top/main/mendbt.sh &amp;&amp; chmod +x mendbt.sh &amp;&amp; bash mendbt.sh
+curl -sSO http://10.0.0.6/main/mendbt.sh &amp;&amp; chmod +x mendbt.sh &amp;&amp; bash mendbt.sh</code></pre><p>2.给plugin.json文件上锁防止自动修复为免费版。注意！这会导致文件不可被修改</p><pre><code class="lang-other">chattr +i /www/server/panel/data/plugin.json</code></pre><p>3.解锁</p><pre><code class="lang-other">chattr -i /www/server/panel/data/plugin.json</code></pre><h2>注意</h2><p>1.解锁宝塔所有付费插件为永不过期的原理：（优化指令有）<br>文件路径：<code>/www/server/panel/data/plugin.json</code>搜索字符串：<code>&quot;endtime&quot;: -1</code>全部替换为<code>&quot;endtime&quot;: 999999999999</code><br>2.需要手动打开<code>/www/server/panel/data/plugin.json</code>文件之后再使用<code>mendbt.sh</code>才能成功破解付费插件。</p><h2>宝塔面板历史版本</h2><p><a href="https://github.com/wei/baota/releases"><a href="https://github.com/wei/baota/releases">https://github.com/wei/baota/releases</a></a></p>
+]]></content>
+<link rel="replies" type="text/html" href="http://10.0.0.8:88/index.php/bt.html#comments" thr:count="0" />
+<link rel="replies" type="application/atom+xml" href="http://10.0.0.8:88/index.php/feed/atom/tag/%E5%AE%9D%E5%A1%94%E9%9D%A2%E6%9D%BF/" thr:count="0"/>
+</entry>
+</feed>
