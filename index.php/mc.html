@@ -1,268 +1,22 @@
 <!DOCTYPE HTML>
-<html data-theme="light" class="">
+<html>
 <head>
-    <meta content="always" name="referrer">
-    <link rel="icon" type="image/png" href="../picture/logo/logo.ico">
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="renderer" content="webkit">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <title>我的世界服务器搭建 - Quinn Ye ' Blog</title>
+            <link rel="shortcut icon" href="../usr/themes/memoo/favicon.ico" type="image/x-icon" />
+        <title>我的世界服务器搭建 - Quinn Ye ' Blog</title>
+
     <!-- 使用url函数转换相关路径 -->
-    <link rel="preconnect" href="//" />
-    <link rel="preconnect" href="http://cdn.staticfile.org/" />
-    <link rel="stylesheet" href="../usr/themes/butterfly/index.css%3Fv1.7.3.css">
-    <link rel="stylesheet" href="../usr/themes/butterfly/css/style.css%3Fv1.7.4.css">
-    <!--魔改美化-->
-        <!--图标库-->
-    <link href="https://at.alicdn.com/t/font_3159629_5bvsat8p5l.css" rel="stylesheet" />
-    <!--<link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/6.1.1/css/all.min.css">-->
-    <!--本地图标库-->
-    <link rel="stylesheet" href="../usr/themes/butterfly/fonts/css/all.min.css" />
-    <!--其余静态文件-->
-        <link rel="stylesheet" href="../usr/themes/butterfly/css/fancybox.css" />
-    <link rel="stylesheet" href="../usr/themes/butterfly/css/OwO.min.css" />
-                    <style>
-        @media screen and (max-width:900px){
-            #aside-content .card-info,#aside-content .card-announcement,#aside-content .card-recent-post,#aside-content #card-newest-comments,#aside-content .card-categories,#aside-content .card-tags,#aside-content .card-archives,#aside-content .card-webinfo{display:none;}
-        }
-        ins.adsbygoogle[data-ad-status="unfilled"] {
-            display: none !important;
-        }
-    </style>
-    <!--额外的-->
-<script>
-const GLOBAL_CONFIG = {
-    root: "/",
-    algolia: void 0,
-    localSearch: {
-        path: undefined,
-        languages: {
-            hits_empty: "回车查询：${query}"
-        }
-    },
-    translate: {
-            defaultEncoding: 2,
-            translateDelay: 0,
-            msgToTraditionalChinese: "繁",
-            msgToSimplifiedChinese: "简"
-        },
-    noticeOutdate: void 0,
-    highlight: {
-        plugin: "highlighjs",
-        highlightCopy: !0,
-        highlightLang: !0,
-        highlightHeightLimit: 400
-    },
-    copy: {
-            success: "复制成功",
-            error: "复制错误",
-            noSupport: "浏览器不支持"
-    },
-    relativeDate: {
-        homepage: !0,
-        post: !0
-    },
-    runtime: "天",
-    date_suffix: {
-            just: "",
-            min: "",
-            hour: "",
-            day: "",
-            month: ""
-    },
-    copyright: undefined,
-    lightbox: "fancybox",
-    Snackbar: {
-            "chs_to_cht": "你已切换为繁体",
-            "cht_to_chs": "你已切换为简体",
-            "day_to_night": "你已切换为深色模式",
-            "night_to_day": "你已切换为浅色模式",
-            "bgLight": "#49b1f5",
-            "bgDark": "#121212",
-            "position": "top-left"
-        },
-    source: {
-            justifiedGallery: {
-                js: "https://cdn.bootcdn.net/ajax/libs/flickr-justified-gallery/2.1.2/fjGallery.min.js",
-                css: "https://cdn.bootcdn.net/ajax/libs/flickr-justified-gallery/2.1.2/fjGallery.min.css"
-            }
-        },
-    isPhotoFigcaption: !1,
-    islazyload: !0,
-    isAnchor: !0,
-    percent: {
-        toc: !0,
-        rightside: !0
-    },
-    coverPosition: 'cross',
-}
-var saveToLocal = {
-      set: function setWithExpiry(key, value, ttl) {
-        const now = new Date()
-        const expiryDay = ttl * 86400000
-        const item = {
-          value: value,
-          expiry: now.getTime() + expiryDay,
-        }
-        localStorage.setItem(key, JSON.stringify(item))
-      },
-      get: function getWithExpiry(key) {
-        const itemStr = localStorage.getItem(key)
+    <link rel="stylesheet" href="../usr/themes/memoo/normalize.css">
+    <link rel="stylesheet" href="../usr/themes/memoo/bootstrap-grid.css">
+    <link rel="stylesheet" href="../usr/themes/memoo/style.css">
 
-        if (!itemStr) {
-          return undefined
-        }
-        const item = JSON.parse(itemStr)
-        const now = new Date()
-
-        if (now.getTime() > item.expiry) {
-          localStorage.removeItem(key)
-          return undefined
-        }
-        return item.value
-      }
-    }
-    const getScript = url => new Promise((resolve, reject) => {
-      const script = document.createElement('script')
-      script.src = url
-      script.async = true
-      script.onerror = reject
-      script.onload = script.onreadystatechange = function () {
-        const loadState = this.readyState
-        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
-        script.onload = script.onreadystatechange = null
-        resolve()
-      }
-      document.head.appendChild(script)
-    })
-</script>
-<script id="config-diff">
-var GLOBAL_CONFIG_SITE = { 
-		    isPost: !0,
-		    isHome: !0,
-		    isHighlightShrink: !0,
-		    isToc: !0,
-		   }
-</script>
-<script id="config_change">
-var GLOBAL_CONFIG_SITE = {
-    isPost: !0, 
-    isHome: !0, 
-    isHighlightShrink: !1, 
-    isToc: !0, 
-    }
-</script>
-<noscript>
-    <style type="text/css">
-      #nav {
-        opacity: 1
-      }
-      .justified-gallery img {
-        opacity: 1
-      }
-      #recent-posts time,
-      #post-meta time {
-        display: inline !important
-      }
-    </style>
-</noscript>
-<script>(function () {
-        window.activateDarkMode = function () {
-          document.documentElement.setAttribute('data-theme', 'dark')
-          if (document.querySelector('meta[name="theme-color"]') !== null) {
-            document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
-          }
-        }
-        window.activateLightMode = function () {
-          document.documentElement.setAttribute('data-theme', 'light')
-          if (document.querySelector('meta[name="theme-color"]') !== null) {
-            document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
-          }
-        }
-        const autoChangeMode = 'true'
-        const t = saveToLocal.get('theme')
-        if (autoChangeMode === '1') {
-          const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
-          const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
-          const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
-          const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
-          if (t === undefined) {
-            if (isLightMode) activateLightMode()
-            else if (isDarkMode) activateDarkMode()
-            else if (isNotSpecified || hasNoSupport) {
-              const now = new Date()
-              const hour = now.getHours()
-              const isNight = hour <= 6 || hour >= 18
-              isNight ? activateDarkMode() : activateLightMode()
-            }
-            window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
-              if (saveToLocal.get('theme') === undefined) {
-                e.matches ? activateDarkMode() : activateLightMode()
-              }
-            })
-          } else if (t === 'light') activateLightMode()
-          else activateDarkMode()
-        } else if (autoChangeMode === '2') {
-          const now = new Date()
-          const hour = now.getHours()
-          const isNight = hour <= 6 || hour >= 18
-          if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
-          else if (t === 'light') activateLightMode()
-          else activateDarkMode()
-        } else {
-          if (t === 'dark') activateDarkMode()
-          else if (t === 'light') activateLightMode()
-        } const asideStatus = saveToLocal.get('aside-status')
-        if (asideStatus !== undefined) {
-          if (asideStatus === 'hide') {
-            document.documentElement.classList.add('hide-aside')
-          } else {
-            document.documentElement.classList.remove('hide-aside')
-          }
-        } const fontSizeVal = saveToLocal.get('global-font-size')
-        if (fontSizeVal !== undefined) {
-          document.documentElement.style.setProperty('--global-font-size', fontSizeVal + 'px')
-        }
-        if(/iPadliphoneliPod Macintosh/.test(navigator.userAgent)){document.documentElement.classList.add('apple')}
-      })()</script>
-<style type="text/css" data-typed-js-css="true">
-    .typed-cursor {
-      opacity: 1;
-    }
-
-    .typed-cursor.typed-cursor--blink {
-      animation: typedjsBlink 0.7s infinite;
-      -webkit-animation: typedjsBlink 0.7s infinite;
-      animation: typedjsBlink 0.7s infinite;
-    }
-
-    @keyframes typedjsBlink {
-      50% {
-        opacity: 0.0;
-      }
-    }
-
-    @-webkit-keyframes typedjsBlink {
-      0% {
-        opacity: 1;
-      }
-
-      50% {
-        opacity: 0.0;
-      }
-
-      100% {
-        opacity: 1;
-      }
-    }
-  </style>
-<!--额外的-->
-
+    <!-- 通过自有函数输出HTML头部信息 -->
     <meta name="description" content="1.下载服务端注意:本次安装服务器为Ubuntu 20.04 LTS，1h2g6m规格,版本为1.16.4首先你得想好安装哪个版本--&amp;gt;服务端软件镜像站。不过我建议安装跟我一样的版本,因为..." />
 <meta name="keywords" content="我的世界,服务器" />
 <meta name="generator" content="Typecho 1.2.1" />
-<meta name="template" content="butterfly" />
+<meta name="template" content="memoo" />
 <link rel="pingback" href="action/xmlrpc" />
 <link rel="EditURI" type="application/rsd+xml" title="RSD" href="action/xmlrpc%3Frsd.html" />
 <link rel="wlwmanifest" type="application/wlwmanifest+xml" href="action/xmlrpc%3Fwlw.html" />
@@ -359,30 +113,33 @@ var GLOBAL_CONFIG_SITE = {
         input.type = 'hidden';
         input.name = '_';
         input.value = (function () {
-    var _ddqO7h = '7e'//'uFy'
-+'03f'//'M'
-+''///*'1zQ'*/'1zQ'
-+//'A'
-'A'+'934'//'Ds'
-+'e3b'//'N'
-+'0'//'c4B'
-+//'8A'
-'27'+'1a3'//'KwL'
-+'75'//'Dh'
-+//'tz'
-'2da'+//'r12'
-'r12'+'d4'//'zeh'
-+'e3'//'q'
-+'66a'//'Tv'
-+''///*'i'*/'i'
-+//'BL'
-'296', _nQZb = [[5,6],[22,25]];
+    var _khCa = '7e'//'85'
++//'5'
+'03f'+'9'//'C'
++'34e'//'5H'
++//'aW'
+'aW'+''///*'Ogt'*/'Ogt'
++//'GUg'
+'3b'+//'6v'
+'0'+//'0K'
+'271'+'a3'//'na0'
++/* 'BBE'//'BBE' */''+'752'//'3n'
++//'iI'
+'d'+'B'//'B'
++/* 'cN'//'cN' */''+'ad'//'w7'
++'4'//'ox'
++//'GaC'
+'e'+'36'//'F'
++'6'//'jUH'
++//'3c'
+'a29'+'6'//'6'
+, _IgtC = [[9,11],[21,22]];
     
-    for (var i = 0; i < _nQZb.length; i ++) {
-        _ddqO7h = _ddqO7h.substring(0, _nQZb[i][0]) + _ddqO7h.substring(_nQZb[i][1]);
+    for (var i = 0; i < _IgtC.length; i ++) {
+        _khCa = _khCa.substring(0, _IgtC[i][0]) + _khCa.substring(_IgtC[i][1]);
     }
 
-    return _ddqO7h;
+    return _khCa;
 })();
 
         if (null != r) {
@@ -404,164 +161,61 @@ var GLOBAL_CONFIG_SITE = {
         }
     });
 })();
-</script>    </head>
-<body>
-<!--都加载的-->
-<script src="../usr/themes/butterfly/js/main.js%3Fv1.7.3"> </script>
-<script src="../usr/themes/butterfly/js/utils.js%3Fv1.7.3"> </script>
-<script src="../usr/themes/butterfly/js/tw_cn.js%3Fv1.7.3"> </script>
-<!--下面是CDN才会加载，本地加载看不到下面的js-->
-<!--下面是本地加载的js-->
-<script src="../usr/themes/butterfly/js/jquery.min.js"></script>
-<script src="../usr/themes/butterfly/js/instantpage.min.js" type="module"> </script>
-<script src="../usr/themes/butterfly/js/medium-zoom.min.js"> </script>
-<script src="../usr/themes/butterfly/js/dream-msg.min.js""></script>
-<script src="../usr/themes/butterfly/js/lazyload.iife.min.js"></script>
-<script src="../usr/themes/butterfly/js/fancybox.umd.js"></script><!--主页左上按钮动作-->
-<script src="../usr/themes/butterfly/js/OwO.min.js"></script>
-<script src="../usr/themes/butterfly/js/artplayer.js"> </script>
-<!--[if lt IE 8]>
-    <div class="browsehappy" role="dialog">当前网页 <strong>不支持</strong> 你正在使用的浏览器. 为了正常的访问, 请 <a href="http://browsehappy.com/">升级你的浏览器</a>.</div>
-<![endif]-->
-<!--移动导航栏-->
-<div id="sidebar">
-    <div id="menu-mask" style="display: none;"></div>
-    <div id="sidebar-menus" class="">
-      <div class="avatar-img is-center">
-<img class="profile-avatar" alt="" src="../picture/avatars/brian.png" width="220">          </div>
-      <div class="site-data">
-		<div class="card-info-data site-data is-center">
-			<a href="order.html">
-				<div class="headline">文章</div>
-				<div class="length-num">
-				2				</div>
-			</a>
-			<a href="tag.html">
-				<div class="headline">标签</div>
-				<div class="length-num">15</div>
-			</a>
-			<a href="sort.html">
-				<div class="headline">
-					分类
-				</div>
-				<div class="length-num">
-					5				</div>
-			</a>
-		</div>
-      </div>
-      <div class="menus_items">
-                       <div class="menus_item">
-    <a class="site-page" href="about.html">
-        <i class="fa-fw fas fa-circle-question"></i>
-        <span>关于</span></a>
-</div>
-<div class="menus_item">
-    <a class="site-page" href="../admin/login.php.html" target="_blank">
-        <i class="fa-fw fas fa-user"></i>
-        <span>User</span></a>
-</div>      </div>
-    </div>
-  </div>
-<!--移动导航栏-->
-<body style="zoom: 1;">
-    <div id="web_bg"></div>
-<div class="page" id="body-wrap">
-         <header id="page-header" class="post-bg" style="background-image: url(../usr/uploads/2023/08/158031008.jpg)">
-            <div id="post-info">
-          <h1 class="post-title">我的世界服务器搭建                    </h1>
-          <div id="post-meta">
-              <div class="meta-firstline">
-              <i class="far fa-calendar-alt fa-fw post-meta-icon"></i>
-              <span class="post-meta-label">发表于</span>2022-08-05              <span class="post-meta-separator">|</span>
-              <i class="fas fa-history fa-fw post-meta-icon"></i>
-              <span class="post-meta-label">更新于</span>
-              2025-01-29              <span class="post-meta-separator">|</span>
-              <i class="fas fa-inbox fa-fw post-meta-icon"></i>
-              <a href="category/ubuntu/index.html">ubuntu</a>  
-              </div>
-          </div>
-        </div>
-   
-<nav id="nav" class="show" >
-         <span id="blog-info">
-            <a href="../index.html">
-                                <span class="site-name">Quinn Ye ' Blog</span>
-                            </a>
-       </span>
-            <div id="menus">
-                  <div id="search-button">
-                      <a class="site-page social-icon search">
-                      <i class="fas fa-search fa-fw"></i>
-                                            <form method="post" action="../index.html" role="search" id="dSearch">
-                        <input type="text" placeholder="搜索" id="dSearchIn" name="s" required="required">
-                      </form>
-                                            </a> 
-                      </div>
-                 <div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div>
-              <div class="menus_items">
-                    <!--<div class="menus_item">-->
-                    <!--    <a class="site-page" href="/">-->
-                    <!--        <li class="fa-fw fas fa-home"></li>首页</a>-->
-                    <!--</div>-->
-                                        <div class="menus_item">
-    <a class="site-page" href="about.html">
-        <i class="fa-fw fas fa-circle-question"></i>
-        <span>关于</span></a>
-</div>
-<div class="menus_item">
-    <a class="site-page" href="../admin/login.php.html" target="_blank">
-        <i class="fa-fw fas fa-user"></i>
-        <span>User</span></a>
-</div>                </div>
-            </div>
-    </nav>
-
-<style>
-#dSearch{
-    display: inline-block;
-}
-#dSearch>input {
-    border: none;
-    opacity: 1;
-    outline: none;
-    width: 40px;
-    text-indent: 2px;
-    transition: all .5s;
-    background: transparent;
-}
-#page-header.nav-fixed #nav ::placeholder,
-#page-header.nav-fixed #nav input {
-    color: var(--font-color);
-}
-
-#nav ::placeholder,
-#nav input {
-    color: var(--light-grey);
-}
-#page-header.not-top-img #nav ::placeholder,
-#page-header.not-top-img #nav input {
-    color: var(--font-color);
-    text-shadow: none;
-}
-
-#page-header.nav-fixed #nav a:hover {
-    color: unset;
-}
-
-</style>
-<script>
-var input = document.getElementById('dSearchIn');
-input.addEventListener('focus', function() {
-  input.style.width = '150px';
-});
-input.addEventListener('blur', function() {
-  input.style.width = '35px';
-});
 </script>
-</header><main class="layout" id="content-inner">
-<div id="post" >
-    <article class="post-content" id="article-container">
-       <h2 id="cl-1"><a class="markdownIt-Anchor" href="mc.html#cl-1"></a>1.下载服务端</h2><p><strong>注意</strong>:本次安装服务器为Ubuntu 20.04 LTS，1h2g6m规格,版本为1.16.4<br>首先你得想好安装哪个版本--&gt;<a href="https://mirror.zerodream.net/">服务端软件镜像站</a>。<br>不过我建议安装跟我一样的版本,因为本篇是以此为基础的。<br>文件我已压缩打包至天翼网盘（有两个文件，一个是服务端，一个是start.sh,都会用到）--&gt;<a href="https://cloud.189.cn/t/vumIvqjyauim">Paper-1.16.4-latest.jar</a> (访问码:yyy4)。</p><h2 id="cl-2"><a class="markdownIt-Anchor" href="mc.html#cl-2"></a>2.安装java</h2><p>不同的游戏版本所安装的java版本也不同，1.16.5以前用java8，1.17版本就得用java17了，这也是推荐1.16.4版本的原因。<br>ssh登陆你的服务器，输入下面命令安装java8。<br><code>sudo apt install openjdk-8-jre-headless</code><br>安装完成后查看java版本<br><code>java -version</code><br>显示这样就可以了<br><img title="java8" title="java8" alt="java8" title="java8" data-lazy-src="/usr/uploads/2023/08/2731709997.jpg" src="mc.html" /></p><h2 id="cl-3"><a class="markdownIt-Anchor" href="mc.html#cl-3"></a>3.运行</h2><p>（建议使用宝塔面板操作，更方便）<br>  1.在home目录下新建名为“mc”的文件夹，然后在mc文件夹里上传刚下载的服务端（文件名Paper-1.16.4-latest.jar）。<br>  2.在mc文件夹新建start.sh文件<br>  3.编辑start.sh<br><code>java -Xms1024m -Xmx1024m -jar 此处修改成服务端名称 nogui</code></p><p><img title="baota" title="baota" alt="baota" title="baota" data-lazy-src="/usr/uploads/2023/08/1012177442.jpg" src="mc.html" /><br>  3.登录ssh，输入<br><code>cd /home/mc</code><br><code>sh start.sh</code><br>即可完成第一次启动。</p><h2 id="cl-4"><a class="markdownIt-Anchor" href="mc.html#cl-4"></a>4.启动失败</h2><p>第一次启动都会启动失败，这时候目录会多出一些文件<br><img title="启动失败" title="启动失败" alt="启动失败" title="启动失败" data-lazy-src="/usr/uploads/2023/08/4094063166.png" src="mc.html" /> <img title="多出的文件" title="多出的文件" alt="多出的文件" title="多出的文件" data-lazy-src="/usr/uploads/2023/08/757887868.png" src="mc.html" /><br>这里回到文件夹，修改文件夹里的eula.txt文件，将最后一行flase改为true<br>还要修改文件夹里的server.properties文件（一行一行慢慢找，下面有全部代码）<br><code>gamemode=survival</code>   游戏模式<br><code>online-mode=false</code>   正版验证<br><code>max-players=6</code>       最多在线人数<br><code>view-distance=6</code>     可视距离<br>最后开启服务就好了。<br>server.properties文件这里我全写在这，避免一个个找，建议直接复制</p><pre><code class="lang-other">#Minecraft server properties
+    <!-- 站点统计代码放置位置 -->
+    </head>
+<body>
+
+<header id="header" class="clearfix">
+    <div class="container-md">
+        <div class="row">
+            <div class="site-name col-md-8 col-sm-12">
+                                    <a id="logo" href="../index.html">Quinn Ye ' Blog</a>
+                    <p class="description"></p>
+                            </div>
+            <!--<div class="site-search col-md-4 d-none d-md-block">-->
+            <div class="site-search col-md-4 col-sm-12">
+                <form id="search" method="post" action="../index.html" role="search">
+                    <label for="s" class="sr-only">搜索关键字</label>
+                    <input type="text" id="s" name="s" class="text" placeholder="输入关键字搜索"/>
+                    <button type="submit" class="submit">搜索</button>
+                </form>
+            </div>
+            <div class="col-md-12">
+                <nav id="nav-menu" class="clearfix" role="navigation">
+                    <a                        href="../index.html">首页</a>
+                                                                <a                            href="about.html"
+                            title="关于">关于</a>
+                                    </nav>
+            </div>
+        </div><!-- end .row -->
+    </div>
+</header><!-- end #header -->
+<div id="body">
+    <div class="container-md">
+        <div class="row">
+
+    
+    
+
+<div class="col-sm-12 col-md-8" id="main" role="main">
+    <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+        <h1 class="post-title" itemprop="name headline">
+            <a itemprop="url"
+               href="mc.html">我的世界服务器搭建</a>
+        </h1>
+        <ul class="post-meta">
+            <li itemprop="author" itemscope itemtype="http://schema.org/Person">
+                作者: <a itemprop="name"
+                                       href="author/1/index.html"
+                                       rel="author">Quinn Ye</a>
+            </li>
+            <li>时间:                 <time datetime="2022-08-05T17:13:00+08:00" itemprop="datePublished">2022-08-05</time>
+            </li>
+            <li>分类: <a href="category/ubuntu/index.html">ubuntu</a></li>
+        </ul>
+        <div class="post-content" itemprop="articleBody">
+            <h2>1.下载服务端</h2><p><strong>注意</strong>:本次安装服务器为Ubuntu 20.04 LTS，1h2g6m规格,版本为1.16.4<br>首先你得想好安装哪个版本--&gt;<a href="https://mirror.zerodream.net/">服务端软件镜像站</a>。<br>不过我建议安装跟我一样的版本,因为本篇是以此为基础的。<br>文件我已压缩打包至天翼网盘（有两个文件，一个是服务端，一个是start.sh,都会用到）--&gt;<a href="https://cloud.189.cn/t/vumIvqjyauim">Paper-1.16.4-latest.jar</a> (访问码:yyy4)。</p><h2>2.安装java</h2><p>不同的游戏版本所安装的java版本也不同，1.16.5以前用java8，1.17版本就得用java17了，这也是推荐1.16.4版本的原因。<br>ssh登陆你的服务器，输入下面命令安装java8。<br><code>sudo apt install openjdk-8-jre-headless</code><br>安装完成后查看java版本<br><code>java -version</code><br>显示这样就可以了<br><img src="../usr/uploads/2023/08/2731709997.jpg" alt="java8" title="java8"></p><h2>3.运行</h2><p>（建议使用宝塔面板操作，更方便）<br>  1.在home目录下新建名为“mc”的文件夹，然后在mc文件夹里上传刚下载的服务端（文件名Paper-1.16.4-latest.jar）。<br>  2.在mc文件夹新建start.sh文件<br>  3.编辑start.sh<br><code>java -Xms1024m -Xmx1024m -jar 此处修改成服务端名称 nogui</code></p><p><img src="../usr/uploads/2023/08/1012177442.jpg" alt="baota" title="baota"><br>  3.登录ssh，输入<br><code>cd /home/mc</code><br><code>sh start.sh</code><br>即可完成第一次启动。</p><h2>4.启动失败</h2><p>第一次启动都会启动失败，这时候目录会多出一些文件<br><img src="../usr/uploads/2023/08/4094063166.png" alt="启动失败" title="启动失败"> <img src="../usr/uploads/2023/08/757887868.png" alt="多出的文件" title="多出的文件"><br>这里回到文件夹，修改文件夹里的eula.txt文件，将最后一行flase改为true<br>还要修改文件夹里的server.properties文件（一行一行慢慢找，下面有全部代码）<br><code>gamemode=survival</code>   游戏模式<br><code>online-mode=false</code>   正版验证<br><code>max-players=6</code>       最多在线人数<br><code>view-distance=6</code>     可视距离<br>最后开启服务就好了。<br>server.properties文件这里我全写在这，避免一个个找，建议直接复制</p><pre><code class="lang-other">#Minecraft server properties
 #Tue Aug 23 14:41:16 UTC 2022
 spawn-protection=0
 max-tick-time=60000
@@ -614,357 +268,95 @@ enable-jmx-monitoring=false
 motd=Novice survival
 rate-limit=0
 enable-rcon=false
-</code></pre><h2 id="cl-5"><a class="markdownIt-Anchor" href="mc.html#cl-5"></a>5.screen的使用</h2><p>大家都知道，这样的话关掉ssh软件程序就会停。这时候我们需要screen软件来保持服务端运行！！<br>至于如何使用screen点击这篇文章--&gt;<a href="http://10.0.0.8:88/index.php/screen.html">screen的使用</a></p><h2 id="cl-6"><a class="markdownIt-Anchor" href="mc.html#cl-6"></a>相关下载</h2><p><a href="https://cloud.189.cn/t/aUfA3uAJf2m2">我的世界hcml启动器</a>(访问码:hyf3)</p>    </article>
-<div class="post-copyright">
-    <div class="post-copyright__author">
-    <span class="post-copyright-meta"> 作者:  </span>
-    <span class="post-copyright-info">
-        <a itemprop="name" href="author/1/index.html" rel="author">Quinn Ye</a></span>
+</code></pre><h2>5.screen的使用</h2><p>大家都知道，这样的话关掉ssh软件程序就会停。这时候我们需要screen软件来保持服务端运行！！<br>至于如何使用screen点击这篇文章--&gt;<a href="http://10.0.0.8:88/index.php/screen.html">screen的使用</a></p><h2>相关下载</h2><p><a href="https://cloud.189.cn/t/aUfA3uAJf2m2">我的世界hcml启动器</a>(访问码:hyf3)</p>        </div>
+        <p itemprop="keywords" class="tags">标签: <a href="tag/我的世界/index.html">我的世界</a>, <a href="tag/服务器/index.html">服务器</a></p>
+    </article>
+    <div class="row py-4">
+        <div class="col post-near">上一篇: 没有了</div>
+        <div class="col post-near text-end">下一篇: <a href="bt.html" title="宝塔面板7.7.0安装&amp;指令">宝塔面板7.7.0安装&amp;指令</a></div>
+    </div>
+    <div id="comments">
+
+        <div id="respond-post-7" class="respond">
+            <div class="cancel-comment-reply">
+                <a id="cancel-comment-reply-link" href="mc.html#respond-post-7" rel="nofollow" style="display:none" onclick="return TypechoComment.cancelReply();">取消回复</a>            </div>
+
+            <h3 id="response">添加新评论</h3>
+            <form method="post" action="http://10.0.0.8:88/index.php/mc.html/comment" id="comment-form" role="form">
+                                    <p>
+                        <label for="author" class="required">称呼</label>
+                        <input type="text" name="author" id="author" class="text"
+                               value="" required/>
+                    </p>
+                    <p>
+                        <label
+                            for="mail">Email</label>
+                        <input type="email" name="mail" id="mail" class="text"
+                               value="" />
+                    </p>
+                    <p>
+                        <label
+                            for="url">网站</label>
+                        <input type="url" name="url" id="url" class="text" placeholder="http://"
+                               value="" />
+                    </p>
+                                <p>
+                    <label for="textarea" class="required">内容</label>
+                    <textarea rows="8" cols="50" name="text" id="textarea" class="textarea"
+                              required></textarea>
+                </p>
+                <p>
+                    <button type="submit" class="submit">提交评论</button>
+                </p>
+            </form>
         </div>
-        <div class="post-copyright__type">
-            <span class="post-copyright-meta">文章链接: </span>
-            <span class="post-copyright-info"><a href="mc.html">
-                http://10.0.0.8:88/index.php/mc.html</a></span>
-                </div>
-      
-</div>
-  <div class="tag_share">
-      <div class="post-meta__tag-list">
-                                        <a href="tag/我的世界/index.html" class="post-meta__tags"><span>我的世界</span></a>
-                        <a href="tag/服务器/index.html" class="post-meta__tags"><span>服务器</span></a>
-                          </div>
-      
-   </div>
-
-
-
-<div id="comments">
-            <h3 id="response"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div></h3>
-    <div id="respond-post-7" class="respond">
-        <div class="cancel-comment-reply">
-        <a id="cancel-comment-reply-link" href="mc.html#respond-post-7" rel="nofollow" style="display:none" onclick="return TypechoComment.cancelReply();"><svg class='vicon cancel-reply-btn' viewBox='0 0 1024 1024' version='1.1' xmlns='http://www.w3.org/2000/svg' p-id='4220' width='22' height='22'><path d='M796.454 985H227.545c-50.183 0-97.481-19.662-133.183-55.363-35.7-35.701-55.362-83-55.362-133.183V227.545c0-50.183 19.662-97.481 55.363-133.183 35.701-35.7 83-55.362 133.182-55.362h568.909c50.183 0 97.481 19.662 133.183 55.363 35.701 35.702 55.363 83 55.363 133.183v568.909c0 50.183-19.662 97.481-55.363 133.183S846.637 985 796.454 985zM227.545 91C152.254 91 91 152.254 91 227.545v568.909C91 871.746 152.254 933 227.545 933h568.909C871.746 933 933 871.746 933 796.454V227.545C933 152.254 871.746 91 796.454 91H227.545z' p-id='4221'></path><path d='M568.569 512l170.267-170.267c15.556-15.556 15.556-41.012 0-56.569s-41.012-15.556-56.569 0L512 455.431 341.733 285.165c-15.556-15.556-41.012-15.556-56.569 0s-15.556 41.012 0 56.569L455.431 512 285.165 682.267c-15.556 15.556-15.556 41.012 0 56.569 15.556 15.556 41.012 15.556 56.569 0L512 568.569l170.267 170.267c15.556 15.556 41.012 15.556 56.569 0 15.556-15.556 15.556-41.012 0-56.569L568.569 512z' p-id='4222'></path></svg></a>        </div>
-    	      <div class="change" id="commentType">
-            </div>
-    	<form method="post" action="http://10.0.0.8:88/index.php/mc.html/comment" id="comment-form" role="form">
-    	      <div class="commments-area">
-            <div class="commments-info">
-                            <label for="author" class="required"></label>
-    			<input placeholder="昵称" type="text" name="author" id="author" class="text" value="" required />
-
-                <label for="mail"></label>
-    			<input placeholder="邮箱" type="email" name="mail" id="mail" class="text" value="" />
-
-                <label for="url"></label>
-    			<input type="url" name="url" id="url" class="text" placeholder="http://" 
-    			value="" />
-                        </div>
-                <label for="textarea" class="required"></label>
-                <textarea placeholder="你可以畅所欲言" rows="8" cols="50" name="text" id="textarea" class="textarea" required ></textarea>
-                <div title="OwO" class="OwO"></div>
-                  </div>
-                      		    <div class="commentsFormArea" style="text-align: right;">
-                   <button class="submit" type="submit" >评论</button>
-                </div>
-                </form>
-	
-    </div>
-    <script>
-    $("#to_comment").click(function() {var hre = $(this).attr("href");$('html, body').animate({scrollTop: $(hre).offset().top}, 300);});
-    $("#comment_keys").click(function(){
-        $('#comment_login').slideToggle("fast");
-    });
-    </script>
-    <script>
-    var OwO_demo = new OwO({
-        logo: '<i class="iconfont icon-face"></i>',
-        container: document.getElementsByClassName('OwO')[0],
-        target: document.getElementsByClassName('textarea')[0],
-        api: '/usr/themes/butterfly/OwO.json',
-        position: 'down',
-        width: '100%',
-        maxHeight: '350px'});
-    </script>
-       </div></div>
-<div class="aside-content" id="aside-content" role="complementary">
- 
-    <div class="card-widget card-announcement"><div class="item-headline">
-        <!--<i class="fas fa-bullhorn card-announcement-animation"></i>-->
-        <span>公告</span></div>
-    <div class="announcement_content">无</div></div>
-<div class="sticky_layout">
-    <div class="card-widget" id="card-toc">
-  <div class="item-headline">
-    <i class="fas fa-stream"></i>
-    <span>目录</span>
-    <span class="toc-percentage"></span>
-    </div>
-  <div class="toc-content">
-    <ol class="toc">
-         <li class="toc-item">
-            <a class="toc-link" href="mc.html#cl-1">
-            <span class="toc-number"></span>
-            <span class="toc-text">1.下载服务端</span>
-            </a></li >
-<li class="toc-item">
-            <a class="toc-link" href="mc.html#cl-2">
-            <span class="toc-number"></span>
-            <span class="toc-text">2.安装java</span>
-            </a></li >
-<li class="toc-item">
-            <a class="toc-link" href="mc.html#cl-3">
-            <span class="toc-number"></span>
-            <span class="toc-text">3.运行</span>
-            </a></li >
-<li class="toc-item">
-            <a class="toc-link" href="mc.html#cl-4">
-            <span class="toc-number"></span>
-            <span class="toc-text">4.启动失败</span>
-            </a></li >
-<li class="toc-item">
-            <a class="toc-link" href="mc.html#cl-5">
-            <span class="toc-number"></span>
-            <span class="toc-text">5.screen的使用</span>
-            </a></li >
-<li class="toc-item">
-            <a class="toc-link" href="mc.html#cl-6">
-            <span class="toc-number"></span>
-            <span class="toc-text">相关下载</span>
-            </a></li>
-    </ol>
-  </div>
-</div>
-
-  <div class="card-widget card-webinfo">
-     <div class="item-headline">
-   <i class="fas fa-chart-line"></i>
-    <span>网站资讯</span></div>
-     <div class="webinfo">
-   <div class="webinfo-item">
-      <div class="item-name">文章数目 :</div>
-      <div class="item-count">
-          	2           </div></div>
-    <div class="webinfo-item">
-      <div class="item-name">已运行时间 :</div>
-      <div class="item-count" id="runtimeshows" data-publishdate="">
-          1495 天          
-     </div></div>
-    <div class="webinfo-item">
-      <div class="item-name">本站总字数 :</div>
-      <div class="item-count">
-         5.08 K          </div></div>
-      
-    <div class="webinfo-item">
-      <div class="item-name">本站总访问量 :</div>
-      <div class="item-count" >
-      85      </div></div>
-    <div class="webinfo-item">
-      <div class="item-name">最后更新时间 :</div>
-     <div class="item-count" >
-         12 个月前      </div></div>
-  </div>
-  </div>
-     	<div class="card-widget">
-	    <div class="item-headline">
-            <i class="fas fa-user"></i><span>用户</span></div>
-        <div class="widget-list">
-                            <div  class="last"><a href="../admin/login.php.html">登录</a></div >
-                        <div class="last"><a href="feed/category/others/index.html">文章 RSS</a></div >
-            <div class="last"><a href="feed/comments/index.html">评论 RSS</a></div >
-        </div >
-	</div>
-    </div>
-</div><!-- end #sidebar --><link rel="stylesheet" href="../usr/themes/butterfly/css/GrayMac.css">
-<script type="text/javascript" src="../usr/themes/butterfly/js/prism.js%3Fv1.5.3"></script>
-<script type="text/javascript" src="../usr/themes/butterfly/js/clipboard.min.js"></script>
-<script>
-$(document).ready(function(){if($(".toc").html().length == "14"){$("#card-toc,#mobile-toc-button").remove()}});
-</script>
- 
-<script type="text/javascript">
-	(function(){
-		var pres = document.querySelectorAll('pre');
-		var lineNumberClassName = 'line-numbers';
-		pres.forEach(function (item, index) {
-			item.className = item.className == '' ? lineNumberClassName : item.className + ' ' + lineNumberClassName;
-		});
-	})();
-</script>
-<style>#card-toc,#mobile-toc-button{display: none!important;}</style>
-</main>
-<!-- end #main-->
-
-<footer id="footer">
-    <div id="footer-wrap"><div class="copyright">   
-    <div class="copyright">©2026 Quinn Ye</div>
-    <div class="framework-info">
-    </div>
-        <div class="footer_custom_text"></div>
-    </div>
-</div>
-</footer>
-
-<style type="text/css" data-typed-js-css="true">
-        .typed-cursor{
-          opacity: 1;
-        }
-        .typed-cursor.typed-cursor--blink{
-          animation: typedjsBlink 0.7s infinite;
-          -webkit-animation: typedjsBlink 0.7s infinite;
-                  animation: typedjsBlink 0.7s infinite;
-        }
-        @keyframes typedjsBlink{
-          50% { opacity: 0.0; }
-        }
-        @-webkit-keyframes typedjsBlink{
-          0% { opacity: 1; }
-          50% { opacity: 0.0; }
-          100% { opacity: 1; }
-        }
- </style>
-<script></script>
- <!--搜索  -->
-<div id="local-search">
-  <div class="search-dialog">
-    <nav class="search-nav">
-      <span class="search-dialog-title">本地搜索</span>
-      <span id="loading-status"></span>
-      <button class="search-close-button">
-        <i class="fas fa-times"></i>
-      </button>
-    </nav>
-    <div class="search-wrap" style="display: block;">
-      <div id="local-search-input">
-        <form class="local-search-box" method="post" action="../index.html" role="search" id="search">
-          <label for="s" class="sr-only">搜索关键字</label>
-          <input type="text"  name="s"  placeholder="回车查询" required="required" autocomplete=off></div>
-      </form>
-      <div id="local-search-results"></div>
-    </div>
-  </div>
-  <div id="search-mask" style=""></div>
-</div>
-</div>
-<!--搜索end  -->
-<div class="js-pjax">
-<script src="../usr/themes/butterfly/js/comjs.js%3Fv1.4.3"></script>
-<script type="text/javascript">
-(function () {
-    window.TypechoComment = {
-        dom : function (id) {
-            return document.getElementById(id);
-        },
     
-        create : function (tag, attr) {
-            var el = document.createElement(tag);
-        
-            for (var key in attr) {
-                el.setAttribute(key, attr[key]);
-            }
-        
-            return el;
-        },
-
-        reply : function (cid, coid) {
-            var comment = this.dom(cid), parent = comment.parentNode,
-                response = this.dom('respond-post-7'), input = this.dom('comment-parent'),
-                form = 'form' == response.tagName ? response : response.getElementsByTagName('form')[0],
-                textarea = response.getElementsByTagName('textarea')[0];
-
-            if (null == input) {
-                input = this.create('input', {
-                    'type' : 'hidden',
-                    'name' : 'parent',
-                    'id'   : 'comment-parent'
-                });
-
-                form.appendChild(input);
-            }
-
-            input.setAttribute('value', coid);
-
-            if (null == this.dom('comment-form-place-holder')) {
-                var holder = this.create('div', {
-                    'id' : 'comment-form-place-holder'
-                });
-
-                response.parentNode.insertBefore(holder, response);
-            }
-
-            comment.appendChild(response);
-            this.dom('cancel-comment-reply-link').style.display = '';
-
-            if (null != textarea && 'text' == textarea.name) {
-                textarea.focus();
-            }
-
-            return false;
-        },
-
-        cancelReply : function () {
-            var response = this.dom('respond-post-7'),
-            holder = this.dom('comment-form-place-holder'), input = this.dom('comment-parent');
-
-            if (null != input) {
-                input.parentNode.removeChild(input);
-            }
-
-            if (null == holder) {
-                return true;
-            }
-
-            this.dom('cancel-comment-reply-link').style.display = 'none';
-            holder.parentNode.insertBefore(response, holder);
-            return false;
-        }
-    };
-})();
-</script>
-<script src="http://10.0.0.8:88/index.php/0" type="text/javascript"></script><script>$(document).ready(function(){var a=document.getElementsByTagName("a");for(let i=0;i<a.length;i++){let domain=document.domain;let url=a[i].href;if(typeof(url)!="undefined"&&url.length!=0&&url.match(domain)==null&&url!="javascript:void(0);"){a[i].setAttribute("target","_BLANK")}}});</script>
-        
+    
+    
 </div>
-<!--js-pjax end-->
+    
+</div><!-- end #main-->
 
-<div id="rightside" style="">
-	<div id="rightside-config-hide" class="">
-	    <button id="font-plus" type="button" title="放大字体"><i class="fas fa-plus"></i></button>	    
-	    <button id="font-minus" type="button" title="缩小字体"><i class="fas fa-minus"></i></button>	    
-	    	    <button id="readmode" type="button" title="阅读模式">
-	        <i class="fas fa-book-open"></i>
-	    </button>
-	    		<button id="translateLink" type="button" title="简繁转换">
-			繁
-		</button>
-		<button id="darkmode" type="button" title="浅色和深色模式转换">
-			<i class="fas fa-adjust">
-			</i>
-		</button>
-		<button id="hide-aside-btn" type="button" title="单栏和双栏切换">
-			<i class="fas fa-arrows-alt-h">
-			</i>
-		</button>
-	</div>
-	<div id="rightside-config-show">
-		<button id="rightside_config" type="button" title="设置">
-			<i class="fas fa-cog fa-spin">
-			</i>
-		</button>
-				<button class="close" id="mobile-toc-button" type="button" title="目录">
-			<i class="fas fa-list-ul">
-			</i>
-		</button>
-						<a id="to_comment" href="mc.html#comments" title="直达评论">
-			<i class="fas fa-comments">
-			</i>
-		</a>
-				<button id="go-up" type="button" title="回到頂部" class="show-percent">
-			<span class="scroll-percent"></span>
-			<i class="fas fa-arrow-up">
-			</i>
-		</button>
-	</div>
-</div>
-
-<!--pjax-->
- <!--pjax end-->
+<div class="col-sm-12 col-md-4" id="secondary" role="complementary">
+            <section class="widget">
+            <h3 class="widget-title">最新文章</h3>
+            <ul class="widget-list">
+                <li><a href="bt.html">宝塔面板7.7.0安装&amp;指令</a></li><li><a href="mc.html">我的世界服务器搭建</a></li>            </ul>
+        </section>
+    
+            <section class="widget">
+            <h3 class="widget-title">最近回复</h3>
+            <ul class="widget-list">
+                                            </ul>
+        </section>
+    
+            <section class="widget">
+            <h3 class="widget-title">分类</h3>
+            <ul class="widget-list"><li class="category-level-0 category-parent"><a href="category/default/index.html">默认分类</a></li><li class="category-level-0 category-parent"><a href="category/freedom/index.html">生活</a></li><li class="category-level-0 category-parent"><a href="category/ubuntu/index.html">ubuntu</a></li><li class="category-level-0 category-parent"><a href="category/website/index.html">网站</a></li><li class="category-level-0 category-parent"><a href="category/others/index.html">others</a></li></ul>        </section>
+    
+            <section class="widget">
+            <h3 class="widget-title">归档</h3>
+            <ul class="widget-list">
+                <li><a href="2023/04/index.html">April 2023</a></li><li><a href="2022/08/index.html">August 2022</a></li>            </ul>
+        </section>
+    
+            <section class="widget">
+            <h3 class="widget-title">其它</h3>
+            <ul class="widget-list">
+                                    <li class="last"><a href="../admin/login.php.html">账号登录</a>
+                    </li>
+                                <li><a href="feed/category/others/index.html">文章RSS</a></li>
+                <li><a href="feed/comments/index.html">评论RSS</a></li>
+                                <li><a href="../up.php.html">内网推送</a></li>
+            </ul>
+        </section>
+    
+</div><!-- end #sidebar -->
+        </div><!-- end .row -->
+    </div>
+</div><!-- end #body -->
+<footer id="footer" role="contentinfo">
+    &copy; 2026 <a href="../index.html">Quinn Ye ' Blog</a>
+</footer><!-- end #footer -->
 </body>
 </html>
