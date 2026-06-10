@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quinn 的边缘纯字博客</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen selection:bg-indigo-100">
+
+    <div class="max-w-2xl mx-auto px-6 py-16">
+        <header class="mb-16">
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900">Quinn's Space</h1>
+            <p class="mt-2 text-slate-500 text-sm">基于 Cloudflare Pages & KV 的纯文字内容流</p>
+        </header>
+
+        <div id="status-tips" class="text-center py-12 text-slate-400 text-sm">
+            正在连接边缘节点并加载文章...
+        </div>
+
+        <main id="posts-container" class="space-y-16 hidden">
+            </main>
+    </div>
+
+    <script>
+        async function loadArticles() {
+            const tipsEl = document.getElementById('status-tips');
+            const containerEl = document.getElementById('posts-container');
+
+            try {
+                const res = await fetch('/api/list');
+                const result = await res.json();
+
+                if (result.success && result.data.length > 0) {
+                    tipsEl.classList.add('hidden');
+                    containerEl.classList.remove('hidden');
+
+                    containerEl.innerHTML = result.data.map(post => `
+                        <article class="group">
+                            <header class="mb-3">
+                                <h2 class="text-xl font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                    ${escapeHtml(post.title)}
+                                </h2>
+                                <time class="block text-xs text-slate-400 mt-1">
+                                    ${new Date(post.timestamp).toLocaleString('zh-CN', { hour12: false })}
+                                </time>
+                            </header>
+                            <div class="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap tracking-wide">
+                                ${escapeHtml(post.content)}
+                            </div>
+                        </article>
+                    `).join('');
+                } else {
+                    tipsEl.innerText = '暂无内容。请通过 API 推送你的第一篇文章。';
+                }
+            } catch (err) {
+                tipsEl.innerText = '数据获取失败，请刷新重试。';
+                console.error(err);
+            }
+        }
+
+        // 简易 XSS 安全防护
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        document.addEventListener('DOMContentLoaded', loadArticles);
+    </script>
+</body>
+</html>
