@@ -5,64 +5,145 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quinn 的边缘纯字博客</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-</head>
-<body class="bg-slate-50 text-slate-800 min-h-screen selection:bg-indigo-100">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 
-    <div class="max-w-2xl mx-auto px-6 py-16">
-        <header class="mb-16">
-            <h1 class="text-3xl font-bold tracking-tight text-slate-900">Quinn's Space</h1>
-            <p class="mt-2 text-slate-500 text-sm">基于 Cloudflare Pages & KV 的纯文字内容流</p>
+        :root {
+            --font-serif: 'Newsreader', 'Songti SC', 'STSong', serif;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        body { font-family: var(--font-sans); }
+
+        .font-serif { font-family: var(--font-serif); }
+
+        /* 优雅的下划线动画 */
+        .link-underline {
+            background-image: linear-gradient(currentColor, currentColor);
+            background-size: 0% 1px;
+            background-repeat: no-repeat;
+            background-position: 0 100%;
+            transition: background-size 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .group:hover .link-underline,
+        .link-underline:hover {
+            background-size: 100% 1px;
+        }
+
+        /* 加载呼吸点 */
+        @keyframes breathe {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50%      { opacity: 1;   transform: scale(1); }
+        }
+        .dot { animation: breathe 1.4s ease-in-out infinite; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        /* 列表入场 */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeUp 0.6s ease-out both; }
+    </style>
+</head>
+<body class="bg-[#fafaf9] text-stone-800 min-h-screen selection:bg-stone-200">
+
+    <div class="max-w-2xl mx-auto px-6 py-20 md:py-28">
+        <header class="mb-20">
+            <h1 class="font-serif text-4xl md:text-5xl font-medium tracking-tight text-stone-900">
+                Quinn's Space
+            </h1>
+            <p class="mt-3 text-stone-500 text-sm tracking-wide">
+                基于 Cloudflare Pages &amp; KV 的纯文字内容流
+            </p>
         </header>
 
-        <div id="status-tips" class="text-center py-12 text-slate-400 text-sm">
-            正在连接边缘节点并加载文章...
+        <!-- 加载中状态 -->
+        <div id="status-loading" class="flex items-center gap-2 py-16 text-stone-400 text-sm tracking-wider">
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="ml-2">正在连接边缘节点</span>
         </div>
 
-        <main id="posts-container" class="space-y-16 hidden">
-            </main>
+        <!-- 空数据状态 -->
+        <div id="status-empty" class="hidden py-20 text-center">
+            <div class="inline-block w-12 h-px bg-stone-300 mb-6"></div>
+            <p class="font-serif text-stone-500 text-base italic">这里还很安静</p>
+            <p class="mt-2 text-stone-400 text-xs tracking-wider">通过 API 推送你的第一篇文章</p>
+        </div>
+
+        <!-- 错误状态 -->
+        <div id="status-error" class="hidden py-16 text-stone-400 text-sm tracking-wider">
+            <span class="font-serif italic">数据获取失败</span> · 请刷新重试
+        </div>
+
+        <!-- 文章列表 -->
+        <main id="posts-container" class="hidden divide-y divide-stone-200/70">
+        </main>
     </div>
+
+    <footer class="max-w-2xl mx-auto px-6 pb-12 text-center text-stone-400 text-xs tracking-widest uppercase">
+        — End of Stream —
+    </footer>
 
     <script>
         async function loadArticles() {
-            const tipsEl = document.getElementById('status-tips');
-            const containerEl = document.getElementById('posts-container');
+            const loadingEl = document.getElementById('status-loading');
+            const emptyEl   = document.getElementById('status-empty');
+            const errorEl   = document.getElementById('status-error');
+            const listEl    = document.getElementById('posts-container');
 
             try {
                 const res = await fetch('/api/list');
                 const result = await res.json();
 
-                if (result.success && result.data.length > 0) {
-                    tipsEl.classList.add('hidden');
-                    containerEl.classList.remove('hidden');
+                loadingEl.classList.add('hidden');
 
-                    containerEl.innerHTML = result.data.map(post => `
-                        <article class="group">
-                            <header class="mb-3">
-                                <h2 class="text-xl font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                                    ${escapeHtml(post.title)}
+                if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+                    listEl.classList.remove('hidden');
+
+                    listEl.innerHTML = result.data.map((post, i) => `
+                        <article class="fade-up py-7 group" style="animation-delay: ${i * 60}ms">
+                            <a href="/post.html?slug=${encodeURIComponent(post.slug || '')}"
+                               class="flex items-baseline justify-between gap-6">
+                                <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
+                                    <span class="link-underline pb-0.5">${escapeHtml(post.title)}</span>
                                 </h2>
-                                <time class="block text-xs text-slate-400 mt-1">
-                                    ${new Date(post.timestamp).toLocaleString('zh-CN', { hour12: false })}
+                                <time class="shrink-0 text-xs text-stone-400 tabular-nums tracking-wider pt-1.5">
+                                    ${formatDate(post.timestamp)}
                                 </time>
-                            </header>
-                            <div class="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap tracking-wide">
-                                ${escapeHtml(post.content)}
-                            </div>
+                            </a>
                         </article>
                     `).join('');
                 } else {
-                    tipsEl.innerText = '暂无内容。请通过 API 推送你的第一篇文章。';
+                    emptyEl.classList.remove('hidden');
                 }
             } catch (err) {
-                tipsEl.innerText = '数据获取失败，请刷新重试。';
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
                 console.error(err);
             }
         }
 
-        // 简易 XSS 安全防护
+        function formatDate(ts) {
+            const d = new Date(ts);
+            if (isNaN(d)) return '';
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y} · ${m} · ${day}`;
+        }
+
         function escapeHtml(str) {
             if (!str) return '';
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         document.addEventListener('DOMContentLoaded', loadArticles);

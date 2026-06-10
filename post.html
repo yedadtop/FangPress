@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正在阅读 · Quinn's Space</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+
+        :root {
+            --font-serif: 'Newsreader', 'Songti SC', 'STSong', serif;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        body { font-family: var(--font-sans); }
+        .font-serif { font-family: var(--font-serif); }
+
+        /* 阅读区排版 */
+        .prose-reader {
+            font-family: var(--font-serif);
+            color: #292524;
+            font-size: 1.125rem;
+            line-height: 1.85;
+            letter-spacing: 0.005em;
+        }
+        .prose-reader h1,
+        .prose-reader h2,
+        .prose-reader h3,
+        .prose-reader h4 {
+            font-family: var(--font-serif);
+            font-weight: 600;
+            color: #0c0a09;
+            letter-spacing: -0.01em;
+            line-height: 1.3;
+        }
+        .prose-reader h1 { font-size: 1.75rem; margin: 2.25rem 0 1rem; }
+        .prose-reader h2 { font-size: 1.45rem; margin: 2rem 0 0.875rem; }
+        .prose-reader h3 { font-size: 1.2rem;  margin: 1.75rem 0 0.75rem; }
+        .prose-reader p  { margin: 1.1rem 0; }
+        .prose-reader a {
+            color: #44403c;
+            border-bottom: 1px solid #d6d3d1;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .prose-reader a:hover { color: #0c0a09; border-bottom-color: #0c0a09; }
+        .prose-reader strong { color: #0c0a09; font-weight: 600; }
+        .prose-reader em { font-style: italic; }
+        .prose-reader blockquote {
+            border-left: 2px solid #d6d3d1;
+            padding-left: 1.25rem;
+            margin: 1.5rem 0;
+            color: #57534e;
+            font-style: italic;
+        }
+        .prose-reader code {
+            font-family: 'SF Mono', Menlo, Consolas, monospace;
+            font-size: 0.92em;
+            background: #f5f5f4;
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+            color: #44403c;
+        }
+        .prose-reader pre {
+            font-family: 'SF Mono', Menlo, Consolas, monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            background: #f5f5f4;
+            padding: 1.1rem 1.25rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+        }
+        .prose-reader pre code {
+            background: transparent;
+            padding: 0;
+            font-size: inherit;
+        }
+        .prose-reader ul,
+        .prose-reader ol {
+            padding-left: 1.5rem;
+            margin: 1.1rem 0;
+        }
+        .prose-reader ul { list-style: disc; }
+        .prose-reader ol { list-style: decimal; }
+        .prose-reader li { margin: 0.4rem 0; }
+        .prose-reader hr {
+            border: 0;
+            text-align: center;
+            margin: 2.5rem 0;
+            color: #d6d3d1;
+        }
+        .prose-reader hr::before {
+            content: '· · ·';
+            letter-spacing: 0.5em;
+        }
+        .prose-reader img {
+            max-width: 100%;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+        }
+
+        /* 返回按钮箭头微动 */
+        .back-btn .arrow {
+            display: inline-block;
+            transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .back-btn:hover .arrow { transform: translateX(-3px); }
+
+        /* 加载呼吸点 */
+        @keyframes breathe {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50%      { opacity: 1;   transform: scale(1); }
+        }
+        .dot { animation: breathe 1.4s ease-in-out infinite; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+    </style>
+</head>
+<body class="bg-[#fafaf9] text-stone-800 min-h-screen selection:bg-stone-200">
+
+    <div class="max-w-2xl mx-auto px-6 pt-10 md:pt-14 pb-20">
+
+        <a href="/" class="back-btn inline-flex items-center gap-2 text-sm text-stone-500 hover:text-stone-900 transition-colors tracking-wider">
+            <span class="arrow">←</span>
+            <span>返回主页</span>
+        </a>
+
+        <article id="post-article" class="mt-12 hidden">
+            <header class="mb-10 pb-8 border-b border-stone-200/70">
+                <h1 id="post-title" class="font-serif text-3xl md:text-[2.5rem] font-semibold tracking-tight leading-tight text-stone-900">
+                </h1>
+                <time id="post-time" class="block mt-4 text-xs text-stone-400 tracking-widest tabular-nums">
+                </time>
+            </header>
+
+            <div id="post-content" class="prose-reader">
+            </div>
+        </article>
+
+        <!-- 加载中 -->
+        <div id="status-loading" class="flex items-center gap-2 py-24 text-stone-400 text-sm tracking-wider">
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="ml-2">正在从边缘节点拉取内容</span>
+        </div>
+
+        <!-- 状态：参数错误 -->
+        <div id="status-bad-slug" class="hidden py-24 text-center">
+            <div class="inline-block w-12 h-px bg-stone-300 mb-6"></div>
+            <p class="font-serif text-stone-500 text-base italic">缺少文章标识</p>
+            <p class="mt-2 text-stone-400 text-xs tracking-wider">URL 中未提供 slug 参数</p>
+        </div>
+
+        <!-- 状态：未找到 -->
+        <div id="status-not-found" class="hidden py-24 text-center">
+            <div class="inline-block w-12 h-px bg-stone-300 mb-6"></div>
+            <p class="font-serif text-stone-500 text-base italic">这篇文章不存在</p>
+            <p class="mt-2 text-stone-400 text-xs tracking-wider">它可能已被删除,或链接有误</p>
+        </div>
+
+        <!-- 状态：网络错误 -->
+        <div id="status-error" class="hidden py-24 text-stone-400 text-sm tracking-wider">
+            <span class="font-serif italic">内容加载失败</span> · 请刷新重试
+        </div>
+    </div>
+
+    <footer class="max-w-2xl mx-auto px-6 pb-12 text-center text-stone-400 text-xs tracking-widest uppercase">
+        — End of Post —
+    </footer>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const slug = params.get('slug');
+
+        const loadingEl    = document.getElementById('status-loading');
+        const badSlugEl    = document.getElementById('status-bad-slug');
+        const notFoundEl   = document.getElementById('status-not-found');
+        const errorEl      = document.getElementById('status-error');
+        const articleEl    = document.getElementById('post-article');
+        const titleEl      = document.getElementById('post-title');
+        const timeEl       = document.getElementById('post-time');
+        const contentEl    = document.getElementById('post-content');
+
+        function showOnly(el) {
+            [loadingEl, badSlugEl, notFoundEl, errorEl, articleEl].forEach(node => {
+                if (node) node.classList.add('hidden');
+            });
+            if (el) el.classList.remove('hidden');
+        }
+
+        function formatDate(ts) {
+            const d = new Date(ts);
+            if (isNaN(d)) return '';
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y} · ${m} · ${day}`;
+        }
+
+        async function loadPost() {
+            if (!slug) {
+                showOnly(badSlugEl);
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/get?slug=' + encodeURIComponent(slug));
+                if (res.status === 404) {
+                    showOnly(notFoundEl);
+                    return;
+                }
+                const result = await res.json();
+
+                if (result.success && result.data) {
+                    const post = result.data;
+                    document.title = `${post.title || '未命名'} · Quinn's Space`;
+
+                    titleEl.textContent = post.title || '未命名';
+                    timeEl.textContent  = formatDate(post.timestamp);
+
+                    if (window.marked) {
+                        contentEl.innerHTML = window.marked.parse(post.content || '');
+                    } else {
+                        contentEl.textContent = post.content || '';
+                    }
+
+                    showOnly(articleEl);
+                } else {
+                    showOnly(notFoundEl);
+                }
+            } catch (err) {
+                console.error(err);
+                showOnly(errorEl);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadPost);
+    </script>
+</body>
+</html>
