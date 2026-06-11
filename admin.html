@@ -53,6 +53,29 @@
         @media (max-width: 767px) {
             .menu-toggle { display: inline-flex; }
         }
+
+        /* 移动端侧边栏悬浮覆盖 */
+        @media (max-width: 767px) {
+            #sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 280px;
+                height: 100vh;
+                z-index: 9999;
+                box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+            }
+            #sidebar-backdrop {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.3);
+                z-index: 9998;
+            }
+            #sidebar-backdrop.show {
+                display: block;
+            }
+        }
     </style>
 </head>
 <body class="bg-[#fafaf9] text-stone-800 min-h-screen">
@@ -91,6 +114,9 @@
                 菜单
             </button>
         </div>
+
+        <!-- 移动端遮罩层 -->
+        <div id="sidebar-backdrop" onclick="toggleMobileSidebar()"></div>
 
         <!-- 侧边栏 -->
         <aside id="sidebar" class="md:w-60 md:min-h-screen md:border-r md:border-stone-200 md:bg-white bg-white border-b md:border-b-0 border-stone-200 shrink-0 hidden md:flex flex-col">
@@ -251,8 +277,10 @@
         // -------- 移动端侧栏开关 --------
         function toggleMobileSidebar() {
             const sb = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
             sb.classList.toggle('hidden');
             sb.classList.toggle('flex');
+            backdrop.classList.toggle('show');
         }
 
         // -------- 全屏编辑模式：隐藏/显示侧边栏 --------
