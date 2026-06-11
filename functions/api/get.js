@@ -25,12 +25,16 @@ export async function onRequestGet(context) {
     }
 
     context.waitUntil(
-      env.DB.prepare("UPDATE posts SET views = views + 1 WHERE slug = ?").bind(slug).run()
+      (async () => {
+        try {
+          await env.DB.prepare("UPDATE posts SET views = views + 1 WHERE slug = ?").bind(slug).run();
+        } catch (_) {}
+      })()
     );
 
     post.views += 1;
-    // DB 默认值 '未分类' / 空串 → 归一为 null，前端按 "无分类" 处理
-    post.category = (!post.category || post.category.trim() === '未分类') ? null : post.category;
+    // 归一化：空串 → null，前端按"无分类"处理
+    post.category = (!post.category || post.category.trim() === '') ? null : post.category;
 
     return new Response(JSON.stringify({ success: true, data: post }), {
       status: 200,

@@ -103,6 +103,33 @@
             return localStorage.getItem('admin_token');
         }
 
+        async function validateToken() {
+            const token = getToken();
+            if (!token) {
+                redirectToLogin();
+                return false;
+            }
+            try {
+                const res = await fetch('/api/user', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.status === 401) {
+                    localStorage.removeItem('admin_token');
+                    redirectToLogin();
+                    return false;
+                }
+            } catch (_) {}
+            return true;
+        }
+
+        function redirectToLogin() {
+            if (window.top !== window) {
+                window.top.location.href = 'admin.html';
+            } else {
+                window.location.href = 'admin.html';
+            }
+        }
+
         function updateWordCount() {
             const len = document.getElementById('post-content').value.length;
             document.getElementById('word-count').textContent = len;
@@ -128,8 +155,12 @@
 
         async function loadPostForEdit(id) {
             enterEditMode();
+            const token = getToken();
             try {
-                const res = await fetch('/api/list');
+                const res = await fetch('/api/list', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.status === 401) { redirectToLogin(); return; }
                 const result = await res.json();
                 if (!result.success) throw new Error('列表拉取失败');
 
@@ -159,6 +190,7 @@
         async function loadCategorySuggestions() {
             try {
                 const res = await fetch('/api/list');
+                if (res.status === 401) { redirectToLogin(); return; }
                 const result = await res.json();
                 if (result.success) {
                     const cats = [...new Set(result.data.map(p => p.category || '未分类'))];
@@ -177,12 +209,20 @@
             const titleEl = document.getElementById('post-title');
             const slugEl = document.getElementById('post-slug');
             if (slugEl.dataset.touched === '1') return;
-            const text = titleEl.value.trim().toLowerCase()
+            const raw = titleEl.value.trim();
+            // 含非 ASCII 字符（中文等）→ 无法安全生成 slug，清空交给用户手动输入
+            if (/[^\x00-\x7F]/.test(raw)) {
+                slugEl.value = '';
+                slugEl.placeholder = '请手动输入英文/数字路径，如 my-post';
+                return;
+            }
+            const text = raw.toLowerCase()
                 .replace(/\s+/g, '-')
-                .replace(/[^a-z0-9-一-鿿]/g, '')
+                .replace(/[^a-z0-9-]/g, '')
                 .replace(/-+/g, '-')
                 .replace(/^-|-$/g, '');
             slugEl.value = text;
+            slugEl.placeholder = '例如 d1-blog-guide';
         }
 
         async function submitPost() {
@@ -241,11 +281,8 @@
         }
 
         // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!getToken()) {
-                // 没 token 不做任何事，外层 admin.html 会兜底处理
-                return;
-            }
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!(await validateToken())) return;
 
             const slugEl = document.getElementById('post-slug');
             const titleEl = document.getElementById('post-title');

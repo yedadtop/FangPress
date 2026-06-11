@@ -50,7 +50,7 @@ export async function onRequestPost(context) {
         title.trim(),
         slug.trim().toLowerCase(),
         content.trim(),
-        category ? category.trim() : "未分类",
+        category ? (category.trim() || null) : null,
         now,
         id
       )

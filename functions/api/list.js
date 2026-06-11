@@ -53,8 +53,8 @@ export async function onRequestGet(context) {
       const { content, category, ...meta } = p;
       return {
         ...meta,
-        // 归一化：DB 默认值 '未分类' / 空串 → null，前端按"无分类"处理
-        category: (!category || category.trim() === '未分类') ? null : category,
+        // 归一化：空串 → null，前端按"无分类"处理
+        category: (!category || category.trim() === '') ? null : category,
         excerpt: excerptLength > 0 ? makeExcerpt(content || '', excerptLength) : ''
       };
     });
