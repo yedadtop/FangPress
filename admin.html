@@ -57,28 +57,26 @@
 </head>
 <body class="bg-[#fafaf9] text-stone-800 min-h-screen">
 
-    <!-- ========================== 登录 / 注册面板 ========================== -->
+    <!-- ========================== 登录面板 ========================== -->
     <div id="auth-panel" class="hidden max-w-sm mx-auto mt-12 bg-white p-8 rounded-2xl border border-stone-200/60 shadow-xs">
         <h2 id="auth-title" class="font-serif text-2xl font-medium text-stone-900 mb-6 text-center">登录到空间</h2>
 
         <div class="space-y-4">
             <div>
                 <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">账号</label>
-                <input type="text" id="username" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400">
-            </div>
-            <div id="nickname-wrapper" class="hidden">
-                <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">作者昵称</label>
-                <input type="text" id="nickname" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400" placeholder="例如 Quinn Ye">
+                <input type="text" id="username" autocomplete="username"
+                       class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400">
             </div>
             <div>
                 <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">密码</label>
-                <input type="password" id="password" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400">
+                <input type="password" id="password" autocomplete="current-password"
+                       class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400">
             </div>
             <button id="auth-btn" onclick="handleAuth()" class="w-full mt-2 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-sm font-medium transition-colors cursor-pointer">
                 认证
             </button>
         </div>
-        <p id="auth-tips" class="mt-4 text-center text-xs text-stone-400 font-serif italic"></p>
+        <p id="auth-tips" class="mt-4 text-center text-xs text-stone-400 font-serif italic">默认账号 admin · 首次登录后请到「用户管理」修改密码</p>
     </div>
 
     <!-- ========================== 后台主面板：侧边栏 + 内容区 ========================== -->
@@ -167,8 +165,6 @@
     </div>
 
     <script>
-        let isRegisterMode = false;
-
         // -------- 鉴权 --------
         function checkSystemState() {
             const token = localStorage.getItem('admin_token');
@@ -178,63 +174,26 @@
                 showAdminPanel(nickname);
                 return;
             }
-
-            // 先打一次 list，简单探一下接口
-            fetch('/api/list').then(r => r.json()).then(result => {
-                document.getElementById('auth-panel').classList.remove('hidden');
-            }).catch(e => {
-                document.getElementById('auth-panel').classList.remove('hidden');
-                console.error(e);
-            });
-
-            setupAuthMode(false);
-        }
-
-        function setupAuthMode(register) {
-            isRegisterMode = register;
-            const titleEl = document.getElementById('auth-title');
-            const nickWrapper = document.getElementById('nickname-wrapper');
-            const btnEl = document.getElementById('auth-btn');
-            const tipsEl = document.getElementById('auth-tips');
-
-            if (register) {
-                titleEl.textContent = "初始化管理员";
-                nickWrapper.classList.remove('hidden');
-                btnEl.textContent = "创建首席管理员";
-                tipsEl.innerHTML = `<a href="javascript:void(0)" onclick="setupAuthMode(false)" class="underline">已有账户？去登录</a>`;
-            } else {
-                titleEl.textContent = "登录到控制台";
-                nickWrapper.classList.add('hidden');
-                btnEl.textContent = "认证进入";
-                tipsEl.innerHTML = `<a href="javascript:void(0)" onclick="setupAuthMode(true)" class="underline text-stone-400">第一次访问？点此初始化</a>`;
-            }
+            // 直接展示登录面板（默认账号 admin / admin）
+            document.getElementById('auth-panel').classList.remove('hidden');
         }
 
         async function handleAuth() {
             const u = document.getElementById('username').value;
             const p = document.getElementById('password').value;
-            const n = document.getElementById('nickname').value;
-
-            const path = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
-            const body = isRegisterMode ? { username: u, password: p, nickname: n } : { username: u, password: p };
 
             try {
-                const res = await fetch(path, {
+                const res = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify({ username: u, password: p })
                 });
                 const result = await res.json();
 
                 if (result.success) {
-                    if (isRegisterMode) {
-                        alert(result.message + ' 现在请登录。');
-                        setupAuthMode(false);
-                    } else {
-                        localStorage.setItem('admin_token', result.token);
-                        localStorage.setItem('admin_nickname', result.nickname);
-                        showAdminPanel(result.nickname);
-                    }
+                    localStorage.setItem('admin_token', result.token);
+                    localStorage.setItem('admin_nickname', result.nickname);
+                    showAdminPanel(result.nickname);
                 } else {
                     alert('失败: ' + result.error);
                 }
