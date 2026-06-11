@@ -2,7 +2,7 @@
 
 > Quinn's Space  ·  Cloudflare Pages Functions  ·  **10 个端点**
 > 数据源：Cloudflare D1（关系型 SQLite）
-> 鉴权：Bearer Token（支持两种方式：① 账号密码登录的 token = `users.password_hash` ② KV 中的 `API_TOKEN`）
+> 鉴权：Bearer Token（支持两种方式：① 账号密码登录的 token = `users.password_hash` ② 系统环境变量 `API_TOKEN`）
 
 ---
 
@@ -18,7 +18,7 @@
 - 登录成功后，**token** 是 `SHA-256(password)`，前端需在 `localStorage.setItem('admin_token', token)` 持久化
 - 受保护接口必须携带：`Authorization: Bearer <token>`
 - 服务端按以下顺序校验：
-  1. **优先**检查 Cloudflare KV 中的 `API_TOKEN`
+  1. **优先**检查系统环境变量 `API_TOKEN`
   2. 若未命中，则以 `SELECT COUNT(*) FROM users WHERE password_hash = ?` 比对
 - 除 [`POST /api/user/update`](#26-post-apiuserupdate--改用户名--昵称--密码) 外，所有受保护接口均支持 API_TOKEN
 - **改密后 token 同步变更**，前端必须用响应里的 `newToken` 覆盖 localStorage
@@ -269,7 +269,7 @@
 ## 3. 完整 curl 测试脚本
 
 ```bash
-# 0) API_TOKEN 方式（KV 中存储的纯文本密钥，所有受保护接口均可使用，除 /api/user/update）
+# 0) API_TOKEN 方式（系统环境变量纯文本密钥，所有受保护接口均可使用，除 /api/user/update）
 API_TOKEN="MySecretToken2026"
 
 # 1) 登录拿 token
