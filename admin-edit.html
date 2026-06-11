@@ -675,9 +675,9 @@
             document.getElementById('normal-mode').style.display = 'block';
             isFullscreen = false;
 
-            // 通知父窗口显示侧边栏并恢复iframe
+            // ✨ 修复：将类型改为与父窗口 admin.html 一致的 'exit-fullscreen'
             if (window.top !== window) {
-                window.top.postMessage({ type: 'exit-fullscreen-editor' }, '*');
+                window.top.postMessage({ type: 'exit-fullscreen' }, '*');
             }
 
             updateWordCount();
