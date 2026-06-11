@@ -16,8 +16,7 @@ export async function onRequestPost(context) {
   }
   const clientToken = authHeader.replace("Bearer ", "");
 
-  // 优先检查 KV 中的 API_TOKEN
-  const apiToken = await env.KV.get("API_TOKEN");
+  const apiToken = env.API_TOKEN;
   if (apiToken && clientToken === apiToken) {
     return new Response(JSON.stringify({ success: false, error: "API_TOKEN 无法用于修改账户信息，请使用账号密码登录后操作" }), {
       status: 403,

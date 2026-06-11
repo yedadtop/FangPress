@@ -1,7 +1,6 @@
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // 鉴权：Bearer Token 优先检查 KV 中的 API_TOKEN
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) {
     return new Response(JSON.stringify({ success: false, error: "未授权" }), {
@@ -11,7 +10,8 @@ export async function onRequestPost(context) {
   }
   const clientToken = authHeader.replace("Bearer ", "");
 
-  const apiToken = await env.KV.get("API_TOKEN");
+  // 修复：直接从环境变量 env 中读取 API_TOKEN
+  const apiToken = env.API_TOKEN;
   if (apiToken && clientToken === apiToken) {
     // API_TOKEN 鉴权通过
   } else {

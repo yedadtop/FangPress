@@ -1,8 +1,3 @@
-// ============================================================
-//  GET /api/user   鉴权：取当前账户信息（不含密码哈希）
-//  POST 改密改用户名请见 ./user/update.js
-// ============================================================
-
 export async function onRequestGet(context) {
   const { request, env } = context;
 
@@ -15,8 +10,8 @@ export async function onRequestGet(context) {
   }
   const clientToken = authHeader.replace("Bearer ", "");
 
-  // 优先检查 KV 中的 API_TOKEN
-  const apiToken = await env.KV.get("API_TOKEN");
+  // 修复：直接从环境变量 env 中读取 API_TOKEN
+  const apiToken = env.API_TOKEN;
   if (apiToken && clientToken === apiToken) {
     return new Response(JSON.stringify({ success: true, data: { is_api_token: true } }), {
       headers: { "Content-Type": "application/json" }
