@@ -234,6 +234,11 @@
         .fullscreen-mode .enter-fullscreen-btn {
             display: none;
         }
+
+        /* 确保 datalist 下拉框正常显示 */
+        datalist {
+            display: block;
+        }
     </style>
 </head>
 <body class="bg-[#fafaf9] text-stone-800">
@@ -276,15 +281,14 @@
                     </div>
                 </div>
 
-                <div class="flex items-end gap-3">
-                    <div class="flex-1 min-w-0">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
                         <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">分类</label>
                         <input type="text" id="post-category" list="category-list"
                                class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500"
                                placeholder="技术 / 随笔 / 未分类">
-                        <datalist id="category-list"></datalist>
                     </div>
-                    <div class="w-80 shrink-0">
+                    <div>
                         <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">导入文章 JSON</label>
                         <input type="text" id="json-import-input"
                                class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-xs font-mono text-stone-500 focus:outline-none focus:border-stone-500 focus:text-stone-900 transition-colors"
@@ -292,6 +296,7 @@
                                spellcheck="false" autocomplete="off">
                     </div>
                 </div>
+                <datalist id="category-list"></datalist>
 
                 <div>
                     <div class="flex items-baseline justify-between mb-1.5">
