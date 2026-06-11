@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>控制台 · Quinn's Space</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+        :root {
+            --font-serif: 'Newsreader', 'Songti SC', 'STSong', serif;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        body { font-family: var(--font-sans); }
+        .font-serif { font-family: var(--font-serif); }
+    </style>
+</head>
+<body class="bg-[#fafaf9] text-stone-800 min-h-screen">
+
+    <div class="max-w-2xl mx-auto px-6 py-20">
+        
+        <div id="auth-panel" class="hidden max-w-sm mx-auto mt-12 bg-white p-8 rounded-2xl border border-stone-200/60 shadow-xs">
+            <h2 id="auth-title" class="font-serif text-2xl font-medium text-stone-900 mb-6 text-center">登录到空间</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">账号</label>
+                    <input type="text" id="username" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400">
+                </div>
+                <div id="nickname-wrapper" class="hidden">
+                    <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">作者昵称</label>
+                    <input type="text" id="nickname" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400" placeholder="例如 Quinn Ye">
+                </div>
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">密码</label>
+                    <input type="password" id="password" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400">
+                </div>
+                <button id="auth-btn" onclick="handleAuth()" class="w-full mt-2 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-sm font-medium transition-colors cursor-pointer">
+                    认证
+                </button>
+            </div>
+            <p id="auth-tips" class="mt-4 text-center text-xs text-stone-400 font-serif italic"></p>
+        </div>
+
+        <div id="admin-panel" class="hidden">
+            <header class="flex items-baseline justify-between border-b border-stone-200 pb-6 mb-10">
+                <div>
+                    <h1 class="font-serif text-3xl font-medium text-stone-900">创作中心</h1>
+                    <p class="text-xs text-stone-400 mt-1">你好, <span id="admin-name" class="font-semibold"></span> · 欢迎回来</p>
+                </div>
+                <button onclick="logout()" class="text-xs text-stone-400 hover:text-stone-900 transition-colors cursor-pointer">退出登录</button>
+            </header>
+
+            <div class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">文章标题</label>
+                        <input type="text" id="post-title" class="w-full px-3 py-2 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">唯一路径 (Slug)</label>
+                        <input type="text" id="post-slug" placeholder="例如 d1-blog-guide" class="w-full px-3 py-2 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">分类</label>
+                    <input type="text" id="post-category" placeholder="技术 / 随笔 / 未分类" class="w-full px-3 py-2 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">正文 (Markdown 纯文字)</label>
+                    <textarea id="post-content" rows="12" class="w-full px-3 py-2 bg-white border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500 leading-relaxed" placeholder="### 标题&#10;&#10;开始写下你的思考..."></textarea>
+                </div>
+
+                <button onclick="submitPost()" class="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-sm font-medium transition-colors cursor-pointer">
+                    发布到边缘网络
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let isRegisterMode = false;
+
+        // 页面初始化：透视数据库里有没有用户，决定是显示“注册”还是“登录”
+        async function checkSystemState() {
+            const token = localStorage.getItem('admin_token');
+            const nickname = localStorage.getItem('admin_nickname');
+            
+            if (token) {
+                // 如果本地有令牌，直接进后台
+                showAdminPanel(nickname);
+                return;
+            }
+
+            try {
+                // 借用 list 接口获取列表，如果系统空空如也，尝试试探是否有注册资格
+                const res = await fetch('/api/list');
+                const result = await res.json();
+                
+                document.getElementById('auth-panel').classList.remove('hidden');
+                
+                // 这里我们做一个小机制：直接尝试看看能不能开启第一注册人模式
+                // 实际上通过后端 register.js 的 COUNT(*) 来死锁。这里前端做个状态展示
+                if (result.success && result.data.length === 0) {
+                    // 如果文章一条没有，且有可能数据库是空的，我们假定可能需要初始化
+                    // 更加科学的办法是后端给个 /api/auth/status 接口，今天我们简化处理：
+                }
+            } catch (e) {
+                console.error(e);
+            }
+            
+            // 默认展示登录。如果你确信自己是第一次部署，点击下方切换
+            setupAuthMode(false);
+        }
+
+        function setupAuthMode(register) {
+            isRegisterMode = register;
+            const titleEl = document.getElementById('auth-title');
+            const nickWrapper = document.getElementById('nickname-wrapper');
+            const btnEl = document.getElementById('auth-btn');
+            const tipsEl = document.getElementById('auth-tips');
+
+            if (register) {
+                titleEl.textContent = "初始化管理员";
+                nickWrapper.classList.remove('hidden');
+                btnEl.textContent = "创建首席管理员";
+                tipsEl.innerHTML = `<a href="javascript:void(0)" onclick="setupAuthMode(false)" class="underline">已有账户？去登录</a>`;
+            } else {
+                titleEl.textContent = "登录到控制台";
+                nickWrapper.classList.add('hidden');
+                btnEl.textContent = "认证进入";
+                tipsEl.innerHTML = `<a href="javascript:void(0)" onclick="setupAuthMode(true)" class="underline text-stone-400">第一次访问？点此初始化</a>`;
+            }
+        }
+
+        async function handleAuth() {
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            const n = document.getElementById('nickname').value;
+
+            const path = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+            const body = isRegisterMode ? { username: u, password: p, nickname: n } : { username: u, password: p };
+
+            try {
+                const res = await fetch(path, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    if (isRegisterMode) {
+                        alert(result.message + ' 现在请登录。');
+                        setupAuthMode(false);
+                    } else {
+                        localStorage.setItem('admin_token', result.token);
+                        localStorage.setItem('admin_nickname', result.nickname);
+                        showAdminPanel(result.nickname);
+                    }
+                } else {
+                    alert('失败: ' + result.error);
+                }
+            } catch (err) {
+                alert('网络发生异常');
+            }
+        }
+
+        function showAdminPanel(nickname) {
+            document.getElementById('auth-panel').classList.add('hidden');
+            document.getElementById('admin-panel').classList.remove('hidden');
+            document.getElementById('admin-name').textContent = nickname || 'Admin';
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.reload();
+        }
+
+        async function submitPost() {
+            const title = document.getElementById('post-title').value;
+            const slug = document.getElementById('post-slug').value;
+            const category = document.getElementById('post-category').value;
+            const content = document.getElementById('post-content').value;
+            const token = localStorage.getItem('admin_token');
+
+            try {
+                const res = await fetch('/api/push', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ title, slug, category, content })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    alert('发布成功！已实时推送到全网 D1 节点。');
+                    window.location.href = '/'; // 自动回主页看效果
+                } else {
+                    alert('发布失败: ' + result.error);
+                }
+            } catch (e) {
+                alert('请求失败');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', checkSystemState);
+    </script>
+</body>
+</html>

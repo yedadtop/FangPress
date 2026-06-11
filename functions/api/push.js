@@ -1,13 +1,16 @@
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  const authHeader = request.headers.get("Authorization");
-  if (!authHeader || authHeader !== `Bearer ${env.API_TOKEN}`) {
-    return new Response(JSON.stringify({ error: "Unauthorized: Invalid token" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
+// 修改 functions/api/push.js 的安全校验部分
+const authHeader = request.headers.get("Authorization");
+if (!authHeader) return new Response("Unauthorized", { status: 401 });
+
+const clientToken = authHeader.replace("Bearer ", "");
+// 去数据库数一下，有没有哪个用户的 password_hash 能对上这个 Token
+const { count } = await env.DB.prepare("SELECT COUNT(*) as count FROM users WHERE password_hash = ?").bind(clientToken).first();
+if (count === 0) {
+  return new Response(JSON.stringify({ error: "口令失效，请重新登录" }), { status: 401 });
+}
 
   try {
     const { title, slug, content, category } = await request.json();
