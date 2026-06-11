@@ -96,7 +96,7 @@
         <aside id="sidebar" class="md:w-60 md:min-h-screen md:border-r md:border-stone-200 md:bg-white bg-white border-b md:border-b-0 border-stone-200 shrink-0 hidden md:flex flex-col">
             <div class="px-6 py-7 border-b border-stone-200/60">
                 <a href="/" target="_blank" class="block">
-                    <p class="font-serif text-lg font-medium text-stone-900 hover:text-stone-600 transition-colors">Quinn's Space</p>
+                    <p id="site-title-sidebar" class="font-serif text-lg font-medium text-stone-900 hover:text-stone-600 transition-colors">Quinn's Space</p>
                     <p class="text-[10px] uppercase tracking-widest text-stone-400 mt-1">Admin Console</p>
                 </a>
             </div>
@@ -164,19 +164,27 @@
     </div>
 
     <script>
-        // -------- 网站设置（用于登录面板展示主标题） --------
+        // -------- 网站设置 --------
+        const DEFAULT_SITE_TITLE = "Quinn's Space";
+
         async function loadSiteTitle() {
-            const DEFAULT_SITE_TITLE = "Quinn's Space";
-            const el = document.getElementById('auth-site-title');
-            if (!el) return;
             try {
                 const res = await fetch('/api/settings');
                 const result = await res.json();
                 const title = (result && result.success && result.data && result.data.site_title)
                     || DEFAULT_SITE_TITLE;
-                el.textContent = title;
+                // 登录面板标题
+                const authEl = document.getElementById('auth-site-title');
+                if (authEl) authEl.textContent = title;
+                // 移动端顶栏
+                const mobileEl = document.getElementById('site-title-mobile');
+                if (mobileEl) mobileEl.textContent = title;
+                // 侧边栏
+                const sidebarEl = document.getElementById('site-title-sidebar');
+                if (sidebarEl) sidebarEl.textContent = title;
             } catch (e) {
-                el.textContent = DEFAULT_SITE_TITLE;
+                const authEl = document.getElementById('auth-site-title');
+                if (authEl) authEl.textContent = DEFAULT_SITE_TITLE;
             }
         }
 
