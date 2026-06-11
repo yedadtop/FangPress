@@ -37,7 +37,8 @@ export async function onRequestPost(context) {
       .bind(id)
       .run();
 
-    if (!result.success && result.meta && result.meta.changes === 0) {
+    // D1 的 result.success 在语句成功执行时永远为 true；要看"是否影响行"必须查 meta.changes
+    if (result.meta && result.meta.changes === 0) {
       return new Response(JSON.stringify({ success: false, error: "未找到该文章" }), {
         status: 404,
         headers: { "Content-Type": "application/json" }
