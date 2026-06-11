@@ -87,12 +87,7 @@ export async function onRequestPost(context) {
     // 密码
     if (body.password !== undefined && body.password !== null && body.password !== "") {
       const p = String(body.password);
-      if (p.length < 6) {
-        return new Response(JSON.stringify({ success: false, error: "密码至少需要 6 位" }), {
-          status: 400, headers: { "Content-Type": "application/json" }
-        });
-      }
-      // SHA-256
+      // 不做任何长度/复杂度限制，由用户自负其责
       const msgBuffer = new TextEncoder().encode(p);
       const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
       const hashArray = Array.from(new Uint8Array(hashBuffer));

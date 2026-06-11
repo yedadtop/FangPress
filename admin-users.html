@@ -79,7 +79,7 @@
                         <label class="block text-xs text-stone-600 mb-1.5">新密码</label>
                         <input type="password" id="password"
                                class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500"
-                               placeholder="留空则不修改" minlength="6">
+                               placeholder="留空则不修改">
                     </div>
                     <div>
                         <label class="block text-xs text-stone-600 mb-1.5">确认新密码</label>
@@ -91,7 +91,7 @@
                         <svg class="w-3.5 h-3.5 mt-0.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                         </svg>
-                        <span>修改密码会立即在数据库生效。当前浏览器会话的 Token 会被自动替换；若在其它设备登录过，需要重新登录。</span>
+                        <span>本系统对密码不做任何长度或复杂度限制。出于安全考虑，建议使用至少 12 位、混合大小写与符号的强密码，并妥善保存。修改密码会立即在数据库生效；当前浏览器会话的 Token 会被自动替换，若在其它设备登录过，需要重新登录。</span>
                     </div>
                 </div>
             </section>
@@ -172,10 +172,6 @@
                 return;
             }
             if (password) {
-                if (password.length < 6) {
-                    showStatus('密码至少 6 位', 'error');
-                    return;
-                }
                 if (password !== passwordConfirm) {
                     showStatus('两次输入的密码不一致', 'error');
                     return;
