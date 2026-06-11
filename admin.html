@@ -83,7 +83,7 @@
 
         <!-- 移动端顶栏 -->
         <div class="md:hidden flex items-center justify-between px-5 py-3 bg-white border-b border-stone-200">
-            <a href="/" class="font-serif text-base font-medium text-stone-900">Quinn's Space</a>
+            <a href="/" class="font-serif text-base font-medium text-stone-900"></a>
             <button onclick="toggleMobileSidebar()" class="menu-toggle items-center gap-1.5 px-3 py-1.5 text-xs text-stone-500 border border-stone-200 rounded-md cursor-pointer">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
@@ -96,8 +96,8 @@
         <aside id="sidebar" class="md:w-60 md:min-h-screen md:border-r md:border-stone-200 md:bg-white bg-white border-b md:border-b-0 border-stone-200 shrink-0 hidden md:flex flex-col">
             <div class="px-6 py-7 border-b border-stone-200/60">
                 <a href="/" target="_blank" class="block">
-                    <p id="site-title-sidebar" class="font-serif text-lg font-medium text-stone-900 hover:text-stone-600 transition-colors">Quinn's Space</p>
-                    <p class="text-[10px] uppercase tracking-widest text-stone-400 mt-1">Admin Console</p>
+                    <p id="site-title-sidebar" class="font-serif text-lg font-medium text-stone-900 hover:text-stone-600 transition-colors"></p>
+                    <p id="admin-console-label" class="text-[10px] uppercase tracking-widest text-stone-400 mt-1 hidden">Admin Console</p>
                 </a>
             </div>
 
@@ -165,7 +165,7 @@
 
     <script>
         // -------- 网站设置 --------
-        const DEFAULT_SITE_TITLE = "Quinn's Space";
+        const DEFAULT_SITE_TITLE = "";
 
         async function loadSiteTitle() {
             try {
@@ -182,9 +182,15 @@
                 // 侧边栏
                 const sidebarEl = document.getElementById('site-title-sidebar');
                 if (sidebarEl) sidebarEl.textContent = title;
+                // 显示 Admin Console 标签
+                const adminLabel = document.getElementById('admin-console-label');
+                if (adminLabel) adminLabel.classList.remove('hidden');
             } catch (e) {
                 const authEl = document.getElementById('auth-site-title');
                 if (authEl) authEl.textContent = DEFAULT_SITE_TITLE;
+                // 即使加载失败也显示 Admin Console 标签
+                const adminLabel = document.getElementById('admin-console-label');
+                if (adminLabel) adminLabel.classList.remove('hidden');
             }
         }
 
