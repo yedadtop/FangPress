@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>撰写新文 · 创作中心</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+        :root {
+            --font-serif: 'Newsreader', 'Songti SC', 'STSong', serif;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        body { font-family: var(--font-sans); }
+        .font-serif { font-family: var(--font-serif); }
+
+        /* 标题预览 */
+        .preview-card {
+            background-image: linear-gradient(currentColor, currentColor);
+            background-size: 0% 1px;
+            background-repeat: no-repeat;
+            background-position: 0 100%;
+            transition: background-size .3s ease;
+        }
+        .preview-card:focus-within { background-size: 100% 1px; }
+
+        /* 字数统计 */
+        .word-count { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="bg-[#fafaf9] text-stone-800 min-h-screen">
+
+    <div class="max-w-3xl mx-auto px-6 md:px-10 py-10 md:py-14">
+
+        <header class="mb-8">
+            <a href="admin-posts.html" target="admin-frame" class="inline-flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-900 transition-colors mb-4">
+                <span>←</span> 返回文章列表
+            </a>
+            <p class="text-xs uppercase tracking-widest text-stone-400" id="page-eyebrow">New Post</p>
+            <h1 id="page-title" class="font-serif text-3xl md:text-[2rem] font-medium text-stone-900 mt-2">撰写新文</h1>
+            <p id="page-subtitle" class="text-sm text-stone-500 mt-2">分享一段新的思考</p>
+        </header>
+
+        <div id="loading" class="py-12 text-stone-400 text-sm font-serif italic hidden">
+            正在载入文章...
+        </div>
+
+        <form id="post-form" class="space-y-6">
+            <input type="hidden" id="post-id">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">文章标题</label>
+                    <input type="text" id="post-title"
+                           class="preview-cell w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-base font-serif focus:outline-none focus:border-stone-500"
+                           placeholder="一个能抓住眼球的标题" required>
+                </div>
+                <div>
+                    <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">唯一路径 (Slug)</label>
+                    <input type="text" id="post-slug"
+                           class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500"
+                           placeholder="例如 d1-blog-guide" required>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">分类</label>
+                <input type="text" id="post-category" list="category-list"
+                       class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500"
+                       placeholder="技术 / 随笔 / 未分类">
+                <datalist id="category-list"></datalist>
+            </div>
+
+            <div>
+                <div class="flex items-baseline justify-between mb-1.5">
+                    <label class="block text-[10px] uppercase tracking-widest text-stone-400">正文 (Markdown)</label>
+                    <span class="text-[11px] text-stone-400 word-count">
+                        <span id="word-count">0</span> 字
+                    </span>
+                </div>
+                <textarea id="post-content" rows="20"
+                          class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500 leading-relaxed resize-y"
+                          placeholder="### 标题&#10;&#10;开始写下你的思考..." required></textarea>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2 border-t border-stone-200/60">
+                <button type="button" id="submit-btn" onclick="submitPost()"
+                        class="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-sm font-medium transition-colors cursor-pointer">
+                    <span id="btn-text">发布到边缘网络</span>
+                </button>
+                <a id="cancel-link" href="admin-posts.html" target="admin-frame"
+                   class="px-3 py-2.5 text-stone-500 hover:text-stone-900 text-sm transition-colors">取消</a>
+                <span id="status-text" class="ml-auto text-xs text-stone-400 italic font-serif hidden"></span>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const editId = params.get('id');
+        const isEdit = !!editId;
+
+        function getToken() {
+            return localStorage.getItem('admin_token');
+        }
+
+        function updateWordCount() {
+            const len = document.getElementById('post-content').value.length;
+            document.getElementById('word-count').textContent = len;
+        }
+
+        function showStatus(msg, kind) {
+            const el = document.getElementById('status-text');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            el.className = `ml-auto text-xs italic font-serif ${kind === 'error' ? 'text-red-500' : 'text-emerald-600'}`;
+            if (kind !== 'error') {
+                setTimeout(() => el.classList.add('hidden'), 2400);
+            }
+        }
+
+        function enterEditMode() {
+            document.getElementById('page-eyebrow').textContent = 'Edit Post';
+            document.getElementById('page-title').textContent = '编辑文章';
+            document.getElementById('page-subtitle').textContent = '修改并保存到边缘数据库';
+            document.getElementById('btn-text').textContent = '保存修改';
+            document.getElementById('cancel-link').setAttribute('href', `admin-posts.html`);
+        }
+
+        async function loadPostForEdit(id) {
+            enterEditMode();
+            try {
+                const res = await fetch('/api/list');
+                const result = await res.json();
+                if (!result.success) throw new Error('列表拉取失败');
+
+                const post = result.data.find(p => String(p.id) === String(id));
+                if (!post) {
+                    alert('未找到该文章');
+                    return;
+                }
+
+                document.getElementById('post-id').value = post.id;
+                document.getElementById('post-title').value = post.title || '';
+                document.getElementById('post-slug').value = post.slug || '';
+                document.getElementById('post-category').value = post.category || '';
+
+                // 内容要从 /api/get 取，list 接口不带 content
+                const contentRes = await fetch('/api/get?slug=' + encodeURIComponent(post.slug));
+                const contentResult = await contentRes.json();
+                if (contentResult.success && contentResult.data) {
+                    document.getElementById('post-content').value = contentResult.data.content || '';
+                }
+                updateWordCount();
+            } catch (e) {
+                alert('载入失败: ' + e.message);
+            }
+        }
+
+        async function loadCategorySuggestions() {
+            try {
+                const res = await fetch('/api/list');
+                const result = await res.json();
+                if (result.success) {
+                    const cats = [...new Set(result.data.map(p => p.category || '未分类'))];
+                    const datalist = document.getElementById('category-list');
+                    cats.forEach(c => {
+                        const opt = document.createElement('option');
+                        opt.value = c;
+                        datalist.appendChild(opt);
+                    });
+                }
+            } catch (e) { /* 忽略 */ }
+        }
+
+        function autoSlugify() {
+            if (isEdit) return; // 编辑模式不自动覆盖
+            const titleEl = document.getElementById('post-title');
+            const slugEl = document.getElementById('post-slug');
+            if (slugEl.dataset.touched === '1') return;
+            const text = titleEl.value.trim().toLowerCase()
+                .replace(/\s+/g, '-')
+                .replace(/[^a-z0-9-一-鿿]/g, '')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            slugEl.value = text;
+        }
+
+        async function submitPost() {
+            const id = document.getElementById('post-id').value;
+            const title = document.getElementById('post-title').value.trim();
+            const slug = document.getElementById('post-slug').value.trim();
+            const category = document.getElementById('post-category').value.trim();
+            const content = document.getElementById('post-content').value.trim();
+            const token = getToken();
+
+            if (!title || !slug || !content) {
+                showStatus('标题、路径、正文 都不能为空', 'error');
+                return;
+            }
+            if (!token) {
+                window.top.location.href = 'admin.html';
+                return;
+            }
+
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.classList.add('opacity-60', 'cursor-wait');
+
+            const url = isEdit ? '/api/update' : '/api/push';
+            const body = isEdit
+                ? { id: Number(id), title, slug, category, content }
+                : { title, slug, category, content };
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(body)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    showStatus(isEdit ? '已保存' : '已发布', 'ok');
+                    setTimeout(() => {
+                        // 切到文章列表（通过外层 admin.html 的 iframe）
+                        window.top.document.getElementById('admin-frame').src = 'admin-posts.html';
+                    }, 700);
+                } else {
+                    showStatus('失败: ' + (result.error || '未知错误'), 'error');
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-60', 'cursor-wait');
+                }
+            } catch (e) {
+                showStatus('请求失败，请检查网络', 'error');
+                btn.disabled = false;
+                btn.classList.remove('opacity-60', 'cursor-wait');
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!getToken()) {
+                // 没 token 不做任何事，外层 admin.html 会兜底处理
+                return;
+            }
+
+            const slugEl = document.getElementById('post-slug');
+            const titleEl = document.getElementById('post-title');
+            const contentEl = document.getElementById('post-content');
+
+            slugEl.addEventListener('input', () => slugEl.dataset.touched = '1');
+            titleEl.addEventListener('input', autoSlugify);
+            contentEl.addEventListener('input', updateWordCount);
+
+            if (isEdit) {
+                loadPostForEdit(editId);
+            } else {
+                loadCategorySuggestions();
+            }
+        });
+    </script>
+</body>
+</html>

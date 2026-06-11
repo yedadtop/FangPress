@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文章管理 · 创作中心</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+        :root {
+            --font-serif: 'Newsreader', 'Songti SC', 'STSong', serif;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        body { font-family: var(--font-sans); }
+        .font-serif { font-family: var(--font-serif); }
+
+        @keyframes breathe {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50%      { opacity: 1;   transform: scale(1); }
+        }
+        .dot { animation: breathe 1.4s ease-in-out infinite; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        .post-row { transition: background-color .2s ease; }
+        .post-row:hover { background: #fafaf9; }
+        .action-btn { transition: color .2s ease, background-color .2s ease; }
+    </style>
+</head>
+<body class="bg-[#fafaf9] text-stone-800 min-h-screen">
+
+    <div class="max-w-5xl mx-auto px-6 md:px-10 py-10 md:py-14">
+
+        <header class="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+                <p class="text-xs uppercase tracking-widest text-stone-400">Posts</p>
+                <h1 class="font-serif text-3xl md:text-[2rem] font-medium text-stone-900 mt-2">文章管理</h1>
+                <p class="text-sm text-stone-500 mt-2">共 <span id="total-count" class="font-semibold text-stone-700">0</span> 篇 · 当前显示 <span id="visible-count" class="font-semibold text-stone-700">0</span> 篇</p>
+            </div>
+            <a href="admin-edit.html" target="admin-frame"
+               class="self-start md:self-auto inline-flex items-center gap-1.5 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-sm rounded-md transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                撰写新文
+            </a>
+        </header>
+
+        <div class="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div class="relative flex-1">
+                <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <input id="search" type="text" placeholder="搜索标题或路径..."
+                       class="w-full pl-9 pr-3 py-2 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500">
+            </div>
+            <select id="filter-category" class="px-3 py-2 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500 cursor-pointer">
+                <option value="">全部分类</option>
+            </select>
+        </div>
+
+        <div id="loading" class="flex items-center gap-2 py-16 text-stone-400 text-sm">
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="ml-2">正在拉取文章列表...</span>
+        </div>
+
+        <div id="empty" class="hidden py-20 text-center">
+            <div class="inline-block w-12 h-px bg-stone-300 mb-6"></div>
+            <p class="font-serif italic text-stone-500 text-base">这里还很安静</p>
+            <p class="mt-2 text-stone-400 text-xs tracking-wider">点击右上角「撰写新文」开始</p>
+        </div>
+
+        <div id="no-match" class="hidden py-16 text-center text-stone-400 text-sm font-serif italic">
+            没有匹配的文章
+        </div>
+
+        <div id="posts-list" class="hidden bg-white rounded-2xl border border-stone-200/60 divide-y divide-stone-200/60 overflow-hidden"></div>
+
+    </div>
+
+    <script>
+        let allPosts = [];
+
+        function getToken() {
+            return localStorage.getItem('admin_token');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatDate(ts) {
+            const d = new Date(ts);
+            if (isNaN(d)) return '';
+            return `${d.getFullYear()} · ${String(d.getMonth() + 1).padStart(2, '0')} · ${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        async function loadPosts() {
+            if (!getToken()) {
+                // 没 token 不做任何事，外层 admin.html 会兜底处理
+                document.getElementById('loading').classList.add('hidden');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/list');
+                const result = await res.json();
+
+                document.getElementById('loading').classList.add('hidden');
+
+                if (result.success && Array.isArray(result.data)) {
+                    allPosts = result.data;
+                    document.getElementById('total-count').textContent = allPosts.length;
+
+                    // 收集分类
+                    const cats = [...new Set(allPosts.map(p => p.category || '未分类'))];
+                    const select = document.getElementById('filter-category');
+                    cats.forEach(c => {
+                        const opt = document.createElement('option');
+                        opt.value = c;
+                        opt.textContent = c;
+                        select.appendChild(opt);
+                    });
+
+                    renderPosts();
+                } else {
+                    document.getElementById('empty').classList.remove('hidden');
+                    document.getElementById('total-count').textContent = 0;
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('loading').innerHTML = '<span class="font-serif italic text-stone-400">数据获取失败，请刷新</span>';
+            }
+        }
+
+        function renderPosts() {
+            const search = document.getElementById('search').value.trim().toLowerCase();
+            const cat = document.getElementById('filter-category').value;
+
+            let posts = allPosts;
+            if (cat) posts = posts.filter(p => (p.category || '未分类') === cat);
+            if (search) {
+                posts = posts.filter(p =>
+                    (p.title || '').toLowerCase().includes(search) ||
+                    (p.slug || '').toLowerCase().includes(search)
+                );
+            }
+
+            const listEl = document.getElementById('posts-list');
+            const emptyEl = document.getElementById('empty');
+            const noMatchEl = document.getElementById('no-match');
+            document.getElementById('visible-count').textContent = posts.length;
+
+            if (allPosts.length === 0) {
+                emptyEl.classList.remove('hidden');
+                listEl.classList.add('hidden');
+                noMatchEl.classList.add('hidden');
+                return;
+            }
+
+            if (posts.length === 0) {
+                noMatchEl.classList.remove('hidden');
+                listEl.classList.add('hidden');
+                emptyEl.classList.add('hidden');
+                return;
+            }
+
+            noMatchEl.classList.add('hidden');
+            emptyEl.classList.add('hidden');
+            listEl.classList.remove('hidden');
+
+            listEl.innerHTML = posts.map(p => `
+                <div class="post-row px-5 md:px-6 py-5 flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="shrink-0 text-[10px] uppercase tracking-wider font-semibold text-stone-500 border border-stone-200 px-1.5 py-0.5 rounded-sm bg-stone-100/50">
+                                ${escapeHtml(p.category || '未分类')}
+                            </span>
+                            <h3 class="font-serif text-base text-stone-900 truncate">${escapeHtml(p.title)}</h3>
+                        </div>
+                        <p class="text-[11px] text-stone-400 font-mono tracking-wide">
+                            /${escapeHtml(p.slug)}
+                            <span class="mx-1.5 text-stone-300">·</span>
+                            ${formatDate(p.created_at)}
+                            <span class="mx-1.5 text-stone-300">·</span>
+                            ${p.views || 0} 次阅读
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0 md:opacity-70 md:hover:opacity-100 transition-opacity">
+                        <a href="/post.html?slug=${encodeURIComponent(p.slug)}" target="_blank"
+                           class="action-btn px-2.5 py-1.5 text-xs text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded">
+                            查看
+                        </a>
+                        <a href="admin-edit.html?id=${p.id}" target="admin-frame"
+                           class="action-btn px-2.5 py-1.5 text-xs text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded">
+                            编辑
+                        </a>
+                        <button data-id="${p.id}" data-title="${escapeHtml(p.title)}"
+                                class="action-btn px-2.5 py-1.5 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer delete-btn">
+                            删除
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            // 绑定删除
+            listEl.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => deletePost(btn.dataset.id, btn.dataset.title));
+            });
+        }
+
+        async function deletePost(id, title) {
+            if (!confirm(`确定删除「${title}」？此操作不可恢复。`)) return;
+
+            const token = getToken();
+            try {
+                const res = await fetch('/api/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ id: Number(id) })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    allPosts = allPosts.filter(p => String(p.id) !== String(id));
+                    document.getElementById('total-count').textContent = allPosts.length;
+                    renderPosts();
+                } else {
+                    alert('删除失败: ' + (result.error || '未知错误'));
+                }
+            } catch (e) {
+                alert('请求失败，请检查网络');
+            }
+        }
+
+        document.getElementById('search').addEventListener('input', renderPosts);
+        document.getElementById('filter-category').addEventListener('change', renderPosts);
+
+        document.addEventListener('DOMContentLoaded', loadPosts);
+    </script>
+</body>
+</html>

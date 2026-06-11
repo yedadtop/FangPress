@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>概览 · 创作中心</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+        :root {
+            --font-serif: 'Newsreader', 'Songti SC', 'STSong', serif;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        body { font-family: var(--font-sans); }
+        .font-serif { font-family: var(--font-serif); }
+
+        @keyframes breathe {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50%      { opacity: 1;   transform: scale(1); }
+        }
+        .dot { animation: breathe 1.4s ease-in-out infinite; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        .stat-card { transition: border-color .25s ease, transform .25s ease; }
+        .stat-card:hover { border-color: #d6d3d1; transform: translateY(-1px); }
+    </style>
+</head>
+<body class="bg-[#fafaf9] text-stone-800 min-h-screen">
+
+    <div class="max-w-4xl mx-auto px-6 md:px-10 py-10 md:py-14">
+
+        <header class="mb-10">
+            <p class="text-xs uppercase tracking-widest text-stone-400">Overview</p>
+            <h1 class="font-serif text-3xl md:text-[2rem] font-medium text-stone-900 mt-2">你好, <span id="hello-name" class="italic">创作者</span></h1>
+            <p class="text-sm text-stone-500 mt-2">这里是空间的全景视图</p>
+        </header>
+
+        <div id="loading" class="flex items-center gap-2 py-16 text-stone-400 text-sm">
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="ml-2">正在从边缘节点拉取数据...</span>
+        </div>
+
+        <div id="content" class="hidden space-y-10">
+
+            <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="stat-card bg-white p-6 rounded-2xl border border-stone-200/60">
+                    <p class="text-[10px] uppercase tracking-widest text-stone-400">文章总数</p>
+                    <p id="stat-total" class="font-serif text-4xl text-stone-900 mt-3 tabular-nums">—</p>
+                </div>
+                <div class="stat-card bg-white p-6 rounded-2xl border border-stone-200/60">
+                    <p class="text-[10px] uppercase tracking-widest text-stone-400">总阅读量</p>
+                    <p id="stat-views" class="font-serif text-4xl text-stone-900 mt-3 tabular-nums">—</p>
+                </div>
+                <div class="stat-card bg-white p-6 rounded-2xl border border-stone-200/60">
+                    <p class="text-[10px] uppercase tracking-widest text-stone-400">分类数量</p>
+                    <p id="stat-categories" class="font-serif text-4xl text-stone-900 mt-3 tabular-nums">—</p>
+                </div>
+            </section>
+
+            <section>
+                <div class="flex items-baseline justify-between mb-4">
+                    <h2 class="font-serif text-xl font-medium text-stone-900">最近发布</h2>
+                    <a href="admin-edit.html" target="admin-frame" class="text-xs text-stone-500 hover:text-stone-900 transition-colors underline underline-offset-4">撰写新文 →</a>
+                </div>
+                <div id="recent-posts" class="bg-white rounded-2xl border border-stone-200/60 divide-y divide-stone-200/60"></div>
+            </section>
+
+        </div>
+    </div>
+
+    <script>
+        function getToken() {
+            return localStorage.getItem('admin_token');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatDate(ts) {
+            const d = new Date(ts);
+            if (isNaN(d)) return '';
+            return `${d.getFullYear()} · ${String(d.getMonth() + 1).padStart(2, '0')} · ${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        async function loadOverview() {
+            if (!getToken()) {
+                // 没 token 不做任何事，外层 admin.html 会兜底处理
+                document.getElementById('loading').classList.add('hidden');
+                return;
+            }
+
+            const nickname = localStorage.getItem('admin_nickname') || '创作者';
+            document.getElementById('hello-name').textContent = nickname;
+
+            try {
+                const res = await fetch('/api/list');
+                const result = await res.json();
+
+                document.getElementById('loading').classList.add('hidden');
+
+                if (result.success && Array.isArray(result.data)) {
+                    const posts = result.data;
+                    const total = posts.length;
+                    const views = posts.reduce((s, p) => s + (p.views || 0), 0);
+                    const categories = new Set(posts.map(p => p.category || '未分类')).size;
+
+                    document.getElementById('stat-total').textContent = total;
+                    document.getElementById('stat-views').textContent = views;
+                    document.getElementById('stat-categories').textContent = categories;
+
+                    const recent = posts.slice(0, 5);
+                    const recentEl = document.getElementById('recent-posts');
+                    if (recent.length === 0) {
+                        recentEl.innerHTML = `
+                            <div class="px-6 py-16 text-center">
+                                <div class="inline-block w-10 h-px bg-stone-300 mb-4"></div>
+                                <p class="font-serif italic text-stone-500 text-sm">还没有任何内容</p>
+                                <a href="admin-edit.html" target="admin-frame" class="inline-block mt-4 text-xs text-stone-500 hover:text-stone-900 underline underline-offset-4">写下第一篇</a>
+                            </div>
+                        `;
+                    } else {
+                        recentEl.innerHTML = recent.map(p => `
+                            <a href="admin-edit.html?id=${p.id}" target="admin-frame"
+                               class="block px-6 py-4 hover:bg-stone-50/60 transition-colors group">
+                                <div class="flex items-baseline justify-between gap-4">
+                                    <div class="min-w-0 flex-1">
+                                        <h3 class="font-serif text-base text-stone-900 group-hover:text-stone-600 transition-colors truncate">${escapeHtml(p.title)}</h3>
+                                        <p class="text-[11px] text-stone-400 mt-1 tracking-wide">
+                                            <span class="uppercase">${escapeHtml(p.category || '未分类')}</span>
+                                            <span class="mx-1.5">·</span>
+                                            ${formatDate(p.created_at)}
+                                            <span class="mx-1.5">·</span>
+                                            ${p.views || 0} 次阅读
+                                        </p>
+                                    </div>
+                                    <span class="text-xs text-stone-400 shrink-0">编辑 →</span>
+                                </div>
+                            </a>
+                        `).join('');
+                    }
+
+                    document.getElementById('content').classList.remove('hidden');
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('loading').innerHTML = '<span class="font-serif italic text-stone-400">数据获取失败，请刷新</span>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadOverview);
+    </script>
+</body>
+</html>

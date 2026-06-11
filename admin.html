@@ -13,106 +13,167 @@
         }
         body { font-family: var(--font-sans); }
         .font-serif { font-family: var(--font-serif); }
+
+        /* 侧边栏导航项 */
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+            color: #57534e;
+            border-radius: 0.5rem;
+            transition: background-color .2s ease, color .2s ease;
+            text-decoration: none;
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+        }
+        .nav-item:hover {
+            background: #fafaf9;
+            color: #0c0a09;
+        }
+        .nav-item.active {
+            background: #f5f5f4;
+            color: #0c0a09;
+            font-weight: 500;
+        }
+        .nav-item svg {
+            width: 1rem;
+            height: 1rem;
+            opacity: 0.7;
+            flex-shrink: 0;
+        }
+        .nav-item.active svg { opacity: 1; }
+
+        /* 移动端菜单按钮 */
+        .menu-toggle { display: none; }
+        @media (max-width: 767px) {
+            .menu-toggle { display: inline-flex; }
+        }
     </style>
 </head>
 <body class="bg-[#fafaf9] text-stone-800 min-h-screen">
 
-    <div class="max-w-2xl mx-auto px-6 py-20">
-        
-        <div id="auth-panel" class="hidden max-w-sm mx-auto mt-12 bg-white p-8 rounded-2xl border border-stone-200/60 shadow-xs">
-            <h2 id="auth-title" class="font-serif text-2xl font-medium text-stone-900 mb-6 text-center">登录到空间</h2>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">账号</label>
-                    <input type="text" id="username" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400">
-                </div>
-                <div id="nickname-wrapper" class="hidden">
-                    <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">作者昵称</label>
-                    <input type="text" id="nickname" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400" placeholder="例如 Quinn Ye">
-                </div>
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">密码</label>
-                    <input type="password" id="password" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400">
-                </div>
-                <button id="auth-btn" onclick="handleAuth()" class="w-full mt-2 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-sm font-medium transition-colors cursor-pointer">
-                    认证
-                </button>
+    <!-- ========================== 登录 / 注册面板 ========================== -->
+    <div id="auth-panel" class="hidden max-w-sm mx-auto mt-12 bg-white p-8 rounded-2xl border border-stone-200/60 shadow-xs">
+        <h2 id="auth-title" class="font-serif text-2xl font-medium text-stone-900 mb-6 text-center">登录到空间</h2>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">账号</label>
+                <input type="text" id="username" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400">
             </div>
-            <p id="auth-tips" class="mt-4 text-center text-xs text-stone-400 font-serif italic"></p>
+            <div id="nickname-wrapper" class="hidden">
+                <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">作者昵称</label>
+                <input type="text" id="nickname" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400" placeholder="例如 Quinn Ye">
+            </div>
+            <div>
+                <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">密码</label>
+                <input type="password" id="password" class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400">
+            </div>
+            <button id="auth-btn" onclick="handleAuth()" class="w-full mt-2 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-sm font-medium transition-colors cursor-pointer">
+                认证
+            </button>
+        </div>
+        <p id="auth-tips" class="mt-4 text-center text-xs text-stone-400 font-serif italic"></p>
+    </div>
+
+    <!-- ========================== 后台主面板：侧边栏 + 内容区 ========================== -->
+    <div id="admin-panel" class="hidden min-h-screen flex flex-col md:flex-row">
+
+        <!-- 移动端顶栏 -->
+        <div class="md:hidden flex items-center justify-between px-5 py-3 bg-white border-b border-stone-200">
+            <a href="/" class="font-serif text-base font-medium text-stone-900">Quinn's Space</a>
+            <button onclick="toggleMobileSidebar()" class="menu-toggle items-center gap-1.5 px-3 py-1.5 text-xs text-stone-500 border border-stone-200 rounded-md cursor-pointer">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+                菜单
+            </button>
         </div>
 
-        <div id="admin-panel" class="hidden">
-            <header class="flex items-baseline justify-between border-b border-stone-200 pb-6 mb-10">
-                <div>
-                    <h1 class="font-serif text-3xl font-medium text-stone-900">创作中心</h1>
-                    <p class="text-xs text-stone-400 mt-1">你好, <span id="admin-name" class="font-semibold"></span> · 欢迎回来</p>
-                </div>
-                <button onclick="logout()" class="text-xs text-stone-400 hover:text-stone-900 transition-colors cursor-pointer">退出登录</button>
-            </header>
+        <!-- 侧边栏 -->
+        <aside id="sidebar" class="md:w-60 md:min-h-screen md:border-r md:border-stone-200 md:bg-white bg-white border-b md:border-b-0 border-stone-200 shrink-0 hidden md:flex flex-col">
+            <div class="px-6 py-7 border-b border-stone-200/60">
+                <a href="/" target="_blank" class="block">
+                    <p class="font-serif text-lg font-medium text-stone-900 hover:text-stone-600 transition-colors">Quinn's Space</p>
+                    <p class="text-[10px] uppercase tracking-widest text-stone-400 mt-1">Admin Console</p>
+                </a>
+            </div>
 
-            <div class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">文章标题</label>
-                        <input type="text" id="post-title" class="w-full px-3 py-2 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">唯一路径 (Slug)</label>
-                        <input type="text" id="post-slug" placeholder="例如 d1-blog-guide" class="w-full px-3 py-2 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500">
-                    </div>
-                </div>
+            <nav class="flex-1 px-3 py-6 space-y-1">
+                <a href="admin-overview.html" target="admin-frame" data-page="overview" class="nav-item active">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+                    </svg>
+                    概览
+                </a>
+                <a href="admin-edit.html" target="admin-frame" data-page="edit" class="nav-item">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                    </svg>
+                    撰写新文
+                </a>
+                <a href="admin-posts.html" target="admin-frame" data-page="posts" class="nav-item">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
+                    文章管理
+                </a>
+            </nav>
 
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">分类</label>
-                    <input type="text" id="post-category" placeholder="技术 / 随笔 / 未分类" class="w-full px-3 py-2 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500">
+            <div class="px-3 py-4 border-t border-stone-200/60 space-y-1">
+                <div class="px-3 py-2">
+                    <p class="text-[10px] uppercase tracking-widest text-stone-400">已登录</p>
+                    <p id="admin-name" class="text-sm text-stone-700 font-medium mt-0.5 truncate">—</p>
                 </div>
-
-                <div>
-                    <label class="block text-xs uppercase tracking-wider text-stone-400 mb-1">正文 (Markdown 纯文字)</label>
-                    <textarea id="post-content" rows="12" class="w-full px-3 py-2 bg-white border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500 leading-relaxed" placeholder="### 标题&#10;&#10;开始写下你的思考..."></textarea>
-                </div>
-
-                <button onclick="submitPost()" class="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-sm font-medium transition-colors cursor-pointer">
-                    发布到边缘网络
+                <a href="/" target="_blank" class="nav-item text-stone-500">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                    </svg>
+                    查看站点
+                </a>
+                <button onclick="logout()" class="nav-item text-stone-500">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                    </svg>
+                    退出登录
                 </button>
             </div>
-        </div>
+        </aside>
+
+        <!-- 内容区 -->
+        <main class="flex-1 min-w-0 bg-[#fafaf9]">
+            <iframe id="admin-frame" name="admin-frame"
+                    class="w-full h-screen min-h-[600px] border-0 block bg-[#fafaf9]"></iframe>
+        </main>
 
     </div>
 
     <script>
         let isRegisterMode = false;
 
-        // 页面初始化：透视数据库里有没有用户，决定是显示“注册”还是“登录”
-        async function checkSystemState() {
+        // -------- 鉴权 --------
+        function checkSystemState() {
             const token = localStorage.getItem('admin_token');
             const nickname = localStorage.getItem('admin_nickname');
-            
+
             if (token) {
-                // 如果本地有令牌，直接进后台
                 showAdminPanel(nickname);
                 return;
             }
 
-            try {
-                // 借用 list 接口获取列表，如果系统空空如也，尝试试探是否有注册资格
-                const res = await fetch('/api/list');
-                const result = await res.json();
-                
+            // 先打一次 list，简单探一下接口
+            fetch('/api/list').then(r => r.json()).then(result => {
                 document.getElementById('auth-panel').classList.remove('hidden');
-                
-                // 这里我们做一个小机制：直接尝试看看能不能开启第一注册人模式
-                // 实际上通过后端 register.js 的 COUNT(*) 来死锁。这里前端做个状态展示
-                if (result.success && result.data.length === 0) {
-                    // 如果文章一条没有，且有可能数据库是空的，我们假定可能需要初始化
-                    // 更加科学的办法是后端给个 /api/auth/status 接口，今天我们简化处理：
-                }
-            } catch (e) {
+            }).catch(e => {
+                document.getElementById('auth-panel').classList.remove('hidden');
                 console.error(e);
-            }
-            
-            // 默认展示登录。如果你确信自己是第一次部署，点击下方切换
+            });
+
             setupAuthMode(false);
         }
 
@@ -173,6 +234,12 @@
             document.getElementById('auth-panel').classList.add('hidden');
             document.getElementById('admin-panel').classList.remove('hidden');
             document.getElementById('admin-name').textContent = nickname || 'Admin';
+
+            // 登录成功才挂载 iframe 内容，避免未登录时子页面反复重定向
+            const frame = document.getElementById('admin-frame');
+            if (frame && !frame.src) {
+                frame.src = 'admin-overview.html';
+            }
         }
 
         function logout() {
@@ -180,36 +247,35 @@
             window.location.reload();
         }
 
-        async function submitPost() {
-            const title = document.getElementById('post-title').value;
-            const slug = document.getElementById('post-slug').value;
-            const category = document.getElementById('post-category').value;
-            const content = document.getElementById('post-content').value;
-            const token = localStorage.getItem('admin_token');
-
-            try {
-                const res = await fetch('/api/push', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ title, slug, category, content })
-                });
-                const result = await res.json();
-
-                if (result.success) {
-                    alert('发布成功！已实时推送到全网 D1 节点。');
-                    window.location.href = '/'; // 自动回主页看效果
-                } else {
-                    alert('发布失败: ' + result.error);
-                }
-            } catch (e) {
-                alert('请求失败');
-            }
+        // -------- 移动端侧栏开关 --------
+        function toggleMobileSidebar() {
+            const sb = document.getElementById('sidebar');
+            sb.classList.toggle('hidden');
+            sb.classList.toggle('flex');
         }
 
-        document.addEventListener('DOMContentLoaded', checkSystemState);
+        // -------- 监听 iframe 切换，更新侧栏高亮 --------
+        function syncActiveNav() {
+            const frame = document.getElementById('admin-frame');
+            try {
+                const path = frame.contentWindow.location.pathname.split('/').pop();
+                const pageMap = {
+                    'admin-overview.html': 'overview',
+                    'admin-edit.html': 'edit',
+                    'admin-posts.html': 'posts'
+                };
+                const activePage = pageMap[path] || 'overview';
+                document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+                    el.classList.toggle('active', el.dataset.page === activePage);
+                });
+            } catch (e) { /* 跨域时忽略 */ }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSystemState();
+            const frame = document.getElementById('admin-frame');
+            frame.addEventListener('load', syncActiveNav);
+        });
     </script>
 </body>
 </html>
