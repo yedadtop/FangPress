@@ -57,6 +57,7 @@
         /* 移动端侧边栏悬浮覆盖 */
         @media (max-width: 767px) {
             #sidebar {
+                display: flex;          /* 覆盖 .hidden，确保元素始终渲染以便做动画 */
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -65,24 +66,27 @@
                 z-index: 9999;
                 box-shadow: 4px 0 20px rgba(0,0,0,0.1);
                 transform: translateX(-100%);
-                transition: transform 0.3s ease;
+                visibility: hidden;
+                transition: transform 0.3s ease, visibility 0.3s;
             }
             #sidebar.open {
                 transform: translateX(0);
-                display: flex;
+                visibility: visible;
             }
             #sidebar-backdrop {
-                display: none;
+                visibility: hidden;
                 position: fixed;
                 inset: 0;
                 background: rgba(0,0,0,0.3);
                 z-index: 9998;
                 opacity: 0;
-                transition: opacity 0.3s ease;
+                transition: opacity 0.3s ease, visibility 0.3s;
+                pointer-events: none;
             }
             #sidebar-backdrop.show {
-                display: block;
+                visibility: visible;
                 opacity: 1;
+                pointer-events: auto;
             }
         }
     </style>
