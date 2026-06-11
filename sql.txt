@@ -1,8 +1,3 @@
--- ============================================================
---  Quinn's Space  完整初始化脚本
---  适用场景：首次部署 / 想要清空所有数据后重建
---  ⚠️ 会清空 users 与 posts 表，请提前备份
--- ============================================================
 
 DROP TABLE IF EXISTS site_settings;
 DROP TABLE IF EXISTS posts;
@@ -35,9 +30,6 @@ CREATE INDEX idx_posts_slug ON posts(slug);
 CREATE INDEX idx_posts_category ON posts(category);
 CREATE INDEX idx_posts_status ON posts(status);
 
--- ============================================================
---  系统设置表（key-value 形式，集中存放可配置项）
--- ============================================================
 CREATE TABLE site_settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL,
@@ -51,17 +43,3 @@ INSERT INTO site_settings (key, value, updated_at) VALUES
     ('show_views',    '1',                                                          datetime('now'));
 
 
--- ============================================================
---  ⬇ 增量迁移（仅适用于「已有 users / posts 数据」的环境）
---     请复制以下语句在 D1 控制台单独执行，不要与上方 DROP 混用
--- ============================================================
--- CREATE TABLE IF NOT EXISTS site_settings (
---     key   TEXT PRIMARY KEY,
---     value TEXT NOT NULL,
---     updated_at TEXT NOT NULL
--- );
---
--- INSERT OR IGNORE INTO site_settings (key, value, updated_at) VALUES
---     ('site_title',    'Quinn''s Space',                                     datetime('now')),
---     ('site_subtitle', '基于 Cloudflare Pages & D1 关系型数据库的纯文字内容流', datetime('now')),
---     ('show_views',    '1',                                                  datetime('now'));

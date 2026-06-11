@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 · 创作中心</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+        :root {
+            --font-serif: 'Newsreader', 'Songti SC', 'STSong', serif;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        body { font-family: var(--font-sans); }
+        .font-serif { font-family: var(--font-serif); }
+
+        @keyframes breathe {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50%      { opacity: 1;   transform: scale(1); }
+        }
+        .dot { animation: breathe 1.4s ease-in-out infinite; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+    </style>
+</head>
+<body class="bg-[#fafaf9] text-stone-800 min-h-screen">
+
+    <div class="max-w-2xl mx-auto px-6 md:px-10 py-10 md:py-14">
+
+        <header class="mb-10">
+            <p class="text-xs uppercase tracking-widest text-stone-400">Account</p>
+            <h1 class="font-serif text-3xl md:text-[2rem] font-medium text-stone-900 mt-2">用户管理</h1>
+            <p class="text-sm text-stone-500 mt-2">修改登录凭证与对外展示信息</p>
+        </header>
+
+        <div id="meta-card" class="hidden mb-8 flex items-center gap-3 px-5 py-3.5 bg-white border border-stone-200/60 rounded-xl text-sm text-stone-500">
+            <svg class="w-4 h-4 text-stone-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>注册于 <span id="meta-created" class="font-medium text-stone-700">—</span></span>
+            <span class="mx-1 text-stone-300">·</span>
+            <span>账户 ID <span id="meta-id" class="font-mono text-stone-700">—</span></span>
+        </div>
+
+        <div id="loading" class="flex items-center gap-2 py-12 text-stone-400 text-sm">
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+            <span class="ml-2">正在拉取账户信息...</span>
+        </div>
+
+        <form id="user-form" class="hidden space-y-8">
+
+            <section>
+                <h2 class="text-[10px] uppercase tracking-widest text-stone-400 mb-3">登录账号</h2>
+                <div class="bg-white border border-stone-200/60 rounded-2xl p-6 space-y-5">
+                    <div>
+                        <label class="block text-xs text-stone-600 mb-1.5">用户名</label>
+                        <input type="text" id="username"
+                               class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500"
+                               maxlength="40" required>
+                        <p class="text-[11px] text-stone-400 mt-1.5">下次登录请用此用户名</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-stone-600 mb-1.5">作者昵称</label>
+                        <input type="text" id="nickname"
+                               class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500"
+                               maxlength="40" placeholder="显示在后台的称呼">
+                        <p class="text-[11px] text-stone-400 mt-1.5">留空则与用户名相同</p>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-[10px] uppercase tracking-widest text-stone-400 mb-3">密码</h2>
+                <div class="bg-white border border-stone-200/60 rounded-2xl p-6 space-y-5">
+                    <div>
+                        <label class="block text-xs text-stone-600 mb-1.5">新密码</label>
+                        <input type="password" id="password"
+                               class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500"
+                               placeholder="留空则不修改" minlength="6">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-stone-600 mb-1.5">确认新密码</label>
+                        <input type="password" id="password-confirm"
+                               class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500"
+                               placeholder="再次输入新密码">
+                    </div>
+                    <div class="flex items-start gap-2 pt-1 text-[11px] text-stone-500 leading-relaxed">
+                        <svg class="w-3.5 h-3.5 mt-0.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                        </svg>
+                        <span>修改密码会立即在数据库生效。当前浏览器会话的 Token 会被自动替换；若在其它设备登录过，需要重新登录。</span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="button" onclick="saveUser()"
+                        class="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-sm font-medium transition-colors cursor-pointer">
+                    保存修改
+                </button>
+                <button type="button" onclick="loadUser()"
+                        class="px-3 py-2.5 text-stone-500 hover:text-stone-900 text-sm transition-colors cursor-pointer">
+                    放弃修改
+                </button>
+                <span id="status-text" class="ml-auto text-xs italic font-serif hidden"></span>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function getToken() {
+            return localStorage.getItem('admin_token');
+        }
+
+        function showStatus(msg, kind) {
+            const el = document.getElementById('status-text');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            el.className = `ml-auto text-xs italic font-serif ${kind === 'error' ? 'text-red-500' : 'text-emerald-600'}`;
+            if (kind !== 'error') {
+                setTimeout(() => el.classList.add('hidden'), 2400);
+            }
+        }
+
+        function formatDate(ts) {
+            const d = new Date(ts);
+            if (isNaN(d)) return '';
+            return `${d.getFullYear()} · ${String(d.getMonth() + 1).padStart(2, '0')} · ${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        async function loadUser() {
+            if (!getToken()) return;
+
+            try {
+                const res = await fetch('/api/user', {
+                    headers: { 'Authorization': `Bearer ${getToken()}` }
+                });
+                const result = await res.json();
+
+                if (result.success && result.data) {
+                    const u = result.data;
+                    document.getElementById('username').value = u.username || '';
+                    document.getElementById('nickname').value = u.nickname || '';
+                    document.getElementById('meta-id').textContent = '#' + (u.id || '—');
+                    document.getElementById('meta-created').textContent = formatDate(u.created_at) || '—';
+
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('meta-card').classList.remove('hidden');
+                    document.getElementById('user-form').classList.remove('hidden');
+                } else {
+                    document.getElementById('loading').textContent = '加载失败: ' + (result.error || '未知错误');
+                }
+            } catch (e) {
+                document.getElementById('loading').textContent = '网络异常';
+            }
+        }
+
+        async function saveUser() {
+            const token = getToken();
+            if (!token) return;
+
+            const username = document.getElementById('username').value.trim();
+            const nickname = document.getElementById('nickname').value.trim();
+            const password = document.getElementById('password').value;
+            const passwordConfirm = document.getElementById('password-confirm').value;
+
+            if (!username) {
+                showStatus('用户名不能为空', 'error');
+                return;
+            }
+            if (password) {
+                if (password.length < 6) {
+                    showStatus('密码至少 6 位', 'error');
+                    return;
+                }
+                if (password !== passwordConfirm) {
+                    showStatus('两次输入的密码不一致', 'error');
+                    return;
+                }
+            }
+
+            const body = { username, nickname };
+            if (password) body.password = password;
+
+            const btn = document.querySelector('button[onclick="saveUser()"]');
+            btn.disabled = true;
+            btn.classList.add('opacity-60', 'cursor-wait');
+
+            try {
+                const res = await fetch('/api/user/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(body)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    // 清理密码框
+                    document.getElementById('password').value = '';
+                    document.getElementById('password-confirm').value = '';
+
+                    // 关键：若密码已更新，刷新 localStorage 的 token
+                    if (result.newToken) {
+                        localStorage.setItem('admin_token', result.newToken);
+                    }
+                    // 同步侧栏显示的昵称
+                    const displayName = nickname || username;
+                    localStorage.setItem('admin_nickname', displayName);
+                    try {
+                        const nameEl = window.top.document.getElementById('admin-name');
+                        if (nameEl) nameEl.textContent = displayName;
+                    } catch (e) { /* 忽略 */ }
+
+                    showStatus(result.message || '已保存', 'ok');
+                } else {
+                    showStatus('失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (e) {
+                showStatus('网络异常，请稍后重试', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-60', 'cursor-wait');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadUser);
+    </script>
+</body>
+</html>

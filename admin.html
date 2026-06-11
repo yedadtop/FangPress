@@ -130,6 +130,12 @@
                     </svg>
                     系统设置
                 </a>
+                <a href="admin-users.html" target="admin-frame" data-page="users" class="nav-item">
+                    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                    用户管理
+                </a>
             </nav>
 
             <div class="px-3 py-4 border-t border-stone-200/60 space-y-1">
@@ -270,7 +276,8 @@
                     'admin-overview.html': 'overview',
                     'admin-edit.html': 'edit',
                     'admin-posts.html': 'posts',
-                    'admin-settings.html': 'settings'
+                    'admin-settings.html': 'settings',
+                    'admin-users.html': 'users'
                 };
                 const activePage = pageMap[path] || 'overview';
                 document.querySelectorAll('.nav-item[data-page]').forEach(el => {
