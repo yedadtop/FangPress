@@ -131,15 +131,19 @@
             <header class="mb-10 pb-8 border-b border-stone-200/70">
                 <h1 id="post-title" class="font-serif text-3xl md:text-[2.5rem] font-semibold tracking-tight leading-tight text-stone-900">
                 </h1>
-                <time id="post-time" class="block mt-4 text-xs text-stone-400 tracking-widest tabular-nums">
-                </time>
+                <div class="flex items-center gap-4 mt-4 text-xs text-stone-400 tracking-widest uppercase">
+                    <span id="post-category" class="font-semibold text-stone-500 bg-stone-200/60 px-1.5 py-0.5 rounded-xs"></span>
+                    <span>·</span>
+                    <span id="post-views" class="flex items-center gap-1 font-sans lowercase normal-case tracking-normal"></span>
+                    <span>·</span>
+                    <time id="post-time" class="tabular-nums font-sans tracking-wider"></time>
+                </div>
             </header>
 
             <div id="post-content" class="prose-reader">
             </div>
         </article>
 
-        <!-- 加载中 -->
         <div id="status-loading" class="flex items-center gap-2 py-24 text-stone-400 text-sm tracking-wider">
             <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
             <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
@@ -147,21 +151,18 @@
             <span class="ml-2">正在从边缘节点拉取内容</span>
         </div>
 
-        <!-- 状态：参数错误 -->
         <div id="status-bad-slug" class="hidden py-24 text-center">
             <div class="inline-block w-12 h-px bg-stone-300 mb-6"></div>
             <p class="font-serif text-stone-500 text-base italic">缺少文章标识</p>
             <p class="mt-2 text-stone-400 text-xs tracking-wider">URL 中未提供 slug 参数</p>
         </div>
 
-        <!-- 状态：未找到 -->
         <div id="status-not-found" class="hidden py-24 text-center">
             <div class="inline-block w-12 h-px bg-stone-300 mb-6"></div>
             <p class="font-serif text-stone-500 text-base italic">这篇文章不存在</p>
             <p class="mt-2 text-stone-400 text-xs tracking-wider">它可能已被删除,或链接有误</p>
         </div>
 
-        <!-- 状态：网络错误 -->
         <div id="status-error" class="hidden py-24 text-stone-400 text-sm tracking-wider">
             <span class="font-serif italic">内容加载失败</span> · 请刷新重试
         </div>
@@ -181,6 +182,8 @@
         const errorEl      = document.getElementById('status-error');
         const articleEl    = document.getElementById('post-article');
         const titleEl      = document.getElementById('post-title');
+        const categoryEl   = document.getElementById('post-category');
+        const viewsEl      = document.getElementById('post-views');
         const timeEl       = document.getElementById('post-time');
         const contentEl    = document.getElementById('post-content');
 
@@ -219,7 +222,17 @@
                     document.title = `${post.title || '未命名'} · Quinn's Space`;
 
                     titleEl.textContent = post.title || '未命名';
-                    timeEl.textContent  = formatDate(post.timestamp);
+                    categoryEl.textContent = post.category || '未分类';
+                    timeEl.textContent  = formatDate(post.created_at); // 更换为 D1 的 created_at
+                    
+                    // 动态塞入小眼睛 SVG 和自增后的浏览量
+                    viewsEl.innerHTML = `
+                        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span>${post.views || 0} 次阅读</span>
+                    `;
 
                     if (window.marked) {
                         contentEl.innerHTML = window.marked.parse(post.content || '');
