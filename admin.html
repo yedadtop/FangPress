@@ -64,6 +64,11 @@
                 height: 100vh;
                 z-index: 9999;
                 box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            #sidebar.open {
+                transform: translateX(0);
             }
             #sidebar-backdrop {
                 display: none;
@@ -71,9 +76,12 @@
                 inset: 0;
                 background: rgba(0,0,0,0.3);
                 z-index: 9998;
+                opacity: 0;
+                transition: opacity 0.3s ease;
             }
             #sidebar-backdrop.show {
                 display: block;
+                opacity: 1;
             }
         }
     </style>
@@ -278,9 +286,15 @@
         function toggleMobileSidebar() {
             const sb = document.getElementById('sidebar');
             const backdrop = document.getElementById('sidebar-backdrop');
-            sb.classList.toggle('hidden');
-            sb.classList.toggle('flex');
+            sb.classList.toggle('open');
             backdrop.classList.toggle('show');
+        }
+
+        function closeMobileSidebar() {
+            const sb = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            sb.classList.remove('open');
+            backdrop.classList.remove('show');
         }
 
         // -------- 全屏编辑模式：隐藏/显示侧边栏 --------
@@ -343,6 +357,12 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadSiteTitle();
             checkSystemState();
+
+            // 移动端导航点击关闭侧边栏（只绑定一次）
+            document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+                el.addEventListener('click', closeMobileSidebar);
+            });
+
             const frame = document.getElementById('admin-frame');
             frame.addEventListener('load', syncActiveNav);
         });
