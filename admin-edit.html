@@ -391,7 +391,7 @@
     <div id="fullscreen-mode" class="fullscreen-mode" style="display: none;">
         <div class="fullscreen-header">
             <div class="header-left">
-                <button type="button" class="exit-fullscreen-btn px-3 py-2 text-xs text-stone-500 hover:text-stone-900 border border-stone-200 rounded-md transition-colors flex items-center gap-1.5" onclick="exitFullscreen()">
+                <button type="button" class="exit-fullscreen-btn px-3 py-2 text-xs text-stone-500 hover:text-stone-900 border border-stone-200 rounded-md transition-colors flex items-center gap-1.5" onclick="exitEditorFullscreen()">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
                     退出全屏
                 </button>
@@ -666,7 +666,7 @@
             getTextarea().focus();
         }
 
-        function exitFullscreen() {
+        function exitEditorFullscreen() {
             // 同步内容回普通模式
             const fsContent = document.getElementById('post-content-fs').value;
             document.getElementById('post-content').value = fsContent;
@@ -675,7 +675,7 @@
             document.getElementById('normal-mode').style.display = 'block';
             isFullscreen = false;
 
-            // ✨ 修复：将类型改为与父窗口 admin.html 一致的 'exit-fullscreen'
+            // 通知父窗口显示侧边栏并恢复iframe
             if (window.top !== window) {
                 window.top.postMessage({ type: 'exit-fullscreen' }, '*');
             }
@@ -686,14 +686,14 @@
         // ESC 退出全屏
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && isFullscreen) {
-                exitFullscreen();
+                exitEditorFullscreen();
             }
         });
 
         // 监听父窗口消息
         window.addEventListener('message', (e) => {
             if (e.data && e.data.type === 'exit-fullscreen' && isFullscreen) {
-                exitFullscreen();
+                exitEditorFullscreen();
             }
         });
 
