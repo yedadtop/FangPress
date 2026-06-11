@@ -657,6 +657,11 @@
             document.getElementById('fullscreen-mode').style.display = 'flex';
             isFullscreen = true;
 
+            // 通知父窗口隐藏侧边栏
+            if (window.top !== window) {
+                window.top.postMessage({ type: 'hide-sidebar' }, '*');
+            }
+
             updateWordCount();
             getTextarea().focus();
         }
@@ -670,12 +675,24 @@
             document.getElementById('normal-mode').style.display = 'block';
             isFullscreen = false;
 
+            // 通知父窗口显示侧边栏
+            if (window.top !== window) {
+                window.top.postMessage({ type: 'show-sidebar' }, '*');
+            }
+
             updateWordCount();
         }
 
-        // ESC 退出全屏
-        document.addEventListener('keydown', (e) => {
+        // ESC 退出全屏（监听父窗口）
+        window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && isFullscreen) {
+                exitFullscreen();
+            }
+        });
+
+        // 监听父窗口消息
+        window.addEventListener('message', (e) => {
+            if (e.data && e.data.type === 'exit-fullscreen' && isFullscreen) {
                 exitFullscreen();
             }
         });

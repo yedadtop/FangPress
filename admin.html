@@ -255,6 +255,76 @@
             sb.classList.toggle('flex');
         }
 
+        // -------- 全屏编辑模式：隐藏/显示侧边栏 --------
+        let sidebarWasHidden = false;
+        let fullscreenEditMode = false;
+        window.addEventListener('message', (e) => {
+            if (e.data && e.data.type) {
+                const sidebar = document.getElementById('sidebar');
+                const frame = document.getElementById('admin-frame');
+                if (e.data.type === 'hide-sidebar') {
+                    if (sidebar && !sidebar.classList.contains('hidden')) {
+                        sidebar.classList.add('hidden');
+                        sidebar.classList.remove('flex');
+                        sidebarWasHidden = true;
+                    }
+                    // 让 iframe 覆盖整个屏幕
+                    if (frame) {
+                        frame.style.position = 'fixed';
+                        frame.style.top = '0';
+                        frame.style.left = '0';
+                        frame.style.width = '100vw';
+                        frame.style.height = '100vh';
+                        frame.style.zIndex = '9999';
+                    }
+                    fullscreenEditMode = true;
+                } else if (e.data.type === 'show-sidebar') {
+                    if (sidebar && sidebarWasHidden) {
+                        sidebar.classList.remove('hidden');
+                        sidebar.classList.add('flex');
+                        sidebarWasHidden = false;
+                    }
+                    // 恢复 iframe 正常布局
+                    if (frame) {
+                        frame.style.position = '';
+                        frame.style.top = '';
+                        frame.style.left = '';
+                        frame.style.width = '';
+                        frame.style.height = '';
+                        frame.style.zIndex = '';
+                    }
+                    fullscreenEditMode = false;
+                }
+            }
+        });
+
+        // ESC 键退出全屏模式
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && fullscreenEditMode) {
+                const sidebar = document.getElementById('sidebar');
+                const frame = document.getElementById('admin-frame');
+                if (sidebar && sidebarWasHidden) {
+                    sidebar.classList.remove('hidden');
+                    sidebar.classList.add('flex');
+                    sidebarWasHidden = false;
+                }
+                // 恢复 iframe 正常布局
+                if (frame) {
+                    frame.style.position = '';
+                    frame.style.top = '';
+                    frame.style.left = '';
+                    frame.style.width = '';
+                    frame.style.height = '';
+                    frame.style.zIndex = '';
+                }
+                fullscreenEditMode = false;
+                // 通知 iframe 退出全屏
+                if (frame && frame.contentWindow) {
+                    frame.contentWindow.postMessage({ type: 'exit-fullscreen' }, '*');
+                }
+            }
+        });
+
         // -------- 监听 iframe 切换，更新侧栏高亮 --------
         function syncActiveNav() {
             const frame = document.getElementById('admin-frame');
