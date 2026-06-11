@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统选项 · 创作中心</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+        :root {
+            --font-serif: 'Newsreader', 'Songti SC', 'STSong', serif;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        body { font-family: var(--font-sans); }
+        .font-serif { font-family: var(--font-serif); }
+
+        /* 自定义开关 */
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: #d6d3d1;
+            border-radius: 9999px;
+            transition: background-color .2s ease;
+        }
+        .toggle-slider::before {
+            content: "";
+            position: absolute;
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            top: 2px;
+            background-color: #fff;
+            border-radius: 9999px;
+            transition: transform .2s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .toggle input:checked + .toggle-slider { background-color: #0c0a09; }
+        .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+    </style>
+</head>
+<body class="bg-[#fafaf9] text-stone-800 min-h-screen">
+
+    <div class="max-w-2xl mx-auto px-6 md:px-10 py-10 md:py-14">
+
+        <header class="mb-10">
+            <p class="text-xs uppercase tracking-widest text-stone-400">Settings</p>
+            <h1 class="font-serif text-3xl md:text-[2rem] font-medium text-stone-900 mt-2">系统选项</h1>
+            <p class="text-sm text-stone-500 mt-2">配置站点的对外展示信息</p>
+        </header>
+
+        <div id="loading" class="py-12 text-stone-400 text-sm font-serif italic">
+            正在载入配置...
+        </div>
+
+        <form id="settings-form" class="hidden space-y-8">
+
+            <section>
+                <h2 class="text-[10px] uppercase tracking-widest text-stone-400 mb-3">站点信息</h2>
+                <div class="bg-white border border-stone-200/60 rounded-2xl p-6 space-y-5">
+                    <div>
+                        <label class="block text-xs text-stone-600 mb-1.5">网站主标题</label>
+                        <input type="text" id="site-title"
+                               class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-base font-serif focus:outline-none focus:border-stone-500"
+                               placeholder="Quinn's Space" maxlength="60">
+                        <p class="text-[11px] text-stone-400 mt-1.5">显示在主页 H1 与文章页的浏览器标签后缀</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-stone-600 mb-1.5">网站副标题</label>
+                        <input type="text" id="site-subtitle"
+                               class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500"
+                               placeholder="一段描述站点的话" maxlength="120">
+                        <p class="text-[11px] text-stone-400 mt-1.5">显示在主页主标题下方</p>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-[10px] uppercase tracking-widest text-stone-400 mb-3">显示选项</h2>
+                <div class="bg-white border border-stone-200/60 rounded-2xl p-6 space-y-5">
+                    <label class="flex items-start gap-3 cursor-pointer">
+                        <span class="toggle mt-0.5">
+                            <input type="checkbox" id="show-views">
+                            <span class="toggle-slider"></span>
+                        </span>
+                        <span class="flex-1">
+                            <span class="block text-sm text-stone-800 font-medium">在公开页面显示浏览量</span>
+                            <span class="block text-xs text-stone-500 mt-1 font-serif italic">
+                                关闭后，主页列表与文章详情将不再展示阅读次数；后台的统计与排序不受影响
+                            </span>
+                        </span>
+                    </label>
+                </div>
+            </section>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="button" onclick="saveSettings()"
+                        class="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-sm font-medium transition-colors cursor-pointer">
+                    保存配置
+                </button>
+                <button type="button" onclick="loadSettings()"
+                        class="px-3 py-2.5 text-stone-500 hover:text-stone-900 text-sm transition-colors cursor-pointer">
+                    放弃修改
+                </button>
+                <span id="status-text" class="ml-auto text-xs italic font-serif hidden"></span>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const DEFAULTS = {
+            site_title:    "Quinn's Space",
+            site_subtitle: "基于 Cloudflare Pages & D1 关系型数据库的纯文字内容流",
+            show_views:    "1"
+        };
+
+        let original = {};
+
+        function getToken() {
+            return localStorage.getItem('admin_token');
+        }
+
+        function showStatus(msg, kind) {
+            const el = document.getElementById('status-text');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            el.className = `ml-auto text-xs italic font-serif ${kind === 'error' ? 'text-red-500' : 'text-emerald-600'}`;
+            if (kind !== 'error') {
+                setTimeout(() => el.classList.add('hidden'), 2400);
+            }
+        }
+
+        function readForm() {
+            return {
+                site_title:    document.getElementById('site-title').value.trim() || DEFAULTS.site_title,
+                site_subtitle: document.getElementById('site-subtitle').value.trim() || DEFAULTS.site_subtitle,
+                show_views:    document.getElementById('show-views').checked ? '1' : '0'
+            };
+        }
+
+        function applyForm(data) {
+            document.getElementById('site-title').value    = data.site_title || DEFAULTS.site_title;
+            document.getElementById('site-subtitle').value = data.site_subtitle || DEFAULTS.site_subtitle;
+            document.getElementById('show-views').checked  = String(data.show_views) === '1';
+        }
+
+        async function loadSettings() {
+            if (!getToken()) return;
+
+            try {
+                const res = await fetch('/api/settings');
+                const result = await res.json();
+                if (result.success) {
+                    original = Object.assign({}, DEFAULTS, result.data || {});
+                } else {
+                    original = Object.assign({}, DEFAULTS);
+                }
+            } catch (e) {
+                original = Object.assign({}, DEFAULTS);
+            }
+
+            applyForm(original);
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('settings-form').classList.remove('hidden');
+        }
+
+        async function saveSettings() {
+            const token = getToken();
+            if (!token) return;
+
+            const body = readForm();
+            const btn = document.querySelector('button[onclick="saveSettings()"]');
+            btn.disabled = true;
+            btn.classList.add('opacity-60', 'cursor-wait');
+
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(body)
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    original = body;
+                    showStatus('已保存 · 公开页面 30s 内生效', 'ok');
+                } else {
+                    showStatus('失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (e) {
+                showStatus('请求失败，请检查网络', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-60', 'cursor-wait');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadSettings);
+    </script>
+</body>
+</html>

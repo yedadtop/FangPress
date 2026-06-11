@@ -51,10 +51,10 @@
 
     <div class="max-w-2xl mx-auto px-6 py-20 md:py-28">
         <header class="mb-20">
-            <h1 class="font-serif text-4xl md:text-5xl font-medium tracking-tight text-stone-900">
+            <h1 id="site-title" class="font-serif text-4xl md:text-5xl font-medium tracking-tight text-stone-900">
                 Quinn's Space
             </h1>
-            <p class="mt-3 text-stone-500 text-sm tracking-wide">
+            <p id="site-subtitle" class="mt-3 text-stone-500 text-sm tracking-wide">
                 基于 Cloudflare Pages &amp; D1 关系型数据库的纯文字内容流
             </p>
         </header>
@@ -85,54 +85,82 @@
     </footer>
 
     <script>
+        const DEFAULT_SETTINGS = {
+            site_title:    "Quinn's Space",
+            site_subtitle: "基于 Cloudflare Pages & D1 关系型数据库的纯文字内容流",
+            show_views:    "1"
+        };
+
+        async function loadSettings() {
+            try {
+                const res = await fetch('/api/settings');
+                const result = await res.json();
+                if (result.success && result.data) {
+                    return Object.assign({}, DEFAULT_SETTINGS, result.data);
+                }
+            } catch (e) { /* 用默认值 */ }
+            return Object.assign({}, DEFAULT_SETTINGS);
+        }
+
+        function applySettings(s) {
+            if (s.site_title) {
+                document.getElementById('site-title').textContent = s.site_title;
+                document.title = s.site_title;
+            }
+            if (s.site_subtitle) {
+                document.getElementById('site-subtitle').textContent = s.site_subtitle;
+            }
+        }
+
         async function loadArticles() {
             const loadingEl = document.getElementById('status-loading');
             const emptyEl   = document.getElementById('status-empty');
             const errorEl   = document.getElementById('status-error');
             const listEl    = document.getElementById('posts-container');
 
-            try {
-                const res = await fetch('/api/list');
-                const result = await res.json();
+            // 设置与列表并行拉取
+            const [settings, listRes] = await Promise.all([
+                loadSettings(),
+                fetch('/api/list').then(r => r.json()).catch(() => ({ success: false, error: 'network' }))
+            ]);
+            applySettings(settings);
+            const showViews = String(settings.show_views) === '1';
 
-                loadingEl.classList.add('hidden');
+            loadingEl.classList.add('hidden');
 
-                if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-                    listEl.classList.remove('hidden');
+            if (listRes.success && Array.isArray(listRes.data) && listRes.data.length > 0) {
+                listEl.classList.remove('hidden');
 
-                    listEl.innerHTML = result.data.map((post, i) => `
-                        <article class="fade-up py-7 group" style="animation-delay: ${i * 60}ms">
-                            <a href="/post.html?slug=${encodeURIComponent(post.slug || '')}"
-                               class="flex flex-col md:flex-row md:items-baseline justify-between gap-2 md:gap-6">
-                                <div class="flex items-baseline gap-3">
-                                    <span class="shrink-0 text-[10px] uppercase tracking-wider font-semibold text-stone-400 border border-stone-200 px-1.5 py-0.5 rounded-sm bg-stone-100/50">
-                                        ${escapeHtml(post.category || '未分类')}
-                                    </span>
-                                    <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
-                                        <span class="link-underline pb-0.5">${escapeHtml(post.title)}</span>
-                                    </h2>
-                                </div>
-                                <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5">
-                                    <span class="flex items-center gap-1 font-sans">
-                                        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                        ${post.views || 0}
-                                    </span>
-                                    <span>·</span>
-                                    <time class="font-sans">${formatDate(post.created_at)}</time>
-                                </div>
-                            </a>
-                        </article>
-                    `).join('');
-                } else {
-                    emptyEl.classList.remove('hidden');
-                }
-            } catch (err) {
-                loadingEl.classList.add('hidden');
-                errorEl.classList.remove('hidden');
-                console.error(err);
+                listEl.innerHTML = listRes.data.map((post, i) => `
+                    <article class="fade-up py-7 group" style="animation-delay: ${i * 60}ms">
+                        <a href="/post.html?slug=${encodeURIComponent(post.slug || '')}"
+                           class="flex flex-col md:flex-row md:items-baseline justify-between gap-2 md:gap-6">
+                            <div class="flex items-baseline gap-3">
+                                <span class="shrink-0 text-[10px] uppercase tracking-wider font-semibold text-stone-400 border border-stone-200 px-1.5 py-0.5 rounded-sm bg-stone-100/50">
+                                    ${escapeHtml(post.category || '未分类')}
+                                </span>
+                                <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
+                                    <span class="link-underline pb-0.5">${escapeHtml(post.title)}</span>
+                                </h2>
+                            </div>
+                            <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5">
+                                ${showViews ? `
+                                <span class="flex items-center gap-1 font-sans">
+                                    <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    ${post.views || 0}
+                                </span>
+                                <span>·</span>
+                                ` : ''}
+                                <time class="font-sans">${formatDate(post.created_at)}</time>
+                            </div>
+                        </a>
+                    </article>
+                `).join('');
+            } else {
+                emptyEl.classList.remove('hidden');
             }
         }
 
