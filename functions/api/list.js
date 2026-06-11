@@ -62,7 +62,8 @@ export async function onRequestGet(context) {
     return new Response(JSON.stringify({ success: true, data }), {
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "public, max-age=5"
+        // 摘要按当前 excerpt_length 现场计算 → 不缓存，确保设置变更后立刻生效
+        "Cache-Control": "no-store"
       }
     });
 

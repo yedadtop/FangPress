@@ -19,8 +19,8 @@ export async function onRequestGet(context) {
     return new Response(JSON.stringify({ success: true, data }), {
       headers: {
         "Content-Type": "application/json",
-        // 公开接口，轻度缓存；管理员改完后最多 30s 全网生效
-        "Cache-Control": "public, max-age=30"
+        // 设置项需在管理员保存后立刻反映到前台 / 后台表单，关掉缓存
+        "Cache-Control": "no-store"
       }
     });
   } catch (err) {
