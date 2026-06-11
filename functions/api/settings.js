@@ -43,15 +43,22 @@ export async function onRequestPost(context) {
     });
   }
   const clientToken = authHeader.replace("Bearer ", "");
-  const { count } = await env.DB
-    .prepare("SELECT COUNT(*) as count FROM users WHERE password_hash = ?")
-    .bind(clientToken)
-    .first();
-  if (count === 0) {
-    return new Response(JSON.stringify({ success: false, error: "口令失效，请重新登录" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" }
-    });
+
+  // 优先检查 KV 中的 API_TOKEN
+  const apiToken = await env.KV.get("API_TOKEN");
+  if (apiToken && clientToken === apiToken) {
+    // API_TOKEN 鉴权通过，继续处理请求
+  } else {
+    const { count } = await env.DB
+      .prepare("SELECT COUNT(*) as count FROM users WHERE password_hash = ?")
+      .bind(clientToken)
+      .first();
+    if (count === 0) {
+      return new Response(JSON.stringify({ success: false, error: "口令失效，请重新登录" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
   }
 
   try {

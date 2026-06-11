@@ -2,7 +2,7 @@
 
 > Quinn's Space  ·  Cloudflare Pages Functions  ·  **10 个端点**
 > 数据源：Cloudflare D1（关系型 SQLite）
-> 鉴权：Bearer Token（token = `users.password_hash`，即登录密码的 SHA-256）
+> 鉴权：Bearer Token（支持两种方式：① 账号密码登录的 token = `users.password_hash` ② KV 中的 `API_TOKEN`）
 
 ---
 
@@ -17,7 +17,10 @@
 ### 0.2 鉴权
 - 登录成功后，**token** 是 `SHA-256(password)`，前端需在 `localStorage.setItem('admin_token', token)` 持久化
 - 受保护接口必须携带：`Authorization: Bearer <token>`
-- 服务端以 `SELECT COUNT(*) FROM users WHERE password_hash = ?` 比对
+- 服务端按以下顺序校验：
+  1. **优先**检查 Cloudflare KV 中的 `API_TOKEN`
+  2. 若未命中，则以 `SELECT COUNT(*) FROM users WHERE password_hash = ?` 比对
+- 除 [`POST /api/user/update`](#26-post-apiuserupdate--改用户名--昵称--密码) 外，所有受保护接口均支持 API_TOKEN
 - **改密后 token 同步变更**，前端必须用响应里的 `newToken` 覆盖 localStorage
 
 ### 0.3 通用错误响应
@@ -29,7 +32,7 @@
 | 200 | 成功 |
 | 400 | 参数缺失 / 业务校验失败（如 slug 重复） |
 | 401 | 未带 Authorization / token 不匹配 |
-| 403 | 权限被拒（保留位，当前未使用） |
+| 403 | 权限被拒（如使用 API_TOKEN 尝试修改账户信息） |
 | 404 | 资源不存在 |
 | 500 | 服务端异常 |
 
@@ -250,6 +253,7 @@
 - 用户名不能为空字符串
 - 改密时 token 会变（`newHash` = `SHA-256(newPassword)`），响应里 `newToken` 字段必须写回 localStorage
 - 至少传一个字段，否则返 `400 "没有任何修改"`
+- **此接口禁止使用 API_TOKEN**，否则返回 `403`
 
 成功响应 200：
 ```json
@@ -258,12 +262,16 @@
 错误：
 - `400` 用户名为空 / 无修改 / username 已被占用
 - `401` token 失效
+- `403` 使用了 API_TOKEN
 
 ---
 
 ## 3. 完整 curl 测试脚本
 
 ```bash
+# 0) API_TOKEN 方式（KV 中存储的纯文本密钥，所有受保护接口均可使用，除 /api/user/update）
+API_TOKEN="MySecretToken2026"
+
 # 1) 登录拿 token
 TOKEN=$(curl -s -X POST https://YOUR-DOMAIN/api/auth/login \
   -H "Content-Type: application/json" \
@@ -274,30 +282,42 @@ TOKEN=$(curl -s -X POST https://YOUR-DOMAIN/api/auth/login \
 curl -s https://YOUR-DOMAIN/api/list
 curl -s "https://YOUR-DOMAIN/api/get?slug=d1-blog-guide"
 
-# 3) 写接口
+# 3) 写接口（支持两种鉴权方式）
+# 3.1) 使用登录 token
 curl -s -X POST https://YOUR-DOMAIN/api/push \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"title":"测试","slug":"test-1","content":"# hi","category":"技术"}'
 
+# 3.2) 使用 API_TOKEN
+curl -s -X POST https://YOUR-DOMAIN/api/push \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_TOKEN" \
+  -d '{"title":"测试","slug":"test-2","content":"# hi","category":"技术"}'
+
 curl -s -X POST https://YOUR-DOMAIN/api/update \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $API_TOKEN" \
   -d '{"id":1,"title":"已改","slug":"test-1","content":"# hi","category":"技术"}'
 
 curl -s -X POST https://YOUR-DOMAIN/api/delete \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $API_TOKEN" \
   -d '{"id":1}'
 
-# 4) 设置
+# 4) 设置（支持 API_TOKEN）
 curl -s -X POST https://YOUR-DOMAIN/api/settings \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
+  -H "Authorization: Bearer $API_TOKEN" \
   -d '{"site_title":"新标题","excerpt_length":"300"}'
 
 # 5) 账户
-curl -s https://YOUR-DOMAIN/api/user -H "Authorization: Bearer $TOKEN"
+curl -s https://YOUR-DOMAIN/api/user -H "Authorization: Bearer $API_TOKEN"
+# 注意：修改账户信息禁止使用 API_TOKEN
+curl -s -X POST https://YOUR-DOMAIN/api/user/update \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_TOKEN" \
+  -d '{"nickname":"新昵称"}'  # 返回 403
 ```
 
 ---
@@ -331,4 +351,5 @@ site_settings(key PK, value, updated_at)
 ---
 
 > 文档版本：2026-06-11
+> 新增：API_TOKEN 鉴权支持（Cloudflare KV）
 > 维护者：随源码演进同步更新

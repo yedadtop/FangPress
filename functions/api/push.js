@@ -1,16 +1,20 @@
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  try {
-    // 鉴权：Bearer Token 必须在 users 表里能对上
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ success: false, error: "未授权" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" }
-      });
-    }
-    const clientToken = authHeader.replace("Bearer ", "");
+  // 鉴权：Bearer Token 优先检查 KV 中的 API_TOKEN
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader) {
+    return new Response(JSON.stringify({ success: false, error: "未授权" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+  const clientToken = authHeader.replace("Bearer ", "");
+
+  const apiToken = await env.KV.get("API_TOKEN");
+  if (apiToken && clientToken === apiToken) {
+    // API_TOKEN 鉴权通过
+  } else {
     const { count } = await env.DB
       .prepare("SELECT COUNT(*) as count FROM users WHERE password_hash = ?")
       .bind(clientToken)
@@ -21,7 +25,9 @@ export async function onRequestPost(context) {
         headers: { "Content-Type": "application/json" }
       });
     }
+  }
 
+  try {
     const { title, slug, content, category } = await request.json();
 
     if (!title || !slug || !content) {

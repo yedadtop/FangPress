@@ -15,6 +15,14 @@ export async function onRequestGet(context) {
   }
   const clientToken = authHeader.replace("Bearer ", "");
 
+  // 优先检查 KV 中的 API_TOKEN
+  const apiToken = await env.KV.get("API_TOKEN");
+  if (apiToken && clientToken === apiToken) {
+    return new Response(JSON.stringify({ success: true, data: { is_api_token: true } }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
   const user = await env.DB
     .prepare("SELECT id, username, nickname, created_at FROM users WHERE password_hash = ?")
     .bind(clientToken)

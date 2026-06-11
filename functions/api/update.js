@@ -1,7 +1,7 @@
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // 与 push.js 一致的鉴权流程：拿客户端 Bearer 去 users 表里比对
+  // 与 push.js 一致的鉴权流程：优先检查 KV 中的 API_TOKEN
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) {
     return new Response(JSON.stringify({ success: false, error: "未授权" }), {
@@ -11,15 +11,21 @@ export async function onRequestPost(context) {
   }
 
   const clientToken = authHeader.replace("Bearer ", "");
-  const { count } = await env.DB
-    .prepare("SELECT COUNT(*) as count FROM users WHERE password_hash = ?")
-    .bind(clientToken)
-    .first();
-  if (count === 0) {
-    return new Response(JSON.stringify({ success: false, error: "口令失效，请重新登录" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" }
-    });
+
+  const apiToken = await env.KV.get("API_TOKEN");
+  if (apiToken && clientToken === apiToken) {
+    // API_TOKEN 鉴权通过
+  } else {
+    const { count } = await env.DB
+      .prepare("SELECT COUNT(*) as count FROM users WHERE password_hash = ?")
+      .bind(clientToken)
+      .first();
+    if (count === 0) {
+      return new Response(JSON.stringify({ success: false, error: "口令失效，请重新登录" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
   }
 
   try {

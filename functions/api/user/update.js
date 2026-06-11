@@ -16,7 +16,16 @@ export async function onRequestPost(context) {
   }
   const clientToken = authHeader.replace("Bearer ", "");
 
-  // 先定位当前用户
+  // 优先检查 KV 中的 API_TOKEN
+  const apiToken = await env.KV.get("API_TOKEN");
+  if (apiToken && clientToken === apiToken) {
+    return new Response(JSON.stringify({ success: false, error: "API_TOKEN 无法用于修改账户信息，请使用账号密码登录后操作" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  // 定位当前用户
   const current = await env.DB
     .prepare("SELECT id, password_hash FROM users WHERE password_hash = ?")
     .bind(clientToken)
