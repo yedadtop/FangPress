@@ -352,7 +352,8 @@
                     'admin-settings.html': 'settings',
                     'admin-users.html': 'users'
                 };
-                const activePage = pageMap[path] || 'overview';
+                const activePage = pageMap[path];
+                if (!activePage) return;
                 document.querySelectorAll('.nav-item[data-page]').forEach(el => {
                     el.classList.toggle('active', el.dataset.page === activePage);
                 });
@@ -363,9 +364,13 @@
             loadSiteTitle();
             checkSystemState();
 
-            // 移动端导航点击关闭侧边栏（只绑定一次）
+            // 移动端导航点击关闭侧边栏并同步高亮（只绑定一次）
             document.querySelectorAll('.nav-item[data-page]').forEach(el => {
-                el.addEventListener('click', closeMobileSidebar);
+                el.addEventListener('click', () => {
+                    closeMobileSidebar();
+                    document.querySelectorAll('.nav-item[data-page]').forEach(nav => nav.classList.remove('active'));
+                    el.classList.add('active');
+                });
             });
 
             const frame = document.getElementById('admin-frame');
