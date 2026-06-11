@@ -70,27 +70,33 @@
         <div id="posts-skeleton" class="divide-y divide-stone-200/70">
             <div class="py-7">
                 <div class="h-6 bg-stone-200/80 rounded w-3/4 mb-3"></div>
-                <div class="h-3 bg-stone-200/80 rounded w-1/3"></div>
+                <div class="h-3 bg-stone-200/80 rounded w-1/3 mb-2"></div>
+                <div class="h-3 bg-stone-200/80 rounded w-2/3"></div>
             </div>
             <div class="py-7">
                 <div class="h-6 bg-stone-200/80 rounded w-2/3 mb-3"></div>
-                <div class="h-3 bg-stone-200/80 rounded w-1/4"></div>
+                <div class="h-3 bg-stone-200/80 rounded w-1/4 mb-2"></div>
+                <div class="h-3 bg-stone-200/80 rounded w-3/5"></div>
             </div>
             <div class="py-7">
                 <div class="h-6 bg-stone-200/80 rounded w-4/5 mb-3"></div>
-                <div class="h-3 bg-stone-200/80 rounded w-1/3"></div>
+                <div class="h-3 bg-stone-200/80 rounded w-1/3 mb-2"></div>
+                <div class="h-3 bg-stone-200/80 rounded w-2/3"></div>
             </div>
             <div class="py-7">
                 <div class="h-6 bg-stone-200/80 rounded w-1/2 mb-3"></div>
-                <div class="h-3 bg-stone-200/80 rounded w-1/4"></div>
+                <div class="h-3 bg-stone-200/80 rounded w-1/4 mb-2"></div>
+                <div class="h-3 bg-stone-200/80 rounded w-1/2"></div>
             </div>
             <div class="py-7">
                 <div class="h-6 bg-stone-200/80 rounded w-3/5 mb-3"></div>
-                <div class="h-3 bg-stone-200/80 rounded w-1/3"></div>
+                <div class="h-3 bg-stone-200/80 rounded w-1/3 mb-2"></div>
+                <div class="h-3 bg-stone-200/80 rounded w-2/3"></div>
             </div>
             <div class="py-7">
                 <div class="h-6 bg-stone-200/80 rounded w-2/3 mb-3"></div>
-                <div class="h-3 bg-stone-200/80 rounded w-1/4"></div>
+                <div class="h-3 bg-stone-200/80 rounded w-1/4 mb-2"></div>
+                <div class="h-3 bg-stone-200/80 rounded w-3/5"></div>
             </div>
         </div>
     </div>
@@ -101,9 +107,10 @@
 
     <script>
         const DEFAULT_SETTINGS = {
-            site_title:    "Quinn's Space",
-            site_subtitle: "基于 Cloudflare Pages & D1 关系型数据库的纯文字内容流",
-            show_views:    "1"
+            site_title:      "Quinn's Space",
+            site_subtitle:   "基于 Cloudflare Pages & D1 关系型数据库的纯文字内容流",
+            show_views:      "1",
+            excerpt_length:  "200"
         };
 
         async function loadSettings() {
@@ -154,24 +161,30 @@
 
                 listEl.innerHTML = listRes.data.map((post, i) => `
                     <article class="fade-up py-7 group" style="animation-delay: ${i * 60}ms">
-                        <a href="/post.html?slug=${encodeURIComponent(post.slug || '')}"
-                           class="flex flex-col md:flex-row md:items-baseline justify-between gap-2 md:gap-6">
-                            <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
-                                <span class="link-underline pb-0.5">${escapeHtml(post.title)}</span>
-                            </h2>
-                            <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5">
-                                ${showViews ? `
-                                <span class="flex items-center gap-1 font-sans">
-                                    <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    ${post.views || 0}
-                                </span>
-                                <span>·</span>
-                                ` : ''}
-                                <time class="font-sans">${formatDate(post.created_at)}</time>
+                        <a href="/post.html?slug=${encodeURIComponent(post.slug || '')}" class="block">
+                            <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-2 md:gap-6">
+                                <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
+                                    <span class="link-underline pb-0.5">${escapeHtml(post.title)}</span>
+                                </h2>
+                                <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5">
+                                    ${showViews ? `
+                                    <span class="flex items-center gap-1 font-sans">
+                                        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        ${post.views || 0}
+                                    </span>
+                                    <span>·</span>
+                                    ` : ''}
+                                    <time class="font-sans">${formatDate(post.created_at)}</time>
+                                </div>
                             </div>
+                            ${post.excerpt ? `
+                            <p class="mt-2.5 font-serif text-stone-500 text-[0.95rem] leading-relaxed line-clamp-2">
+                                ${escapeHtml(post.excerpt)}
+                            </p>
+                            ` : ''}
                         </a>
                     </article>
                 `).join('');

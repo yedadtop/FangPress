@@ -101,6 +101,27 @@
                 </div>
             </section>
 
+            <section>
+                <h2 class="text-[10px] uppercase tracking-widest text-stone-400 mb-3">列表摘要</h2>
+                <div class="bg-white border border-stone-200/60 rounded-2xl p-6 space-y-5">
+                    <div>
+                        <label for="excerpt-length" class="block text-xs text-stone-600 mb-1.5">
+                            摘要字数 <span class="text-stone-400 font-sans">（0 - 1000）</span>
+                        </label>
+                        <div class="flex items-center gap-3">
+                            <input type="number" id="excerpt-length" min="0" max="1000" step="10"
+                                   class="w-32 px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-base font-sans tabular-nums focus:outline-none focus:border-stone-500"
+                                   placeholder="200">
+                            <span class="text-xs text-stone-400 font-serif italic">字 / 篇</span>
+                        </div>
+                        <p class="text-[11px] text-stone-400 mt-2 leading-relaxed">
+                            主页列表中每篇文章展示的纯文本摘要字数，由后端从正文中剥离 markdown 标记后截取。<br>
+                            设为 <span class="font-sans">0</span> 表示不显示摘要。
+                        </p>
+                    </div>
+                </div>
+            </section>
+
             <div class="flex items-center gap-3 pt-2">
                 <button type="button" onclick="saveSettings()"
                         class="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-sm font-medium transition-colors cursor-pointer">
@@ -117,9 +138,10 @@
 
     <script>
         const DEFAULTS = {
-            site_title:    "Quinn's Space",
-            site_subtitle: "基于 Cloudflare Pages & D1 关系型数据库的纯文字内容流",
-            show_views:    "1"
+            site_title:     "Quinn's Space",
+            site_subtitle:  "基于 Cloudflare Pages & D1 关系型数据库的纯文字内容流",
+            show_views:     "1",
+            excerpt_length: "200"
         };
 
         let original = {};
@@ -139,17 +161,24 @@
         }
 
         function readForm() {
+            const rawLen = document.getElementById('excerpt-length').value.trim();
+            let excerptLen = parseInt(rawLen, 10);
+            if (!Number.isInteger(excerptLen) || excerptLen < 0 || excerptLen > 1000) {
+                excerptLen = parseInt(DEFAULTS.excerpt_length, 10);
+            }
             return {
-                site_title:    document.getElementById('site-title').value.trim() || DEFAULTS.site_title,
-                site_subtitle: document.getElementById('site-subtitle').value.trim() || DEFAULTS.site_subtitle,
-                show_views:    document.getElementById('show-views').checked ? '1' : '0'
+                site_title:     document.getElementById('site-title').value.trim() || DEFAULTS.site_title,
+                site_subtitle:  document.getElementById('site-subtitle').value.trim() || DEFAULTS.site_subtitle,
+                show_views:     document.getElementById('show-views').checked ? '1' : '0',
+                excerpt_length: String(excerptLen)
             };
         }
 
         function applyForm(data) {
-            document.getElementById('site-title').value    = data.site_title || DEFAULTS.site_title;
-            document.getElementById('site-subtitle').value = data.site_subtitle || DEFAULTS.site_subtitle;
-            document.getElementById('show-views').checked  = String(data.show_views) === '1';
+            document.getElementById('site-title').value       = data.site_title || DEFAULTS.site_title;
+            document.getElementById('site-subtitle').value    = data.site_subtitle || DEFAULTS.site_subtitle;
+            document.getElementById('show-views').checked     = String(data.show_views) === '1';
+            document.getElementById('excerpt-length').value   = data.excerpt_length || DEFAULTS.excerpt_length;
         }
 
         async function loadSettings() {

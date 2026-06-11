@@ -4,7 +4,7 @@
 //  表结构：site_settings (key TEXT PK, value TEXT, updated_at TEXT)
 // ============================================================
 
-const ALLOWED_KEYS = new Set(["site_title", "site_subtitle", "show_views"]);
+const ALLOWED_KEYS = new Set(["site_title", "site_subtitle", "show_views", "excerpt_length"]);
 
 export async function onRequestGet(context) {
   const { env } = context;
@@ -75,9 +75,17 @@ export async function onRequestPost(context) {
     let touched = 0;
     for (const [key, value] of Object.entries(body)) {
       if (!ALLOWED_KEYS.has(key)) continue;
-      const strValue = String(value ?? "").trim();
+      let strValue = String(value ?? "").trim();
+      if (strValue === "") continue;
       // show_views 强约束为 0/1
-      if (key === "show_views" && !["0", "1"].includes(strValue)) continue;
+      if (key === "show_views") {
+        if (!["0", "1"].includes(strValue)) continue;
+      } else if (key === "excerpt_length") {
+        // 0 - 1000 之间的整数；0 表示关闭摘要
+        const n = parseInt(strValue, 10);
+        if (!Number.isInteger(n) || n < 0 || n > 1000) continue;
+        strValue = String(n);
+      }
       await upsert.bind(key, strValue, now).run();
       touched++;
     }
