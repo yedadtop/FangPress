@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>撰写新文 · 创作中心</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/core.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/javascript.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/css.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/html.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/python.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap');
         :root {
@@ -14,7 +21,6 @@
         body { font-family: var(--font-sans); }
         .font-serif { font-family: var(--font-serif); }
 
-        /* 标题预览 */
         .preview-card {
             background-image: linear-gradient(currentColor, currentColor);
             background-size: 0% 1px;
@@ -24,13 +30,167 @@
         }
         .preview-card:focus-within { background-size: 100% 1px; }
 
-        /* 字数统计 */
         .word-count { font-variant-numeric: tabular-nums; }
+
+        /* 编辑器容器 */
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #d6d3d1;
+            border-radius: 0.375rem;
+            overflow: hidden;
+            background: white;
+        }
+        @media (min-width: 768px) {
+            .editor-container {
+                flex-direction: row;
+            }
+        }
+
+        /* 工具栏 */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            padding: 8px;
+            border-bottom: 1px solid #e7e5e4;
+            background: #fafaf9;
+        }
+        @media (min-width: 768px) {
+            .toolbar {
+                flex-direction: column;
+                border-bottom: none;
+                border-right: 1px solid #e7e5e4;
+                width: 44px;
+            }
+        }
+
+        .toolbar-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            color: #78716c;
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+        .toolbar-btn:hover {
+            background: #e7e5e4;
+            color: #1c1917;
+        }
+        .toolbar-btn:active {
+            background: #d6d3d1;
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 20px;
+            background: #d6d3d1;
+            margin: 0 4px;
+            align-self: center;
+        }
+        @media (min-width: 768px) {
+            .toolbar-divider {
+                width: 20px;
+                height: 1px;
+                margin: 4px 0;
+            }
+        }
+
+        /* 编辑区 */
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .editor-header {
+            padding: 6px 12px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #a8a29e;
+            border-bottom: 1px solid #e7e5e4;
+            background: #fafaf9;
+        }
+
+        .editor-textarea {
+            flex: 1;
+            width: 100%;
+            min-height: 400px;
+            padding: 16px;
+            border: none;
+            resize: none;
+            font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
+            font-size: 14px;
+            line-height: 1.7;
+            color: #1c1917;
+            background: white;
+            outline: none;
+        }
+
+        /* 预览区 */
+        .preview-pane {
+            flex: 1;
+            min-width: 0;
+            border-top: 1px solid #e7e5e4;
+            background: white;
+        }
+        @media (min-width: 768px) {
+            .preview-pane {
+                border-top: none;
+                border-left: 1px solid #e7e5e4;
+            }
+        }
+
+        .preview-content {
+            padding: 16px 20px;
+            min-height: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        /* Markdown 预览样式 */
+        .preview-content h1 { font-family: var(--font-serif); font-size: 1.875rem; font-weight: 600; color: #1c1917; margin: 0 0 1rem 0; line-height: 1.3; }
+        .preview-content h2 { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 600; color: #1c1917; margin: 1.5rem 0 0.75rem 0; }
+        .preview-content h3 { font-family: var(--font-serif); font-size: 1.25rem; font-weight: 600; color: #292524; margin: 1.25rem 0 0.5rem 0; }
+        .preview-content h4, .preview-content h5, .preview-content h6 { font-family: var(--font-serif); font-size: 1rem; font-weight: 600; color: #44403c; margin: 1rem 0 0.5rem 0; }
+        .preview-content p { margin: 0 0 1rem 0; line-height: 1.8; color: #292524; }
+        .preview-content ul, .preview-content ol { margin: 0 0 1rem 0; padding-left: 1.5rem; }
+        .preview-content li { margin: 0.25rem 0; line-height: 1.7; }
+        .preview-content blockquote { margin: 1rem 0; padding: 0.5rem 1rem; border-left: 3px solid #d6d3d1; background: #fafaf9; color: #57534e; font-style: italic; }
+        .preview-content blockquote p { margin: 0; }
+        .preview-content code { font-family: ui-monospace, monospace; font-size: 0.875em; background: #f5f5f4; padding: 0.125rem 0.375rem; border-radius: 3px; color: #b45309; }
+        .preview-content pre { margin: 1rem 0; padding: 1rem; background: #f5f5f4; border-radius: 6px; overflow-x: auto; }
+        .preview-content pre code { background: none; padding: 0; color: inherit; font-size: 0.875rem; }
+        .preview-content a { color: #2563eb; text-decoration: underline; }
+        .preview-content img { max-width: 100%; height: auto; border-radius: 6px; margin: 1rem 0; }
+        .preview-content hr { border: none; border-top: 1px solid #e7e5e4; margin: 1.5rem 0; }
+        .preview-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .preview-content th, .preview-content td { border: 1px solid #e7e5e4; padding: 0.5rem 0.75rem; text-align: left; }
+        .preview-content th { background: #fafaf9; font-weight: 600; }
+
+        /* 空状态 */
+        .preview-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 400px;
+            color: #a8a29e;
+            font-family: var(--font-serif);
+            font-style: italic;
+        }
     </style>
 </head>
 <body class="bg-[#fafaf9] text-stone-800 min-h-screen">
 
-    <div class="max-w-3xl mx-auto px-6 md:px-10 py-10 md:py-14">
+    <div class="max-w-6xl mx-auto px-6 md:px-10 py-10 md:py-14">
 
         <header class="mb-8">
             <a href="admin-posts.html" target="admin-frame" class="inline-flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-900 transition-colors mb-4">
@@ -41,8 +201,7 @@
             <p id="page-subtitle" class="text-sm text-stone-500 mt-2">分享一段新的思考</p>
         </header>
 
-        <div id="loading" class="hidden">
-        </div>
+        <div id="loading" class="hidden"></div>
 
         <form id="post-form" class="space-y-6">
             <input type="hidden" id="post-id">
@@ -51,7 +210,7 @@
                 <div>
                     <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">文章标题</label>
                     <input type="text" id="post-title"
-                           class="preview-cell w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-base font-serif focus:outline-none focus:border-stone-500"
+                           class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-base font-serif focus:outline-none focus:border-stone-500"
                            placeholder="一个能抓住眼球的标题" required>
                 </div>
                 <div>
@@ -72,14 +231,75 @@
 
             <div>
                 <div class="flex items-baseline justify-between mb-1.5">
-                    <label class="block text-[10px] uppercase tracking-widest text-stone-400">正文 (Markdown)</label>
+                    <label class="block text-[10px] uppercase tracking-widest text-stone-400">正文</label>
                     <span class="text-[11px] text-stone-400 word-count">
                         <span id="word-count">0</span> 字
                     </span>
                 </div>
-                <textarea id="post-content" rows="20"
-                          class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500 leading-relaxed resize-y"
-                          placeholder="### 标题&#10;&#10;开始写下你的思考..." required></textarea>
+
+                <div class="editor-container">
+                    <!-- 工具栏 -->
+                    <div class="toolbar">
+                        <button type="button" class="toolbar-btn" onclick="insertFormat('**', '**')" title="粗体 (Ctrl+B)">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z"></path></svg>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="insertFormat('*', '*')" title="斜体 (Ctrl+I)">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 4h-9M14 20H5M15 4L9 20"></path></svg>
+                        </button>
+                        <div class="toolbar-divider"></div>
+                        <button type="button" class="toolbar-btn" onclick="insertLine('# ')" title="一级标题">
+                            <span class="font-bold text-xs">H1</span>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="insertLine('## ')" title="二级标题">
+                            <span class="font-bold text-xs">H2</span>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="insertLine('### ')" title="三级标题">
+                            <span class="font-bold text-xs">H3</span>
+                        </button>
+                        <div class="toolbar-divider"></div>
+                        <button type="button" class="toolbar-btn" onclick="insertFormat('`', '`')" title="行内代码">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="insertCodeBlock()" title="代码块">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M8 10l-2 2 2 2M16 10l2 2-2 2M10 14l-2-2 2-2"></path></svg>
+                        </button>
+                        <div class="toolbar-divider"></div>
+                        <button type="button" class="toolbar-btn" onclick="insertLine('> ')" title="引用">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="insertLine('- ')" title="无序列表">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="insertLine('1. ')" title="有序列表">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 20h14M7 12h14M7 4h14M3 20h.01M3 12h.01M3 4h.01"></path></svg>
+                        </button>
+                        <div class="toolbar-divider"></div>
+                        <button type="button" class="toolbar-btn" onclick="insertLink()" title="链接">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="insertLine('![alt](url)')" title="图片">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="insertLine('---')" title="分隔线">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"></path></svg>
+                        </button>
+                    </div>
+
+                    <!-- 编辑区 -->
+                    <div class="editor-pane">
+                        <div class="editor-header">Markdown</div>
+                        <textarea id="post-content" class="editor-textarea"
+                                  placeholder="### 标题&#10;&#10;开始写下你的思考..." required></textarea>
+                    </div>
+
+                    <!-- 预览区 -->
+                    <div class="preview-pane">
+                        <div class="editor-header">预览</div>
+                        <div id="preview-content" class="preview-content">
+                            <div class="preview-empty">预览区域</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="flex items-center gap-3 pt-2 border-t border-stone-200/60">
@@ -133,6 +353,94 @@
         function updateWordCount() {
             const len = document.getElementById('post-content').value.length;
             document.getElementById('word-count').textContent = len;
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const content = document.getElementById('post-content').value;
+            const preview = document.getElementById('preview-content');
+
+            if (!content.trim()) {
+                preview.innerHTML = '<div class="preview-empty">预览区域</div>';
+                return;
+            }
+
+            marked.setOptions({
+                highlight: function(code, lang) {
+                    if (lang && hljs.getLanguage(lang)) {
+                        return hljs.highlight(code, { language: lang }).value;
+                    }
+                    return hljs.highlightAuto(code).value;
+                },
+                breaks: true,
+                gfm: true
+            });
+
+            try {
+                preview.innerHTML = marked.parse(content);
+            } catch (e) {
+                preview.innerHTML = '<p style="color: #ef4444;">解析错误: ' + e.message + '</p>';
+            }
+        }
+
+        function getTextarea() {
+            return document.getElementById('post-content');
+        }
+
+        function insertFormat(before, after) {
+            const ta = getTextarea();
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            const selected = ta.value.substring(start, end);
+
+            ta.value = ta.value.substring(0, start) + before + selected + after + ta.value.substring(end);
+            ta.selectionStart = start + before.length;
+            ta.selectionEnd = start + before.length + selected.length;
+            ta.focus();
+            updatePreview();
+            updateWordCount();
+        }
+
+        function insertLine(prefix) {
+            const ta = getTextarea();
+            const start = ta.selectionStart;
+            const lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
+
+            ta.value = ta.value.substring(0, lineStart) + prefix + ta.value.substring(lineStart);
+            ta.selectionStart = ta.selectionEnd = lineStart + prefix.length;
+            ta.focus();
+            updatePreview();
+            updateWordCount();
+        }
+
+        function insertCodeBlock() {
+            const ta = getTextarea();
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            const selected = ta.value.substring(start, end) || '代码';
+
+            const block = '\n```\n' + selected + '\n```\n';
+            ta.value = ta.value.substring(0, start) + block + ta.value.substring(end);
+            ta.selectionStart = start + 5;
+            ta.selectionEnd = start + 5 + selected.length;
+            ta.focus();
+            updatePreview();
+            updateWordCount();
+        }
+
+        function insertLink() {
+            const ta = getTextarea();
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            const selected = ta.value.substring(start, end) || '链接文字';
+
+            const link = '[' + selected + '](url)';
+            ta.value = ta.value.substring(0, start) + link + ta.value.substring(end);
+            ta.selectionStart = start + link.length - 4;
+            ta.selectionEnd = start + link.length - 1;
+            ta.focus();
+            updatePreview();
+            updateWordCount();
         }
 
         function showStatus(msg, kind) {
@@ -175,13 +483,13 @@
                 document.getElementById('post-slug').value = post.slug || '';
                 document.getElementById('post-category').value = post.category || '';
 
-                // 内容要从 /api/get 取，list 接口不带 content
                 const contentRes = await fetch('/api/get?slug=' + encodeURIComponent(post.slug));
                 const contentResult = await contentRes.json();
                 if (contentResult.success && contentResult.data) {
                     document.getElementById('post-content').value = contentResult.data.content || '';
                 }
                 updateWordCount();
+                updatePreview();
             } catch (e) {
                 alert('载入失败: ' + e.message);
             }
@@ -205,12 +513,11 @@
         }
 
         function autoSlugify() {
-            if (isEdit) return; // 编辑模式不自动覆盖
+            if (isEdit) return;
             const titleEl = document.getElementById('post-title');
             const slugEl = document.getElementById('post-slug');
             if (slugEl.dataset.touched === '1') return;
             const raw = titleEl.value.trim();
-            // 含非 ASCII 字符（中文等）→ 无法安全生成 slug，清空交给用户手动输入
             if (/[^\x00-\x7F]/.test(raw)) {
                 slugEl.value = '';
                 slugEl.placeholder = '请手动输入英文/数字路径，如 my-post';
@@ -265,7 +572,6 @@
                 if (result.success) {
                     showStatus(isEdit ? '已保存' : '已发布', 'ok');
                     setTimeout(() => {
-                        // 切到文章列表（通过外层 admin.html 的 iframe）
                         window.top.document.getElementById('admin-frame').src = 'admin-posts.html';
                     }, 700);
                 } else {
@@ -292,10 +598,24 @@
             titleEl.addEventListener('input', autoSlugify);
             contentEl.addEventListener('input', updateWordCount);
 
+            // 键盘快捷键
+            contentEl.addEventListener('keydown', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    if (e.key === 'b') {
+                        e.preventDefault();
+                        insertFormat('**', '**');
+                    } else if (e.key === 'i') {
+                        e.preventDefault();
+                        insertFormat('*', '*');
+                    }
+                }
+            });
+
             if (isEdit) {
                 loadPostForEdit(editId);
             } else {
                 loadCategorySuggestions();
+                updatePreview();
             }
         });
     </script>
