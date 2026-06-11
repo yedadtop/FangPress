@@ -124,7 +124,7 @@
                 </h1>
                 <div class="flex items-center gap-4 mt-4 text-xs text-stone-400 tracking-widest uppercase">
                     <span id="post-category" class="font-semibold text-stone-500 bg-stone-200/60 px-1.5 py-0.5 rounded-xs"></span>
-                    <span>·</span>
+                    <span id="post-category-sep">·</span>
                     <span id="views-group" class="contents">
                         <span id="post-views" class="flex items-center gap-1 font-sans lowercase normal-case tracking-normal"></span>
                         <span>·</span>
@@ -165,17 +165,18 @@
         const params = new URLSearchParams(window.location.search);
         const slug = params.get('slug');
 
-        const loadingEl    = document.getElementById('status-loading');
-        const badSlugEl    = document.getElementById('status-bad-slug');
-        const notFoundEl   = document.getElementById('status-not-found');
-        const errorEl      = document.getElementById('status-error');
-        const articleEl    = document.getElementById('post-article');
-        const titleEl      = document.getElementById('post-title');
-        const categoryEl   = document.getElementById('post-category');
-        const viewsEl      = document.getElementById('post-views');
-        const viewsGroupEl = document.getElementById('views-group');
-        const timeEl       = document.getElementById('post-time');
-        const contentEl    = document.getElementById('post-content');
+        const loadingEl       = document.getElementById('status-loading');
+        const badSlugEl       = document.getElementById('status-bad-slug');
+        const notFoundEl      = document.getElementById('status-not-found');
+        const errorEl         = document.getElementById('status-error');
+        const articleEl       = document.getElementById('post-article');
+        const titleEl         = document.getElementById('post-title');
+        const categoryEl      = document.getElementById('post-category');
+        const categorySepEl   = document.getElementById('post-category-sep');
+        const viewsEl         = document.getElementById('post-views');
+        const viewsGroupEl    = document.getElementById('views-group');
+        const timeEl          = document.getElementById('post-time');
+        const contentEl       = document.getElementById('post-content');
 
         const DEFAULT_SETTINGS = {
             site_title:    "Quinn's Space",
@@ -240,7 +241,13 @@
                     document.title = `${post.title || '未命名'} · ${siteTitle}`;
 
                     titleEl.textContent = post.title || '未命名';
-                    categoryEl.textContent = post.category || '未分类';
+                    const cat = (post.category || '').trim();
+                    if (cat) {
+                        categoryEl.textContent = cat;
+                    } else {
+                        categoryEl.classList.add('hidden');
+                        categorySepEl.classList.add('hidden');
+                    }
                     timeEl.textContent  = formatDate(post.created_at);
 
                     if (showViews) {

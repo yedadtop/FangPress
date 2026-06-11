@@ -121,14 +121,9 @@
                     <article class="fade-up py-7 group" style="animation-delay: ${i * 60}ms">
                         <a href="/post.html?slug=${encodeURIComponent(post.slug || '')}"
                            class="flex flex-col md:flex-row md:items-baseline justify-between gap-2 md:gap-6">
-                            <div class="flex items-baseline gap-3">
-                                <span class="shrink-0 text-[10px] uppercase tracking-wider font-semibold text-stone-400 border border-stone-200 px-1.5 py-0.5 rounded-sm bg-stone-100/50">
-                                    ${escapeHtml(post.category || '未分类')}
-                                </span>
-                                <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
-                                    <span class="link-underline pb-0.5">${escapeHtml(post.title)}</span>
-                                </h2>
-                            </div>
+                            <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
+                                <span class="link-underline pb-0.5">${escapeHtml(post.title)}</span>
+                            </h2>
                             <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5">
                                 ${showViews ? `
                                 <span class="flex items-center gap-1 font-sans">
