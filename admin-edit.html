@@ -276,12 +276,21 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">分类</label>
-                    <input type="text" id="post-category" list="category-list"
-                           class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500"
-                           placeholder="技术 / 随笔 / 未分类">
-                    <datalist id="category-list"></datalist>
+                <div class="flex items-end gap-3">
+                    <div class="flex-1 min-w-0">
+                        <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">分类</label>
+                        <input type="text" id="post-category" list="category-list"
+                               class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500"
+                               placeholder="技术 / 随笔 / 未分类">
+                        <datalist id="category-list"></datalist>
+                    </div>
+                    <div class="w-80 shrink-0">
+                        <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">导入文章 JSON</label>
+                        <input type="text" id="json-import-input"
+                               class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-xs font-mono text-stone-500 focus:outline-none focus:border-stone-500 focus:text-stone-900 transition-colors"
+                               placeholder='粘贴 JSON 自动回填 title / slug / category / content'
+                               spellcheck="false" autocomplete="off">
+                    </div>
                 </div>
 
                 <div>
@@ -894,6 +903,41 @@
                         e.preventDefault();
                         insertFormat('*', '*');
                     }
+                }
+            });
+
+            // 监听 JSON 导入输入框：input 事件中自动解析并回填
+            const jsonImportEl = document.getElementById('json-import-input');
+            jsonImportEl.addEventListener('input', () => {
+                const raw = jsonImportEl.value;
+                const trimmed = raw.trim();
+                if (!trimmed) return;
+                if (trimmed[0] !== '{' && trimmed[0] !== '[') return;
+                let data;
+                try {
+                    data = JSON.parse(trimmed);
+                } catch (_) {
+                    return; // 半截 JSON 时静默忽略
+                }
+                if (!data || typeof data !== 'object') return;
+
+                if (typeof data.title === 'string') {
+                    document.getElementById('post-title').value = data.title;
+                }
+                if (typeof data.slug === 'string') {
+                    const slugEl = document.getElementById('post-slug');
+                    slugEl.value = data.slug;
+                    slugEl.dataset.touched = '1';
+                }
+                if (typeof data.category === 'string') {
+                    document.getElementById('post-category').value = data.category;
+                }
+                if (typeof data.content === 'string') {
+                    const normalEl = document.getElementById('post-content');
+                    const fsEl = document.getElementById('post-content-fs');
+                    normalEl.value = data.content;
+                    fsEl.value = data.content;
+                    updateWordCount();
                 }
             });
 
