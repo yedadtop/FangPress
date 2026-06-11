@@ -59,7 +59,7 @@
 
     <!-- ========================== 登录面板 ========================== -->
     <div id="auth-panel" class="hidden max-w-sm mx-auto mt-12 bg-white p-8 rounded-2xl border border-stone-200/60 shadow-xs">
-        <h2 id="auth-title" class="font-serif text-2xl font-medium text-stone-900 mb-6 text-center">登录到空间</h2>
+        <h2 id="auth-title" class="font-serif text-2xl font-medium text-stone-900 mb-6 text-center">登录到 <span id="auth-site-title">…</span></h2>
 
         <div class="space-y-4">
             <div>
@@ -73,10 +73,9 @@
                        class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-400">
             </div>
             <button id="auth-btn" onclick="handleAuth()" class="w-full mt-2 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-sm font-medium transition-colors cursor-pointer">
-                认证
+                登录
             </button>
         </div>
-        <p id="auth-tips" class="mt-4 text-center text-xs text-stone-400 font-serif italic">默认账号 admin · 首次登录后请到「用户管理」修改密码</p>
     </div>
 
     <!-- ========================== 后台主面板：侧边栏 + 内容区 ========================== -->
@@ -165,6 +164,22 @@
     </div>
 
     <script>
+        // -------- 网站设置（用于登录面板展示主标题） --------
+        async function loadSiteTitle() {
+            const DEFAULT_SITE_TITLE = "Quinn's Space";
+            const el = document.getElementById('auth-site-title');
+            if (!el) return;
+            try {
+                const res = await fetch('/api/settings');
+                const result = await res.json();
+                const title = (result && result.success && result.data && result.data.site_title)
+                    || DEFAULT_SITE_TITLE;
+                el.textContent = title;
+            } catch (e) {
+                el.textContent = DEFAULT_SITE_TITLE;
+            }
+        }
+
         // -------- 鉴权 --------
         function checkSystemState() {
             const token = localStorage.getItem('admin_token');
@@ -246,6 +261,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            loadSiteTitle();
             checkSystemState();
             const frame = document.getElementById('admin-frame');
             frame.addEventListener('load', syncActiveNav);
