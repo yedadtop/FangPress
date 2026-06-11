@@ -266,9 +266,9 @@
                     document.title = `${post.title || '未命名'} · ${siteTitle}`;
 
                     titleEl.textContent = post.title || '未命名';
-                    const cat = (post.category || '').trim();
-                    if (cat) {
-                        categoryEl.textContent = cat;
+                    // 后端已将空/默认值归一为 null，前端只判真值即可
+                    if (post.category) {
+                        categoryEl.textContent = post.category;
                     } else {
                         categoryEl.classList.add('hidden');
                         categorySepEl.classList.add('hidden');

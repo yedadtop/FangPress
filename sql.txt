@@ -54,9 +54,4 @@ INSERT INTO site_settings (key, value, updated_at) VALUES
     ('show_views',     '1',                                                          datetime('now')),
     ('excerpt_length', '200',                                                        datetime('now'));
 
--- 已部署环境的兼容升级（按需执行；首次初始化可忽略）
--- INSERT INTO site_settings (key, value, updated_at)
---     VALUES ('excerpt_length', '200', datetime('now'))
---     ON CONFLICT(key) DO NOTHING;
-
 

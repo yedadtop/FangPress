@@ -50,9 +50,11 @@ export async function onRequestGet(context) {
 
     // 3) 字段裁剪：把 content 转成纯文本摘要后丢弃原文
     const data = posts.map(p => {
-      const { content, ...meta } = p;
+      const { content, category, ...meta } = p;
       return {
         ...meta,
+        // 归一化：DB 默认值 '未分类' / 空串 → null，前端按"无分类"处理
+        category: (!category || category.trim() === '未分类') ? null : category,
         excerpt: excerptLength > 0 ? makeExcerpt(content || '', excerptLength) : ''
       };
     });

@@ -29,6 +29,8 @@ export async function onRequestGet(context) {
     );
 
     post.views += 1;
+    // DB 默认值 '未分类' / 空串 → 归一为 null，前端按 "无分类" 处理
+    post.category = (!post.category || post.category.trim() === '未分类') ? null : post.category;
 
     return new Response(JSON.stringify({ success: true, data: post }), {
       status: 200,
