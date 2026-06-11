@@ -675,15 +675,15 @@
             document.getElementById('normal-mode').style.display = 'block';
             isFullscreen = false;
 
-            // 通知父窗口显示侧边栏
+            // 通知父窗口显示侧边栏并恢复iframe
             if (window.top !== window) {
-                window.top.postMessage({ type: 'show-sidebar' }, '*');
+                window.top.postMessage({ type: 'exit-fullscreen-editor' }, '*');
             }
 
             updateWordCount();
         }
 
-        // ESC 退出全屏（监听父窗口）
+        // ESC 退出全屏
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && isFullscreen) {
                 exitFullscreen();
