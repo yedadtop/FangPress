@@ -9,8 +9,8 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 
         :root {
-            --font-serif: 'Newsreader', 'Songti SC', 'STSong', serif;
-            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-serif: 'Source Han Serif CN', 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+            --font-sans: 'Source Han Sans CN', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
         }
 
         body { font-family: var(--font-sans); }
@@ -181,7 +181,7 @@
                     <article class="fade-up py-7 group" style="animation-delay: ${i * 60}ms">
                         <a href="/post.html?slug=${encodeURIComponent(post.slug || '')}" class="block">
                             <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-2 md:gap-6">
-                                <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
+                                <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-black group-hover:text-stone-600 transition-colors">
                                     <span class="link-underline pb-0.5">${escapeHtml(post.title)}</span>
                                 </h2>
                                 <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5">
