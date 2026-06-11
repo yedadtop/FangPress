@@ -14,14 +14,6 @@
         body { font-family: var(--font-sans); }
         .font-serif { font-family: var(--font-serif); }
 
-        @keyframes breathe {
-            0%, 100% { opacity: 0.2; transform: scale(0.8); }
-            50%      { opacity: 1;   transform: scale(1); }
-        }
-        .dot { animation: breathe 1.4s ease-in-out infinite; }
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
-
         .stat-card { transition: border-color .25s ease, transform .25s ease; }
         .stat-card:hover { border-color: #d6d3d1; transform: translateY(-1px); }
     </style>
@@ -36,11 +28,7 @@
             <p class="text-sm text-stone-500 mt-2">这里是空间的全景视图</p>
         </header>
 
-        <div id="loading" class="flex items-center gap-2 py-16 text-stone-400 text-sm">
-            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
-            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
-            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
-            <span class="ml-2">正在从边缘节点拉取数据...</span>
+        <div id="loading" class="hidden">
         </div>
 
         <div id="content" class="hidden space-y-10">

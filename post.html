@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>正在阅读 · Quinn's Space</title>
+    <title></title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
@@ -107,15 +107,6 @@
             transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
         }
         .back-btn:hover .arrow { transform: translateX(-3px); }
-
-        /* 加载呼吸点 */
-        @keyframes breathe {
-            0%, 100% { opacity: 0.2; transform: scale(0.8); }
-            50%      { opacity: 1;   transform: scale(1); }
-        }
-        .dot { animation: breathe 1.4s ease-in-out infinite; }
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
     </style>
 </head>
 <body class="bg-[#fafaf9] text-stone-800 min-h-screen selection:bg-stone-200">
@@ -146,11 +137,7 @@
             </div>
         </article>
 
-        <div id="status-loading" class="flex items-center gap-2 py-24 text-stone-400 text-sm tracking-wider">
-            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
-            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
-            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
-            <span class="ml-2">正在从边缘节点拉取内容</span>
+        <div id="status-loading" class="hidden">
         </div>
 
         <div id="status-bad-slug" class="hidden py-24 text-center">

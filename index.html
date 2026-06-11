@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quinn 的边缘纯字博客</title>
+    <title></title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap');
@@ -30,15 +30,6 @@
             background-size: 100% 1px;
         }
 
-        /* 加载呼吸点 */
-        @keyframes breathe {
-            0%, 100% { opacity: 0.2; transform: scale(0.8); }
-            50%      { opacity: 1;   transform: scale(1); }
-        }
-        .dot { animation: breathe 1.4s ease-in-out infinite; }
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
-
         /* 列表入场 */
         @keyframes fadeUp {
             from { opacity: 0; transform: translateY(6px); }
@@ -59,10 +50,7 @@
             </p>
         </header>
 
-        <div id="status-loading" class="flex items-center gap-2 py-16 text-stone-400 text-sm tracking-wider">
-            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
-            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
-            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+        <div id="status-loading" class="hidden">
         </div>
 
         <div id="status-empty" class="hidden py-20 text-center">

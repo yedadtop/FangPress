@@ -14,14 +14,6 @@
         body { font-family: var(--font-sans); }
         .font-serif { font-family: var(--font-serif); }
 
-        @keyframes breathe {
-            0%, 100% { opacity: 0.2; transform: scale(0.8); }
-            50%      { opacity: 1;   transform: scale(1); }
-        }
-        .dot { animation: breathe 1.4s ease-in-out infinite; }
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
-
         .post-row { transition: background-color .2s ease; }
         .post-row:hover { background: #fafaf9; }
         .action-btn { transition: color .2s ease, background-color .2s ease; }
@@ -59,11 +51,7 @@
             </select>
         </div>
 
-        <div id="loading" class="flex items-center gap-2 py-16 text-stone-400 text-sm">
-            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
-            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
-            <span class="dot w-1.5 h-1.5 rounded-full bg-stone-400"></span>
-            <span class="ml-2">正在拉取文章列表...</span>
+        <div id="loading" class="hidden">
         </div>
 
         <div id="empty" class="hidden py-20 text-center">
