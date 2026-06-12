@@ -34,23 +34,3 @@ export function makeExcerpt(content, maxLen = 200) {
   const cut = lastSpace > maxLen * 0.6 ? slice.slice(0, lastSpace) : slice;
   return cut.replace(/[\s,，.。!！?？;；:：]+$/, '') + '…';
 }
-
-/**
- * 专门用来剔除所有文章列表相关的 KV 缓存（包含主页和所有分类列表）
- */
-export async function clearListCache(env) {
-  try {
-    // 1. 先清除主列表缓存
-    await env.KV.delete("site:list:all");
-    
-    // 2. 扫描并批量清除所有带有分类后缀的 site:list:cat:* 缓存
-    const listResult = await env.KV.list({ prefix: "site:list:cat:" });
-    if (listResult && listResult.keys) {
-      for (const keyObj of listResult.keys) {
-        await env.KV.delete(keyObj.name);
-      }
-    }
-  } catch (_) {
-    // 静默防御，防止 KV 操作异常阻断后台管理的核心提交流程
-  }
-}

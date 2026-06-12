@@ -99,6 +99,15 @@ export async function onRequestPost(context) {
     await env.KV.delete(KV_SETTINGS_KEY);
     await env.KV.delete(KV_LIST_KEY);
 
+    // 主动把更新后的最新配置回填到 KV，避免下一次读取穿透到 D1
+    const { results: freshSettings } = await env.DB.prepare("SELECT key, value FROM site_settings").all();
+    const freshData = {};
+    (freshSettings || []).forEach(row => { freshData[row.key] = row.value; });
+    await env.KV.put(
+      KV_SETTINGS_KEY,
+      JSON.stringify({ success: true, data: freshData })
+    );
+
     return new Response(JSON.stringify({ success: true, message: `已更新 ${touched} 项配置并同步清理全站全量缓存。` }), {
       headers: { "Content-Type": "application/json" }
     });

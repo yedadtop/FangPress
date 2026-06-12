@@ -2,6 +2,7 @@
 import { makeExcerpt } from "./helpers.js";
 
 const KV_LIST_KEY = "site:posts:list";
+const POST_CACHE_TTL = 604800; // 7 天，与 get.js 保持一致
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -51,7 +52,21 @@ export async function onRequestPost(context) {
     )
     .run();
 
-    // ⚡ 核心修改点：新文章发布成功，立刻清理公开列表的 KV 缓存，确保主页更新
+    // ⚡ 核心修改点：写库的同时主动把新文章正文灌入 KV，让首屏读取即可命中缓存
+    const newPostCache = {
+      title: title.trim(),
+      content: content.trim(),
+      category: category ? (category.trim() || null) : null,
+      views: 0,
+      created_at: currentTime
+    };
+    await env.KV.put(
+      `post:content:${formattedSlug}`,
+      JSON.stringify(newPostCache),
+      { expirationTtl: POST_CACHE_TTL }
+    );
+
+    // 清理公开列表的 KV 缓存，确保主页更新
     await env.KV.delete(KV_LIST_KEY);
 
     return new Response(JSON.stringify({ success: true, message: "Post saved to D1 successfully" }), {
