@@ -4,6 +4,8 @@
 //   env.KV.get('site:posts:list')      -> { success:true, data:[{id,title,slug,category,views,created_at,excerpt}, ...] }
 //   env.KV.get('site:settings:data')   -> { success:true, data:{site_title,site_subtitle,show_views,...} }
 
+
+import { makeExcerpt } from './api/helpers.js';
 const KV_LIST_KEY = "site:posts:list";
 const KV_SETTINGS_KEY = "site:settings:data";
 
@@ -93,8 +95,43 @@ export async function onRequestGet(context) {
 
     const listObj = safeParseKV(listRaw);
     const settingsObj = safeParseKV(settingsRaw);
-    const posts = (listObj && listObj.success && Array.isArray(listObj.data)) ? listObj.data : [];
+    let posts = (listObj && listObj.success && Array.isArray(listObj.data)) ? listObj.data : [];
     const settings = (settingsObj && settingsObj.data) ? settingsObj.data : {};
+
+    // ⚡ 核心修复：如果 KV 被清空（没拿到数据），触发 D1 降级查询并异步回填 KV
+    if (posts.length === 0) {
+        try {
+            const { results } = await env.DB.prepare(
+                `SELECT id, title, slug, content, category, views, created_at
+                 FROM posts
+                 WHERE status = 'published'
+                 ORDER BY created_at DESC LIMIT 100`
+            ).all();
+
+            if (results && results.length > 0) {
+                const excerptLength = settings.excerpt_length ? parseInt(settings.excerpt_length, 10) : 200;
+                
+                // 构建数据列表
+                posts = results.map(p => ({
+                    id: p.id,
+                    title: p.title,
+                    slug: p.slug,
+                    category: (!p.category || p.category.trim() === '') ? null : p.category,
+                    views: p.views,
+                    created_at: p.created_at,
+                    excerpt: makeExcerpt(p.content || '', excerptLength)
+                }));
+
+                // 将查到的数据存回 KV（脱离关键路径，异步执行不卡顿）
+                context.waitUntil(
+                    env.KV.put(KV_LIST_KEY, JSON.stringify({ success: true, data: posts }), { expirationTtl: 43200 })
+                        .catch(err => console.error('KV 回填失败:', err))
+                );
+            }
+        } catch (err) {
+            console.error('D1 降级查询失败:', err);
+        }
+    }
 
     const showViews = String(settings.show_views) === '1';
     const siteTitle = settings.site_title || '';
