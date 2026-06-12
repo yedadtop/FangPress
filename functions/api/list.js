@@ -63,7 +63,7 @@ export async function onRequestGet(context) {
       headers: {
         "Content-Type": "application/json",
         // 摘要按当前 excerpt_length 现场计算 → 不缓存，确保设置变更后立刻生效
-        "Cache-Control": "no-store"
+        "Cache-Control": "public, max-age=10, s-maxage=60"
       }
     });
 
