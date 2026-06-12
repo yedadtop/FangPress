@@ -8,13 +8,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5.0.12/index.css">
     <style>
         :root {
-<<<<<<< HEAD
-            --font-serif: 'Noto Serif SC', 'Source Han Serif CN', 'Songti SC', 'STSong', serif;
-            --font-sans: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-=======
             --font-serif: 'Newsreader', 'Songti SC', 'STSong', serif;
             --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
->>>>>>> parent of 0b31a25 (style(ui): 替换网页字体为更适配简体中文的本地化字体)
         }
 
         body { font-family: var(--font-sans); }
@@ -167,51 +162,66 @@
             const errorEl   = document.getElementById('status-error');
             const listEl    = document.getElementById('posts-container');
 
-            // 设置与列表并行拉取
-            const [settings, listRes] = await Promise.all([
-                loadSettings(),
-                fetch('/api/list').then(r => r.json()).catch(() => ({ success: false, error: 'network' }))
-            ]);
-            applySettings(settings);
-            const showViews = String(settings.show_views) === '1';
+            try {
+                // 1) 站点设置与极致精简的文章列表并行拉取
+                const [settings, listRes] = await Promise.all([
+                    loadSettings(),
+                    fetch('/api/list').then(r => r.json()).catch(() => ({ success: false, error: 'network' }))
+                ]);
+                
+                applySettings(settings);
+                const showViews = String(settings.show_views) === '1';
 
-            loadingEl.classList.add('hidden');
+                loadingEl.classList.add('hidden');
 
-            if (listRes.success && Array.isArray(listRes.data) && listRes.data.length > 0) {
-                listEl.classList.remove('hidden');
-                document.getElementById('posts-skeleton').classList.add('hidden');
+                // 2) 接口返回失败时切换到错误态
+                if (!listRes.success) {
+                    errorEl.classList.remove('hidden');
+                    document.getElementById('posts-skeleton').classList.add('hidden');
+                    return;
+                }
 
-                listEl.innerHTML = listRes.data.map((post, i) => `
-                    <article class="fade-up py-7 group" style="animation-delay: ${i * 60}ms">
-                        <a href="/post.html?slug=${encodeURIComponent(post.slug || '')}" class="block">
-                            <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-2 md:gap-6">
-                                <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
-                                    <span class="link-underline pb-0.5">${escapeHtml(post.title)}</span>
-                                </h2>
-                                <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5">
-                                    ${showViews ? `
-                                    <span class="flex items-center gap-1 font-sans">
-                                        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                        ${post.views || 0}
-                                    </span>
-                                    <span>·</span>
-                                    ` : ''}
-                                    <time class="font-sans">${formatDate(post.created_at)}</time>
+                // 3) 渲染列表
+                if (Array.isArray(listRes.data) && listRes.data.length > 0) {
+                    listEl.classList.remove('hidden');
+                    document.getElementById('posts-skeleton').classList.add('hidden');
+
+                    listEl.innerHTML = listRes.data.map((post, i) => `
+                        <article class="fade-up py-7 group" style="animation-delay: ${i * 40}ms">
+                            <a href="/post.html?slug=${encodeURIComponent(post.slug || '')}" class="block">
+                                <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-2 md:gap-6">
+                                    <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
+                                        <span class="link-underline pb-0.5">${escapeHtml(post.title)}</span>
+                                    </h2>
+                                    <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5">
+                                        ${showViews ? `
+                                        <span class="flex items-center gap-1 font-sans">
+                                            <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            ${post.views || 0}
+                                        </span>
+                                        <span>·</span>
+                                        ` : ''}
+                                        <time class="font-sans">${formatDate(post.created_at)}</time>
+                                    </div>
                                 </div>
-                            </div>
-                            ${post.excerpt ? `
-                            <p class="mt-2.5 font-serif text-stone-500 text-[0.95rem] leading-relaxed">
-                                ${escapeHtml(post.excerpt)}
-                            </p>
-                            ` : ''}
-                        </a>
-                    </article>
-                `).join('');
-            } else {
-                emptyEl.classList.remove('hidden');
+                                ${post.excerpt ? `
+                                <p class="mt-2.5 font-serif text-stone-500 text-[0.95rem] leading-relaxed">
+                                    ${escapeHtml(post.excerpt)}
+                                </p>
+                                ` : ''}
+                            </a>
+                        </article>
+                    `).join('');
+                } else {
+                    emptyEl.classList.remove('hidden');
+                    document.getElementById('posts-skeleton').classList.add('hidden');
+                }
+            } catch (err) {
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
                 document.getElementById('posts-skeleton').classList.add('hidden');
             }
         }

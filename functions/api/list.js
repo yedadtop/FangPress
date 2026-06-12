@@ -13,14 +13,14 @@ export async function onRequestGet(context) {
         `SELECT id, title, slug, category, views, excerpt, created_at
          FROM posts
          WHERE category = ? AND status = 'published'
-         ORDER BY_created_at DESC LIMIT 100`
+         ORDER BY created_at DESC LIMIT 100`
       ).bind(categoryParam);
     } else {
       stmt = env.DB.prepare(
         `SELECT id, title, slug, category, views, excerpt, created_at
          FROM posts
          WHERE status = 'published'
-         ORDER BY_created_at DESC LIMIT 100`
+         ORDER BY created_at DESC LIMIT 100`
       );
     }
     const { results } = await stmt.all();
