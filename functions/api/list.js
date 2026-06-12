@@ -4,8 +4,6 @@ import { makeExcerpt } from "./helpers.js";
 const KV_LIST_KEY_PREFIX = "site:posts:list:page:"; 
 const KV_CAT_KEY_PREFIX = "site:posts:list:cat:";    
 const KV_SETTINGS_KEY = "site:settings:data";
-// ⚡ 恢复给管理后台使用的全量缓存键名
-const KV_ADMIN_LIST_KEY = "site:posts:list"; 
 const PAGE_SIZE = 10;
 
 export async function onRequestGet(context) {
@@ -14,7 +12,6 @@ export async function onRequestGet(context) {
   const categoryParam = url.searchParams.get('category');
   const pageParam = url.searchParams.get('page');
 
-  // ⚡ 核心修复：判断是否明确要求分页。管理后台不传 page，所以 isPaginated 会是 false
   const isPaginated = pageParam !== null;
   let page = 1;
   if (isPaginated) {
@@ -24,28 +21,32 @@ export async function onRequestGet(context) {
 
   const formattedCategory = categoryParam ? categoryParam.trim().toLowerCase() : null;
   
-  // ⚡ 根据请求来源，路由到不同的缓存键
-  let currentKvKey;
+  // ⚡ 核心判断：是否为管理后台的全量请求（无分类且无分页）
+  const isAdminQuery = !formattedCategory && !isPaginated;
+  
+  let currentKvKey = null;
   if (formattedCategory) {
     currentKvKey = `${KV_CAT_KEY_PREFIX}${formattedCategory}`;
   } else if (isPaginated) {
     currentKvKey = `${KV_LIST_KEY_PREFIX}${page}`;
-  } else {
-    currentKvKey = KV_ADMIN_LIST_KEY; // 管理后台走专属全量缓存
   }
+  // 💡 如果是 isAdminQuery，currentKvKey 保持为 null，彻底绕过 KV 缓存
 
   try {
-    const cachedList = await env.KV.get(currentKvKey);
-    if (cachedList) {
-      return new Response(cachedList, {
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=10, s-maxage=60"
-        }
-      });
+    // 只有前台请求才尝试读取缓存
+    if (currentKvKey) {
+      const cachedList = await env.KV.get(currentKvKey);
+      if (cachedList) {
+        return new Response(cachedList, {
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "public, max-age=10, s-maxage=60"
+          }
+        });
+      }
     }
 
-    // --- 处理摘要长度设置 (逻辑不变) ---
+    // --- 处理摘要长度设置 ---
     let excerptLength = 200;
     try {
       const settingsCache = await env.KV.get(KV_SETTINGS_KEY);
@@ -78,7 +79,7 @@ export async function onRequestGet(context) {
          ORDER BY created_at DESC LIMIT 100`
       ).bind(formattedCategory);
     } else if (isPaginated) {
-      // ⚡ 分页查询：LIMIT 11
+      // ⚡ 前台分页查询：严格限制 published
       const offset = (page - 1) * PAGE_SIZE;
       stmt = env.DB.prepare(
         `SELECT id, title, slug, content, category, views, created_at
@@ -88,11 +89,10 @@ export async function onRequestGet(context) {
          LIMIT ${PAGE_SIZE + 1} OFFSET ${offset}`
       );
     } else {
-      // ⚡ 管理后台查询：获取全量 100 篇
+      // ⚡ 管理后台查询：查询所有状态文章（包含草稿），且直接查 D1 保证实时性
       stmt = env.DB.prepare(
-        `SELECT id, title, slug, content, category, views, created_at
+        `SELECT id, title, slug, content, category, views, created_at, status
          FROM posts
-         WHERE status = 'published'
          ORDER BY created_at DESC LIMIT 100`
       );
     }
@@ -103,7 +103,6 @@ export async function onRequestGet(context) {
     let hasMore = false;
     let pageResults = rawResults;
 
-    // ⚡ 仅对没有分类且明确要求分页的请求，执行 10 条切片
     if (!formattedCategory && isPaginated) {
       hasMore = rawResults.length > PAGE_SIZE;
       if (hasMore) pageResults = rawResults.slice(0, PAGE_SIZE);
@@ -116,20 +115,23 @@ export async function onRequestGet(context) {
       category: (!p.category || p.category.trim() === '') ? null : p.category,
       views: p.views,
       created_at: p.created_at,
+      status: p.status || 'published', // 后台可以读取这个字段区分草稿
       excerpt: makeExcerpt(p.content || '', excerptLength)
     }));
 
-    // 根据不同请求返回带或不带 has_more 字段的数据
     const responseData = (!formattedCategory && isPaginated)
       ? { success: true, data, has_more: hasMore }
       : { success: true, data };
       
     const responseString = JSON.stringify(responseData);
 
-    context.waitUntil(
-      env.KV.put(currentKvKey, responseString, { expirationTtl: 43200 })
-        .catch(err => console.error('KV put list failed (list.js):', err))
-    );
+    // ⚡ 仅当是前台请求时（currentKvKey 存在），才将结果回填到缓存
+    if (currentKvKey) {
+      context.waitUntil(
+        env.KV.put(currentKvKey, responseString, { expirationTtl: 43200 })
+          .catch(err => console.error('KV put list failed (list.js):', err))
+      );
+    }
 
     return new Response(responseString, {
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
