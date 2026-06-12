@@ -52,22 +52,31 @@ export async function onRequestPost(context) {
     )
     .run();
 
-    // ⚡ 核心修改点：写库的同时主动把新文章正文灌入 KV，让首屏读取即可命中缓存
+    // ⚡ 核心修改点：写库的同时主动把新文章大字段灌入 KV。
+    //    不缓存 views（views 是高频变化字段，交给 get.js 每次实时读 D1）。
     const newPostCache = {
       title: title.trim(),
       content: content.trim(),
       category: category ? (category.trim() || null) : null,
-      views: 0,
       created_at: currentTime
     };
-    await env.KV.put(
-      `post:content:${formattedSlug}`,
-      JSON.stringify(newPostCache),
-      { expirationTtl: POST_CACHE_TTL }
-    );
+    // 缓存写入失败不能让接口 500；D1 已经是 source of truth，下次读会回源并重新回填
+    try {
+      await env.KV.put(
+        `post:content:${formattedSlug}`,
+        JSON.stringify(newPostCache),
+        { expirationTtl: POST_CACHE_TTL }
+      );
+    } catch (e) {
+      console.error('KV put failed (push.js):', e);
+    }
 
-    // 清理公开列表的 KV 缓存，确保主页更新
-    await env.KV.delete(KV_LIST_KEY);
+    // 清理公开列表的 KV 缓存，确保主页更新（同样容错）
+    try {
+      await env.KV.delete(KV_LIST_KEY);
+    } catch (e) {
+      console.error('KV delete list failed (push.js):', e);
+    }
 
     return new Response(JSON.stringify({ success: true, message: "Post saved to D1 successfully" }), {
       headers: { "Content-Type": "application/json" }

@@ -739,7 +739,11 @@
                 document.getElementById('post-category').value = post.category || '';
 
                 // ⚡ 核心修复：添加动态时间戳 _t=，彻底摧毁浏览器的 Disk Cache 缓存，确保回显绝对实时的正文
-                const contentRes = await fetch(`/api/get?slug=${encodeURIComponent(post.slug)}&_t=${Date.now()}`);
+                // 同时带 Bearer Token —— 后台编辑可能被打开的是草稿（status='draft'），
+                // get.js 现在对未发布文章只对管理员放行，少了 Token 草稿会被 404。
+                const contentRes = await fetch(`/api/get?slug=${encodeURIComponent(post.slug)}&_t=${Date.now()}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 const contentResult = await contentRes.json();
                 if (contentResult.success && contentResult.data) {
                     document.getElementById('post-content').value = contentResult.data.content || '';

@@ -26,8 +26,9 @@ export async function onRequestPost(context) {
 
     const newSlug = slug.trim().toLowerCase();
 
-    // 1) 查出旧 slug 用于精准清除正文 KV，同时取到旧 views / created_at 避免更新后丢失
-    const oldPost = await env.DB.prepare("SELECT slug, views, created_at FROM posts WHERE id = ?").bind(id).first();
+    // 1) 查出旧 slug 用于精准清除正文 KV，同时取到旧 created_at 避免更新后丢失
+    //    注意：views 不再从 D1 读出来塞进 KV，views 是实时字段，由 get.js 每次直接查 D1
+    const oldPost = await env.DB.prepare("SELECT slug, created_at FROM posts WHERE id = ?").bind(id).first();
 
     let excerptLength = 200;
     try {
@@ -53,27 +54,43 @@ export async function onRequestPost(context) {
       return new Response(JSON.stringify({ success: false, error: "未找到该文章，可能已被删除" }), { status: 404 });
     }
 
-    // ⚡ 核心修改点：数据库保存成功后，全线瓦解老正文缓存、再主动回填新正文到 KV、清理列表缓存
+    // ⚡ 核心修改点：数据库保存成功后，先抹除老正文缓存、再回填新正文到 KV、清理列表缓存。
+    //    全部用 try-catch 容错：KV 写入失败不能让接口 500，D1 已经持久化，下次读会回源。
     if (oldPost && oldPost.slug) {
-      await env.KV.delete(`post:content:${oldPost.slug.trim().toLowerCase()}`);
+      try {
+        await env.KV.delete(`post:content:${oldPost.slug.trim().toLowerCase()}`);
+      } catch (e) {
+        console.error('KV delete old-slug failed (update.js):', e);
+      }
     }
-    await env.KV.delete(`post:content:${newSlug}`);
+    try {
+      await env.KV.delete(`post:content:${newSlug}`);
+    } catch (e) {
+      console.error('KV delete new-slug failed (update.js):', e);
+    }
 
-    // 主动回填最新正文到 KV（保留历史 views，避免浏览量回退）
+    // 主动回填最新正文到 KV（不包含 views）
     const updatedCache = {
       title: title.trim(),
       content: content.trim(),
       category: category ? (category.trim() || null) : null,
-      views: (oldPost && typeof oldPost.views === 'number') ? oldPost.views : 0,
       created_at: (oldPost && oldPost.created_at) ? oldPost.created_at : now
     };
-    await env.KV.put(
-      `post:content:${newSlug}`,
-      JSON.stringify(updatedCache),
-      { expirationTtl: POST_CACHE_TTL }
-    );
+    try {
+      await env.KV.put(
+        `post:content:${newSlug}`,
+        JSON.stringify(updatedCache),
+        { expirationTtl: POST_CACHE_TTL }
+      );
+    } catch (e) {
+      console.error('KV put failed (update.js):', e);
+    }
 
-    await env.KV.delete(KV_LIST_KEY);
+    try {
+      await env.KV.delete(KV_LIST_KEY);
+    } catch (e) {
+      console.error('KV delete list failed (update.js):', e);
+    }
 
     return new Response(JSON.stringify({ success: true, message: "文章已更新" }), {
       headers: { "Content-Type": "application/json" }
