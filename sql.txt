@@ -1,8 +1,3 @@
--- ============================================================
---  Quinn's Space  完整初始化脚本
---  默认管理员：admin / admin（首次登录后请立即改密）
--- ============================================================
-
 DROP TABLE IF EXISTS site_settings;
 DROP TABLE IF EXISTS posts;
 DROP TABLE IF EXISTS users;
@@ -21,6 +16,7 @@ CREATE TABLE posts (
     title TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
     content TEXT NOT NULL,
+    excerpt TEXT DEFAULT '', -- 新增：专门存放计算好的纯文本摘要
     category TEXT DEFAULT '未分类',
     views INTEGER DEFAULT 0,
     status TEXT DEFAULT 'published',
@@ -40,18 +36,11 @@ CREATE TABLE site_settings (
     updated_at TEXT NOT NULL
 );
 
--- ============================================================
---  默认管理员账号（密码 = "admin" 的 SHA-256 哈希）
---  首次登录后请到「用户管理」修改密码
--- ============================================================
 INSERT INTO users (username, password_hash, nickname, created_at) VALUES
     ('admin', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', 'Admin', datetime('now'));
 
--- 站点设置种子数据
 INSERT INTO site_settings (key, value, updated_at) VALUES
     ('site_title',     'Quinn''s Space',                                              datetime('now')),
     ('site_subtitle',  '基于 Cloudflare Pages & D1 关系型数据库的纯文字内容流',          datetime('now')),
-    ('show_views',     '1',                                                          datetime('now')),
-    ('excerpt_length', '200',                                                        datetime('now'));
-
-
+    ('show_views',     '1',                                                           datetime('now')),
+    ('excerpt_length', '200',                                                         datetime('now'));
