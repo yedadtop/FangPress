@@ -34,81 +34,107 @@ export async function onRequestGet(context) {
   const isAdmin = await isAuthorizedAdmin(request, env);
 
   try {
-    const dbMeta = await env.DB.prepare(
-      "SELECT id, status, views FROM posts WHERE slug = ?"
-    ).bind(normalizedSlug).first();
-
-    if (!dbMeta) {
-      return new Response(JSON.stringify({ success: false, error: 'Post not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    if (dbMeta.status !== 'published' && !isAdmin) {
-      return new Response(JSON.stringify({ success: false, error: 'Post not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
+    // ⚡ 1) KV 优先策略:大字段和小字段(id/status/views)一并入缓存,关键路径完全脱离 D1
     const cached = await env.KV.get(kvKey);
-    let post;
 
     if (cached) {
       const c = JSON.parse(cached);
-      post = {
-        title: c.title,
-        content: c.content,
-        category: c.category ?? null,
-        created_at: c.created_at
-      };
-    } else {
-      const dbPost = await env.DB.prepare(
-        "SELECT title, content, category, created_at FROM posts WHERE id = ?"
-      ).bind(dbMeta.id).first();
+      // 兼容旧格式缓存:若缺 id/status/views 关键字段则降级回 D1,下次回填时自动升级到新格式
+      if (c && c.id != null && c.status != null && c.views != null) {
+        // 草稿保护:未发布文章对前台访客 404
+        if (c.status !== 'published' && !isAdmin) {
+          return new Response(JSON.stringify({ success: false, error: 'Post not found' }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
 
-      if (!dbPost) {
-        return new Response(JSON.stringify({ success: false, error: 'Post not found' }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' }
+        const post = {
+          title: c.title,
+          content: c.content,
+          category: c.category ?? null,
+          created_at: c.created_at,
+          // 内存补偿 +1,真实写入交给 waitUntil 异步完成
+          views: c.views + 1
+        };
+
+        // 浏览量自增完全移出关键路径
+        if (c.status === 'published') {
+          context.waitUntil(
+            env.DB.prepare("UPDATE posts SET views = views + 1 WHERE id = ?")
+              .bind(c.id)
+              .run()
+              .catch(err => console.error('Async views increment failed:', err))
+          );
+        }
+
+        return new Response(JSON.stringify({ success: true, data: post }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': c.status === 'published' ? 'public, max-age=5' : 'no-store'
+          }
         });
       }
+    }
 
-      const category = (!dbPost.category || dbPost.category.trim() === '') ? null : dbPost.category;
-      post = {
+    // 2) KV miss 或旧格式 → D1 一次性拿全部字段(原本 2 条 SELECT 合并为 1 条)
+    const dbPost = await env.DB.prepare(
+      "SELECT id, status, views, title, content, category, created_at FROM posts WHERE slug = ?"
+    ).bind(normalizedSlug).first();
+
+    if (!dbPost) {
+      return new Response(JSON.stringify({ success: false, error: 'Post not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (dbPost.status !== 'published' && !isAdmin) {
+      return new Response(JSON.stringify({ success: false, error: 'Post not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const category = (!dbPost.category || dbPost.category.trim() === '') ? null : dbPost.category;
+    const post = {
+      title: dbPost.title,
+      content: dbPost.content,
+      category,
+      created_at: dbPost.created_at,
+      views: dbPost.views + 1
+    };
+
+    if (dbPost.status === 'published') {
+      // ⚡ 回填新格式 KV(下次直接命中关键路径,零 D1 等待)
+      const cachePayload = {
+        id: dbPost.id,
+        status: dbPost.status,
+        views: dbPost.views,
         title: dbPost.title,
         content: dbPost.content,
         category,
         created_at: dbPost.created_at
       };
-
-      if (dbMeta.status === 'published') {
-        const cachePayload = JSON.stringify(post);
-        context.waitUntil(
-          env.KV.put(kvKey, cachePayload, { expirationTtl: 604800 })
-            .catch(err => console.error('KV put failed (get.js):', err))
-        );
-      }
-    }
-
-    // ⚡ 性能微调优化点：前台浏览数自增改为纯异步执行，不再阻塞当前的 HTTP 请求返回响应
-    if (dbMeta.status === 'published') {
       context.waitUntil(
-        env.DB.prepare("UPDATE posts SET views = views + 1 WHERE id = ?").bind(dbMeta.id).run()
+        env.KV.put(kvKey, JSON.stringify(cachePayload), { expirationTtl: 604800 })
+          .catch(err => console.error('KV put failed (get.js):', err))
+      );
+      // 浏览量自增异步化
+      context.waitUntil(
+        env.DB.prepare("UPDATE posts SET views = views + 1 WHERE id = ?")
+          .bind(dbPost.id)
+          .run()
           .catch(err => console.error('Async views increment failed:', err))
       );
-      // 内存实时递增 1 补偿反馈给用户，响应体验提升显著
-      post.views = dbMeta.views + 1;
-    } else {
-      post.views = dbMeta.views;
     }
 
     return new Response(JSON.stringify({ success: true, data: post }), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': dbMeta.status === 'published' ? 'public, max-age=5' : 'no-store'
+        'Cache-Control': dbPost.status === 'published' ? 'public, max-age=5' : 'no-store'
       }
     });
 

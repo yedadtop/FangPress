@@ -31,16 +31,18 @@ export async function onRequestPost(context) {
     const oldPost = await env.DB.prepare("SELECT slug, category, created_at FROM posts WHERE id = ?").bind(id).first();
     const now = new Date().toISOString();
 
-    const result = await env.DB
+    // 💡 进阶:用 RETURNING 一次性拿到 id/status/views/created_at,让 get.js 关键路径完全脱离 D1
+    const updated = await env.DB
       .prepare(
         `UPDATE posts
          SET title = ?, slug = ?, content = ?, category = ?, status = ?, updated_at = ?
-         WHERE id = ?`
+         WHERE id = ?
+         RETURNING id, status, views, created_at`
       )
       .bind(title.trim(), newSlug, content.trim(), targetCategory, targetStatus, now, id)
-      .run();
+      .first();
 
-    if (result.meta && result.meta.changes === 0) {
+    if (!updated) {
       return new Response(JSON.stringify({ success: false, error: "未找到该文章，可能已被删除" }), { status: 404 });
     }
 
@@ -62,10 +64,13 @@ export async function onRequestPost(context) {
     // 如果是 draft，上面已经全面 delete 干净了，这就完美了！
     if (targetStatus === 'published') {
       const updatedCache = {
+        id: updated.id,
+        status: updated.status,
+        views: updated.views,
         title: title.trim(),
         content: content.trim(),
         category: targetCategory,
-        created_at: (oldPost && oldPost.created_at) ? oldPost.created_at : now
+        created_at: updated.created_at
       };
       try {
         await env.KV.put(`post:content:${newSlug}`, JSON.stringify(updatedCache), { expirationTtl: POST_CACHE_TTL });

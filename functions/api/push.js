@@ -27,9 +27,11 @@ export async function onRequestPost(context) {
     const currentTime = new Date().toISOString();
 
     // 💡 优化：移除对并不需要的字段 excerpt 的计算与存储
-    await env.DB.prepare(
+    // 💡 进阶：使用 RETURNING 一次性拿到 id/status/views,让 get.js 的关键路径完全脱离 D1
+    const inserted = await env.DB.prepare(
       `INSERT INTO posts (title, slug, content, category, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?)
+       RETURNING id, status, views`
     )
     .bind(
       title.trim(),
@@ -39,9 +41,12 @@ export async function onRequestPost(context) {
       currentTime,
       currentTime
     )
-    .run();
+    .first();
 
     const newPostCache = {
+      id: inserted.id,
+      status: inserted.status,
+      views: inserted.views,
       title: title.trim(),
       content: content.trim(),
       category: targetCategory,
