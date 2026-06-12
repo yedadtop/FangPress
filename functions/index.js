@@ -105,8 +105,8 @@ export async function onRequestGet(context) {
     let posts = (listObj && listObj.success && Array.isArray(listObj.data)) ? listObj.data : [];
     const settings = (settingsObj && settingsObj.data) ? settingsObj.data : {};
 
-    // ⚡ 修复：KV 命中时从 list.js 写入的 has_more 字段还原 hasNextPage，避免分页按钮缺失
-    let hasNextPage = !!(listObj && listObj.has_more === true);
+    // 默认假设没有下一页；仅在 D1 降级路径下根据 LIMIT 11 实际推断
+    let hasNextPage = false;
 
     // ⚡ KV 未命中当前页：触发 D1 降级查询（LIMIT 11 探测下一页）并异步回填
     if (posts.length === 0) {
