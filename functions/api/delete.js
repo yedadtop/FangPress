@@ -1,5 +1,4 @@
 // functions/api/delete.js
-const KV_LIST_KEY = "site:posts:list";
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -25,8 +24,15 @@ export async function onRequestPost(context) {
     if (post && post.slug) {
       try { await env.KV.delete(`post:content:${post.slug.trim().toLowerCase()}`); } catch (_) {}
     }
-    try { await env.KV.delete(KV_LIST_KEY); } catch (_) {}
-    
+
+    // ⚡ 批量清除所有分页的首页列表缓存，防止漏网之鱼导致错位
+    try {
+      const listKeys = await env.KV.list({ prefix: "site:posts:list:page:" });
+      for (const k of listKeys.keys) {
+        await env.KV.delete(k.name);
+      }
+    } catch (_) {}
+
     // 💡 清理该文章归属的分类页列表缓存，防止分类页出现幽灵文章数据
     if (post && post.category) {
       try { await env.KV.delete(`site:posts:list:cat:${post.category.trim().toLowerCase()}`); } catch (_) {}

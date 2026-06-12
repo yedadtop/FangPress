@@ -81,7 +81,14 @@ export async function onRequestPost(context) {
     // ⚡ 核心移除：这里彻底删除了原先消耗海量 CPU 的 D1 `posts` 表批量 UPDATE
     // 由于我们在 list.js 实现了动态裁剪，这里只需精准让 KV 失效：
     await env.KV.delete(KV_SETTINGS_KEY);
-    await env.KV.delete(KV_LIST_KEY);
+
+    // ⚡ 批量清除所有分页的首页列表缓存，防止漏网之鱼导致错位
+    try {
+      const listKeys = await env.KV.list({ prefix: "site:posts:list:page:" });
+      for (const k of listKeys.keys) {
+        await env.KV.delete(k.name);
+      }
+    } catch (_) {}
 
     // 💡 进阶联动优化：因为修改设置可能导致全站的分类列表布局也发生变动，
     // 我们利用 KV 的 list 机制把带有特定分类前缀的列表缓存一口气全部扫除清除

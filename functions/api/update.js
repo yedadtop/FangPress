@@ -1,5 +1,4 @@
 // functions/api/update.js
-const KV_LIST_KEY = "site:posts:list";
 const POST_CACHE_TTL = 604800;
 
 export async function onRequestPost(context) {
@@ -51,7 +50,14 @@ export async function onRequestPost(context) {
       try { await env.KV.delete(`post:content:${oldPost.slug.trim().toLowerCase()}`); } catch (_) {}
     }
     try { await env.KV.delete(`post:content:${newSlug}`); } catch (_) {}
-    try { await env.KV.delete(KV_LIST_KEY); } catch (_) {}
+
+    // ⚡ 批量清除所有分页的首页列表缓存，防止漏网之鱼导致错位
+    try {
+      const listKeys = await env.KV.list({ prefix: "site:posts:list:page:" });
+      for (const k of listKeys.keys) {
+        await env.KV.delete(k.name);
+      }
+    } catch (_) {}
 
     if (oldPost && oldPost.category) {
       try { await env.KV.delete(`site:posts:list:cat:${oldPost.category.trim().toLowerCase()}`); } catch (_) {}

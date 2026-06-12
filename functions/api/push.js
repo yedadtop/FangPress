@@ -59,8 +59,13 @@ export async function onRequestPost(context) {
       console.error('KV put failed (push.js):', e);
     }
 
-    // ⚡ 精准双清理：首页缓存 + 新归属分类缓存
-    try { await env.KV.delete(KV_LIST_KEY); } catch (_) {}
+    // ⚡ 批量清除所有分页的首页列表缓存，防止漏网之鱼导致错位
+    try {
+      const listKeys = await env.KV.list({ prefix: "site:posts:list:page:" });
+      for (const k of listKeys.keys) {
+        await env.KV.delete(k.name);
+      }
+    } catch (_) {}
     if (targetCategory) {
       try { await env.KV.delete(`site:posts:list:cat:${targetCategory.toLowerCase()}`); } catch (_) {}
     }
