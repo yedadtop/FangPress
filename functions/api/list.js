@@ -1,25 +1,38 @@
 // functions/api/list.js
 import { makeExcerpt } from "./helpers.js";
 
-const KV_LIST_KEY_PREFIX = "site:posts:list:page:"; // 无分类分页键前缀
-const KV_CAT_KEY_PREFIX = "site:posts:list:cat:";    // 分类键（暂不引入分页，保持原结构）
+const KV_LIST_KEY_PREFIX = "site:posts:list:page:"; 
+const KV_CAT_KEY_PREFIX = "site:posts:list:cat:";    
 const KV_SETTINGS_KEY = "site:settings:data";
+// ⚡ 恢复给管理后台使用的全量缓存键名
+const KV_ADMIN_LIST_KEY = "site:posts:list"; 
 const PAGE_SIZE = 10;
 
 export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const categoryParam = url.searchParams.get('category');
+  const pageParam = url.searchParams.get('page');
 
-  // ⚡ 新增：解析分页参数（默认 1，防御 NaN / 负数）
-  let page = parseInt(url.searchParams.get('page') || '1', 10);
-  if (isNaN(page) || page < 1) page = 1;
+  // ⚡ 核心修复：判断是否明确要求分页。管理后台不传 page，所以 isPaginated 会是 false
+  const isPaginated = pageParam !== null;
+  let page = 1;
+  if (isPaginated) {
+    page = parseInt(pageParam, 10);
+    if (isNaN(page) || page < 1) page = 1;
+  }
 
   const formattedCategory = categoryParam ? categoryParam.trim().toLowerCase() : null;
-  // ⚡ 改动点：无 category 时使用分页键 site:posts:list:page:<n>；有 category 时键名不变
-  const currentKvKey = formattedCategory
-    ? `${KV_CAT_KEY_PREFIX}${formattedCategory}`
-    : `${KV_LIST_KEY_PREFIX}${page}`;
+  
+  // ⚡ 根据请求来源，路由到不同的缓存键
+  let currentKvKey;
+  if (formattedCategory) {
+    currentKvKey = `${KV_CAT_KEY_PREFIX}${formattedCategory}`;
+  } else if (isPaginated) {
+    currentKvKey = `${KV_LIST_KEY_PREFIX}${page}`;
+  } else {
+    currentKvKey = KV_ADMIN_LIST_KEY; // 管理后台走专属全量缓存
+  }
 
   try {
     const cachedList = await env.KV.get(currentKvKey);
@@ -32,6 +45,7 @@ export async function onRequestGet(context) {
       });
     }
 
+    // --- 处理摘要长度设置 (逻辑不变) ---
     let excerptLength = 200;
     try {
       const settingsCache = await env.KV.get(KV_SETTINGS_KEY);
@@ -54,17 +68,17 @@ export async function onRequestGet(context) {
       }
     } catch (_) {}
 
+    // --- 动态构建查询语句 ---
     let stmt;
     if (formattedCategory) {
-      // 分类场景：暂保留原 LIMIT 100 行为（未分页）
       stmt = env.DB.prepare(
         `SELECT id, title, slug, content, category, views, created_at
          FROM posts
          WHERE LOWER(category) = ? AND status = 'published'
          ORDER BY created_at DESC LIMIT 100`
       ).bind(formattedCategory);
-    } else {
-      // ⚡ 改动点：使用 LIMIT 11 + OFFSET 探测下一页
+    } else if (isPaginated) {
+      // ⚡ 分页查询：LIMIT 11
       const offset = (page - 1) * PAGE_SIZE;
       stmt = env.DB.prepare(
         `SELECT id, title, slug, content, category, views, created_at
@@ -73,14 +87,24 @@ export async function onRequestGet(context) {
          ORDER BY created_at DESC
          LIMIT ${PAGE_SIZE + 1} OFFSET ${offset}`
       );
+    } else {
+      // ⚡ 管理后台查询：获取全量 100 篇
+      stmt = env.DB.prepare(
+        `SELECT id, title, slug, content, category, views, created_at
+         FROM posts
+         WHERE status = 'published'
+         ORDER BY created_at DESC LIMIT 100`
+      );
     }
+    
     const { results } = await stmt.all();
     const rawResults = results || [];
 
-    // ⚡ 改动点：无分类场景下探测 has_more 并切片
     let hasMore = false;
     let pageResults = rawResults;
-    if (!formattedCategory) {
+
+    // ⚡ 仅对没有分类且明确要求分页的请求，执行 10 条切片
+    if (!formattedCategory && isPaginated) {
       hasMore = rawResults.length > PAGE_SIZE;
       if (hasMore) pageResults = rawResults.slice(0, PAGE_SIZE);
     }
@@ -95,10 +119,11 @@ export async function onRequestGet(context) {
       excerpt: makeExcerpt(p.content || '', excerptLength)
     }));
 
-    // ⚡ 改动点：无分类场景下返回结构加入 has_more 字段
-    const responseData = formattedCategory
-      ? { success: true, data }
-      : { success: true, data, has_more: hasMore };
+    // 根据不同请求返回带或不带 has_more 字段的数据
+    const responseData = (!formattedCategory && isPaginated)
+      ? { success: true, data, has_more: hasMore }
+      : { success: true, data };
+      
     const responseString = JSON.stringify(responseData);
 
     context.waitUntil(
