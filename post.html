@@ -11,145 +11,121 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         :root {
-            /* === 基于调试面板锁定的核心视觉变量 === */
-            --reader-bg: hsl(40, 23%, 95%);           /* 纸张背景明度 95% */
-            --reader-text: hsl(24, 10%, 10%);         /* 墨质字色暗度 10% */
-            --reader-size: 1.2rem;                    /* 正文字号 1.2rem */
-            --reader-line-height: 1.80;               /* 呼吸行高 1.80 */
-            --reader-width: 50rem;                    /* 容器黄金行宽 50rem */
-            --reader-paragraph-spacing: 1.40em;       /* 段落底部间距 */
-            --reader-letter-spacing: 0.02em;          /* 字间距微调 */
-            --reader-title-weight: 700;               /* 标题加粗字重 */
-
-            /* 字体栈 */
-            --font-serif-stack: "Noto Serif SC", "Source Han Serif CN", "SimSun", "Georgia", serif;
-            --font-sans-stack: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-
-            /* 字体映射 */
-            --reader-title-font: var(--font-serif-stack);
-            --reader-body-font: var(--font-serif-stack);
+            --font-serif: serif;
+            --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
         }
 
-        body { 
-            font-family: var(--reader-body-font); 
-            background-color: var(--reader-bg);
-            color: var(--reader-text);
-            letter-spacing: var(--reader-letter-spacing);
-        }
-        
-        .font-sans { font-family: var(--font-sans-stack); }
+        body { font-family: var(--font-sans); }
+        .font-serif { font-family: var(--font-serif); }
 
-        /* === 阅读区排版系统 === */
+        /* 阅读区排版 */
         .prose-reader {
-            font-family: var(--reader-body-font);
-            color: var(--reader-text);
-            font-size: var(--reader-size);
-            line-height: var(--reader-line-height);
-            letter-spacing: var(--reader-letter-spacing);
+            font-family: var(--font-serif);
+            color: #292524;
+            font-size: 1.125rem;
+            line-height: 1.85;
+            letter-spacing: 0.005em;
         }
         .prose-reader h1,
         .prose-reader h2,
         .prose-reader h3,
         .prose-reader h4 {
-            font-family: var(--reader-title-font);
-            font-weight: var(--reader-title-weight);
-            color: hsl(24, 10%, 5%); /* 标题比正文更黑一点以提升层级 */
+            font-family: var(--font-serif);
+            font-weight: 600;
+            color: #0c0a09;
             letter-spacing: -0.01em;
             line-height: 1.3;
         }
-        .prose-reader h1 { font-size: 1.8em; margin: 2.5rem 0 1.2rem; }
-        .prose-reader h2 { font-size: 1.45em; margin: 2.2rem 0 1rem; }
-        .prose-reader h3 { font-size: 1.2em;  margin: 1.8rem 0 0.8rem; }
-        .prose-reader h4 { font-size: 1.05em; margin: 1.5rem 0 0.5rem; }
-        
-        .prose-reader p { 
-            margin-top: 0;
-            margin-bottom: var(--reader-paragraph-spacing); 
-        }
-
+        .prose-reader h1 { font-size: 1.75rem; margin: 2.25rem 0 1rem; }
+        .prose-reader h2 { font-size: 1.45rem; margin: 2rem 0 0.875rem; }
+        .prose-reader h3 { font-size: 1.2rem;  margin: 1.75rem 0 0.75rem; }
+        .prose-reader p  { margin: 1.1rem 0; }
         .prose-reader a {
             color: #44403c;
             border-bottom: 1px solid #d6d3d1;
             transition: border-color 0.2s, color 0.2s;
         }
         .prose-reader a:hover { color: #0c0a09; border-bottom-color: #0c0a09; }
-        .prose-reader strong { color: #0c0a09; font-weight: var(--reader-title-weight); }
-        .prose-reader em { font-style: italic; opacity: 0.95; }
-        
+        .prose-reader strong { color: #0c0a09; font-weight: 600; }
+        .prose-reader em { font-style: italic; }
         .prose-reader blockquote {
-            border-left: 3px solid #d6d3d1;
-            padding-left: 1.5rem;
-            margin: 1.8rem 0;
-            color: hsl(24, 10%, 35%);
+            border-left: 2px solid #d6d3d1;
+            padding-left: 1.25rem;
+            margin: 1.5rem 0;
+            color: #57534e;
             font-style: italic;
         }
-        
         .prose-reader code {
             font-family: 'SF Mono', Menlo, Consolas, monospace;
-            font-size: 0.88em;
-            background: rgba(0, 0, 0, 0.04);
+            font-size: 0.92em;
+            background: #f5f5f4;
             padding: 0.15em 0.4em;
             border-radius: 4px;
+            color: #44403c;
         }
         .prose-reader pre {
             font-family: 'SF Mono', Menlo, Consolas, monospace;
-            font-size: 0.85em;
+            font-size: 0.9rem;
             line-height: 1.6;
-            background: rgba(0, 0, 0, 0.03);
-            padding: 1.2rem 1.5rem;
-            border-radius: 8px;
+            background: #f5f5f4;
+            padding: 1.1rem 1.25rem;
+            border-radius: 6px;
             overflow-x: auto;
-            margin: 1.8rem 0;
+            margin: 1.5rem 0;
         }
         .prose-reader pre code {
             background: transparent;
             padding: 0;
             font-size: inherit;
         }
-        
         .prose-reader ul,
         .prose-reader ol {
             padding-left: 1.5rem;
-            margin-bottom: var(--reader-paragraph-spacing);
+            margin: 1.1rem 0;
         }
         .prose-reader ul { list-style: disc; }
         .prose-reader ol { list-style: decimal; }
-        .prose-reader li { margin: 0.5em 0; }
-        
+        .prose-reader li { margin: 0.4rem 0; }
         .prose-reader hr {
             border: 0;
             text-align: center;
-            margin: 3rem 0;
+            margin: 2.5rem 0;
             color: #d6d3d1;
         }
         .prose-reader hr::before {
-            content: '···';
-            letter-spacing: 1em;
+            content: '· · ·';
+            letter-spacing: 0.5em;
         }
-        
         .prose-reader img {
             max-width: 100%;
             border-radius: 6px;
-            margin: 1.8rem 0;
+            margin: 1.5rem 0;
         }
+
+        /* 返回按钮箭头微动 */
+        .back-btn .arrow {
+            display: inline-block;
+            transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .back-btn:hover .arrow { transform: translateX(-3px); }
     </style>
 </head>
-<body class="min-h-screen selection:bg-stone-200">
+<body class="bg-[#fafaf9] text-stone-800 min-h-screen selection:bg-stone-200">
 
-    <div class="max-w-[44rem] mx-auto px-6 pt-6 md:pt-8 pb-20">
+    <div class="max-w-2xl mx-auto px-6 pt-6 md:pt-8 pb-20">
 
         <article id="ssr-post-article" data-ssr="post-article" class="hidden">
             <header class="mb-10 pb-8 border-b border-stone-200/70">
-                <h1 id="ssr-post-title" data-ssr="post-title" style="font-family: var(--reader-title-font); font-weight: var(--reader-title-weight);" class="text-3xl md:text-[2.5rem] tracking-tight leading-tight text-stone-900">
+                <h1 id="ssr-post-title" data-ssr="post-title" class="font-serif text-3xl md:text-[2.5rem] font-semibold tracking-tight leading-tight text-stone-900">
                 </h1>
-                <div class="flex items-center gap-4 mt-5 text-xs text-stone-400 tracking-widest uppercase font-sans">
+                <div class="flex items-center gap-4 mt-4 text-xs text-stone-400 tracking-widest uppercase">
                     <span id="ssr-post-category" data-ssr="post-category" class="font-semibold text-stone-500 bg-stone-200/60 px-1.5 py-0.5 rounded-xs"></span>
                     <span id="ssr-post-category-sep" data-ssr="post-category-sep">·</span>
                     <span id="ssr-post-views-group" data-ssr="post-views-group" class="contents">
-                        <span id="ssr-post-views" data-ssr="post-views" class="flex items-center gap-1 lowercase normal-case tracking-normal"></span>
+                        <span id="ssr-post-views" data-ssr="post-views" class="flex items-center gap-1 font-sans lowercase normal-case tracking-normal"></span>
                         <span>·</span>
                     </span>
-                    <time id="ssr-post-time" data-ssr="post-time" class="tabular-nums tracking-wider"></time>
+                    <time id="ssr-post-time" data-ssr="post-time" class="tabular-nums font-sans tracking-wider"></time>
                 </div>
             </header>
 
@@ -181,25 +157,37 @@
             </div>
         </div>
 
-        <div id="status-loading" class="hidden"></div>
+        <div id="status-loading" class="hidden">
+        </div>
+
         <div id="status-bad-slug" class="hidden py-24 text-center">
             <div class="inline-block w-12 h-px bg-stone-300 mb-6"></div>
-            <p style="font-family: var(--reader-title-font);" class="text-stone-500 text-base italic">缺少文章标识</p>
-            <p class="mt-2 text-stone-400 text-xs tracking-wider font-sans">URL 中未提供 slug 参数</p>
+            <p class="font-serif text-stone-500 text-base italic">缺少文章标识</p>
+            <p class="mt-2 text-stone-400 text-xs tracking-wider">URL 中未提供 slug 参数</p>
         </div>
+
         <div id="status-not-found" class="hidden py-24 text-center">
             <div class="inline-block w-12 h-px bg-stone-300 mb-6"></div>
-            <p style="font-family: var(--reader-title-font);" class="text-stone-500 text-base italic">这篇文章不存在</p>
-            <p class="mt-2 text-stone-400 text-xs tracking-wider font-sans">它可能已被删除,或链接有误</p>
+            <p class="font-serif text-stone-500 text-base italic">这篇文章不存在</p>
+            <p class="mt-2 text-stone-400 text-xs tracking-wider">它可能已被删除,或链接有误</p>
         </div>
+
         <div id="status-error" class="hidden py-24 text-stone-400 text-sm tracking-wider">
-            <span style="font-family: var(--reader-title-font);" class="italic">内容加载失败</span> · 请刷新重试
+            <span class="font-serif italic">内容加载失败</span> · 请刷新重试
         </div>
     </div>
 
-    <footer class="max-w-[44rem] mx-auto px-6 pb-12 text-center text-stone-400 text-xs tracking-widest uppercase font-sans">
+    <footer class="max-w-2xl mx-auto px-6 pb-12 text-center text-stone-400 text-xs tracking-widest uppercase">
         — End of Post —
     </footer>
 
+    <!-- Edge SSR: 由 Cloudflare Worker (functions/[[path]].js) 在边缘完成数据注入。
+         客户端不再发起 fetch；HTMLRewriter 将通过以下标识进行定位：
+           - title / meta[name="description"]              页面标题与 SEO 描述
+           - #ssr-post-title / #ssr-post-content            文章标题与正文
+           - #ssr-post-time                                 发布时间
+           - #ssr-post-category / #ssr-post-views           分类与阅读量
+           - #status-bad-slug / #status-not-found / #status-error / #post-skeleton  降级态
+    -->
 </body>
 </html>
