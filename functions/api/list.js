@@ -2,33 +2,30 @@
 import { makeExcerpt } from "./helpers.js";
 
 const KV_LIST_KEY = "site:posts:list";
+const KV_SETTINGS_KEY = "site:settings:data"; // ⚡ 修复：必须明确声明此键名，否则抛出全局 ReferenceError
 
 export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const categoryParam = url.searchParams.get('category');
 
-  // 1) 动态计算 KV 缓存键：分类转换为纯小写防错，避免大小写导致的多份缓存
   const formattedCategory = categoryParam ? categoryParam.trim().toLowerCase() : null;
   const currentKvKey = formattedCategory ? `site:posts:list:cat:${formattedCategory}` : KV_LIST_KEY;
 
   try {
-    // 2) 无论是全局列表还是分类列表，全部优先走 KV 缓存，极大保护 D1
     const cachedList = await env.KV.get(currentKvKey);
     if (cachedList) {
       return new Response(cachedList, {
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=10, s-maxage=60" // 边缘 CDN 允许缓存 60 秒
+          "Cache-Control": "public, max-age=10, s-maxage=60"
         }
       });
     }
 
-    // 3) 缓存未命中，获取全局摘要裁剪长度配置
-    //    优先复用 settings.js 维护的 site:settings:data 快照，省一次 D1 往返
     let excerptLength = 200;
     try {
-      const settingsCache = await env.KV.get(KV_SETTINGS_KEY);
+      const settingsCache = await env.KV.get(KV_SETTINGS_KEY); // ⚡ 修复后此处可以正常工作，不再崩溃进入 catch
       let resolved = false;
       if (settingsCache) {
         try {
@@ -48,7 +45,6 @@ export async function onRequestGet(context) {
       }
     } catch (_) {}
 
-    // 4) 回源 D1 拉取数据。注意：此处改拿 content，用于在内存中即时生成最新摘要
     let stmt;
     if (formattedCategory) {
       stmt = env.DB.prepare(
@@ -68,7 +64,6 @@ export async function onRequestGet(context) {
     const { results } = await stmt.all();
     const posts = results || [];
 
-    // 5) 💡 动态组装：在内存中裁剪最新的摘要，彻底省去数据库更新导致的性能爆炸
     const data = posts.map(p => ({
       id: p.id,
       title: p.title,
@@ -76,13 +71,12 @@ export async function onRequestGet(context) {
       category: (!p.category || p.category.trim() === '') ? null : p.category,
       views: p.views,
       created_at: p.created_at,
-      excerpt: makeExcerpt(p.content || '', excerptLength) // 运行时动态生成
+      excerpt: makeExcerpt(p.content || '', excerptLength)
     }));
 
     const responseData = { success: true, data };
     const responseString = JSON.stringify(responseData);
 
-    // 6) 异步回填到对应的 KV 中（缓存 12 小时，文章增删改时会主动使该缓存失效）
     context.waitUntil(
       env.KV.put(currentKvKey, responseString, { expirationTtl: 43200 })
         .catch(err => console.error('KV put list failed (list.js):', err))
