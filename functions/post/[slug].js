@@ -4,7 +4,7 @@
 //   env.KV.get('post:content:<slug>')  -> { id,status,views,title,content,category,created_at }
 // 依赖：marked（边缘 Markdown→HTML）。请确保 package.json 含 "marked" 依赖。
 
-import { marked } from 'marked';
+import { marked } from '../lib/marked.esm.js';
 
 const KV_SETTINGS_KEY = 'site:settings:data';
 
