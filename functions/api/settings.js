@@ -2,22 +2,47 @@
 import { makeExcerpt } from "./helpers.js";
 
 const ALLOWED_KEYS = new Set(["site_title", "site_subtitle", "show_views", "excerpt_length"]);
+const KV_SETTINGS_KEY = "site:settings:data"; // 统一的配置项 KV 缓存键名
 
 export async function onRequestGet(context) {
-  // ... 保持你原本的 GET 获取设置逻辑完全不变 ...
   const { env } = context;
   try {
+    // 🚀 1) 优先尝试从全球边缘 KV 命中缓存
+    const cachedSettings = await env.KV.get(KV_SETTINGS_KEY);
+    if (cachedSettings) {
+      return new Response(cachedSettings, {
+        headers: { 
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=10, s-maxage=60" // 允许短时间边缘强缓存
+        }
+      });
+    }
+
+    // 2) 缓存未命中，回源到 D1 关系型数据库查询
     const { results } = await env.DB.prepare("SELECT key, value FROM site_settings").all();
     const data = {};
     (results || []).forEach(row => { data[row.key] = row.value; });
-    return new Response(JSON.stringify({ success: true, data }), { headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
-  } catch (err) { return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 }); }
+
+    const responseData = { success: true, data };
+    const responseString = JSON.stringify(responseData);
+
+    // 3) 异步将最新配置写回 KV 挡住后续流量（设置不限时永久缓存，直到后台修改时被清空）
+    context.waitUntil(
+      env.KV.put(KV_SETTINGS_KEY, responseString)
+    );
+
+    return new Response(responseString, { 
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } 
+    });
+  } catch (err) { 
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 }); 
+  }
 }
 
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // ... 你的原有鉴权代码保持不变 ...
+  // ... 鉴权逻辑保持绝对不变 ...
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) return new Response(JSON.stringify({ success: false, error: "未授权" }), { status: 401 });
   const clientToken = authHeader.replace("Bearer ", "");
@@ -55,19 +80,17 @@ export async function onRequestPost(context) {
         const n = parseInt(strValue, 10);
         if (!Number.isInteger(n) || n < 0 || n > 1000) continue;
         strValue = String(n);
-        newExcerptLength = n; // 记录发生变更的摘要新长度
+        newExcerptLength = n; 
       }
       await upsert.bind(key, strValue, now).run();
       touched++;
     }
 
-    // ⭐ 核心联动逻辑：如果修改了摘要字数，批量重刷历史文章摘要
+    // 核心联动逻辑：如果修改了摘要字数，批量重刷历史文章摘要
     if (newExcerptLength !== null) {
-      // 查出所有文章的 content 用于重新截取
       const { results } = await env.DB.prepare("SELECT id, content FROM posts").all();
       const posts = results || [];
 
-      // 利用 D1 的 batch 执行原子批量事务，效率极高
       const statements = posts.map(post => {
         const freshExcerpt = makeExcerpt(post.content || '', newExcerptLength);
         return env.DB.prepare("UPDATE posts SET excerpt = ? WHERE id = ?").bind(freshExcerpt, post.id);
@@ -78,7 +101,11 @@ export async function onRequestPost(context) {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, message: `已更新 ${touched} 项配置，并成功重刷历史文章摘要。` }), {
+    // ⚡ 核心提速修改点：保存成功后，立刻将 KV 里的配置项脏缓存抹除
+    // 这样下次前台不管是访问主页还是单页，都会触发全新的回源，动态获取最新配置并重新生成无缝的 KV 缓存
+    await env.KV.delete(KV_SETTINGS_KEY);
+
+    return new Response(JSON.stringify({ success: true, message: `已更新 ${touched} 项配置，完成全站摘要及 KV 缓存刷新。` }), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {

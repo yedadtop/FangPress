@@ -2,6 +2,7 @@ DROP TABLE IF EXISTS site_settings;
 DROP TABLE IF EXISTS posts;
 DROP TABLE IF EXISTS users;
 
+-- 1. 创建用户表
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
@@ -11,12 +12,13 @@ CREATE TABLE users (
     created_at TEXT NOT NULL
 );
 
+-- 2. 创建文章表（已包含高性能优化所需的 excerpt 字段）
 CREATE TABLE posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
     content TEXT NOT NULL,
-    excerpt TEXT DEFAULT '', -- 新增：专门存放计算好的纯文本摘要
+    excerpt TEXT DEFAULT '', 
     category TEXT DEFAULT '未分类',
     views INTEGER DEFAULT 0,
     status TEXT DEFAULT 'published',
@@ -26,21 +28,25 @@ CREATE TABLE posts (
     FOREIGN KEY (author_id) REFERENCES users(id)
 );
 
+-- 3. 建立关键索引，压榨 SQLite 扫描性能
 CREATE INDEX idx_posts_slug ON posts(slug);
 CREATE INDEX idx_posts_category ON posts(category);
 CREATE INDEX idx_posts_status ON posts(status);
 
+-- 4. 创建站点选项表
 CREATE TABLE site_settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
 
+-- 5. 注入初始管理员（默认账号 admin，密码哈希已就绪）
 INSERT INTO users (username, password_hash, nickname, created_at) VALUES
-    ('admin', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', 'Admin', datetime('now'));
+    ('admin', '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918', 'Admin', '2026-06-12T05:00:00.000Z');
 
+-- 6. 注入系统核心配置项（已修复断行并规避时区差异）
 INSERT INTO site_settings (key, value, updated_at) VALUES
-    ('site_title',     'Quinn''s Space',                                              datetime('now')),
-    ('site_subtitle',  '基于 Cloudflare Pages & D1 关系型数据库的纯文字内容流',          datetime('now')),
-    ('show_views',     '1',                                                           datetime('now')),
-    ('excerpt_length', '200',                                                         datetime('now'));
+    ('site_title',     'Quinn''s Space',                                        '2026-06-12T05:00:00.000Z'),
+    ('site_subtitle',  '基于 Cloudflare Pages & D1 关系型数据库的纯文字内容流',    '2026-06-12T05:00:00.000Z'),
+    ('show_views',     '1',                                                     '2026-06-12T05:00:00.000Z'),
+    ('excerpt_length', '200',                                                   '2026-06-12T05:00:00.000Z');
