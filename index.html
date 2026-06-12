@@ -103,6 +103,32 @@
         — End of Stream —
     </footer>
 
+    <!-- SSR 调试：把分页状态打印到控制台，便于排查 has_more / hidden 问题 -->
+    <script>
+        (function () {
+            const nav = document.getElementById('ssr-pagination');
+            const prev = document.getElementById('ssr-prev-page');
+            const next = document.getElementById('ssr-next-page');
+            const list = document.getElementById('ssr-post-list');
+            console.log('[SSR Debug] 分页状态', {
+                page: new URLSearchParams(location.search).get('page') || '1',
+                postCount: list ? list.querySelectorAll('[data-ssr-item]').length : 0,
+                nav: nav && {
+                    hidden: nav.classList.contains('hidden'),
+                    classes: nav.className
+                },
+                prev: prev && {
+                    hidden: prev.classList.contains('hidden'),
+                    href: prev.getAttribute('href')
+                },
+                next: next && {
+                    hidden: next.classList.contains('hidden'),
+                    href: next.getAttribute('href')
+                }
+            });
+        })();
+    </script>
+
     <!-- Edge SSR: 由 Cloudflare Worker (functions/[[path]].js) 在边缘完成数据注入。
          客户端不再发起 fetch；HTMLRewriter 将通过以下标识进行定位：
            - title / meta[name="description"]          站点标题与描述
