@@ -1,16 +1,25 @@
 // functions/api/list.js
 import { makeExcerpt } from "./helpers.js";
 
-const KV_LIST_KEY = "site:posts:list";
-const KV_SETTINGS_KEY = "site:settings:data"; // ⚡ 修复：必须明确声明此键名，否则抛出全局 ReferenceError
+const KV_LIST_KEY_PREFIX = "site:posts:list:page:"; // 无分类分页键前缀
+const KV_CAT_KEY_PREFIX = "site:posts:list:cat:";    // 分类键（暂不引入分页，保持原结构）
+const KV_SETTINGS_KEY = "site:settings:data";
+const PAGE_SIZE = 10;
 
 export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const categoryParam = url.searchParams.get('category');
 
+  // ⚡ 新增：解析分页参数（默认 1，防御 NaN / 负数）
+  let page = parseInt(url.searchParams.get('page') || '1', 10);
+  if (isNaN(page) || page < 1) page = 1;
+
   const formattedCategory = categoryParam ? categoryParam.trim().toLowerCase() : null;
-  const currentKvKey = formattedCategory ? `site:posts:list:cat:${formattedCategory}` : KV_LIST_KEY;
+  // ⚡ 改动点：无 category 时使用分页键 site:posts:list:page:<n>；有 category 时键名不变
+  const currentKvKey = formattedCategory
+    ? `${KV_CAT_KEY_PREFIX}${formattedCategory}`
+    : `${KV_LIST_KEY_PREFIX}${page}`;
 
   try {
     const cachedList = await env.KV.get(currentKvKey);
@@ -25,7 +34,7 @@ export async function onRequestGet(context) {
 
     let excerptLength = 200;
     try {
-      const settingsCache = await env.KV.get(KV_SETTINGS_KEY); // ⚡ 修复后此处可以正常工作，不再崩溃进入 catch
+      const settingsCache = await env.KV.get(KV_SETTINGS_KEY);
       let resolved = false;
       if (settingsCache) {
         try {
@@ -47,6 +56,7 @@ export async function onRequestGet(context) {
 
     let stmt;
     if (formattedCategory) {
+      // 分类场景：暂保留原 LIMIT 100 行为（未分页）
       stmt = env.DB.prepare(
         `SELECT id, title, slug, content, category, views, created_at
          FROM posts
@@ -54,17 +64,28 @@ export async function onRequestGet(context) {
          ORDER BY created_at DESC LIMIT 100`
       ).bind(formattedCategory);
     } else {
+      // ⚡ 改动点：使用 LIMIT 11 + OFFSET 探测下一页
+      const offset = (page - 1) * PAGE_SIZE;
       stmt = env.DB.prepare(
         `SELECT id, title, slug, content, category, views, created_at
          FROM posts
          WHERE status = 'published'
-         ORDER BY created_at DESC LIMIT 100`
+         ORDER BY created_at DESC
+         LIMIT ${PAGE_SIZE + 1} OFFSET ${offset}`
       );
     }
     const { results } = await stmt.all();
-    const posts = results || [];
+    const rawResults = results || [];
 
-    const data = posts.map(p => ({
+    // ⚡ 改动点：无分类场景下探测 has_more 并切片
+    let hasMore = false;
+    let pageResults = rawResults;
+    if (!formattedCategory) {
+      hasMore = rawResults.length > PAGE_SIZE;
+      if (hasMore) pageResults = rawResults.slice(0, PAGE_SIZE);
+    }
+
+    const data = pageResults.map(p => ({
       id: p.id,
       title: p.title,
       slug: p.slug,
@@ -74,7 +95,10 @@ export async function onRequestGet(context) {
       excerpt: makeExcerpt(p.content || '', excerptLength)
     }));
 
-    const responseData = { success: true, data };
+    // ⚡ 改动点：无分类场景下返回结构加入 has_more 字段
+    const responseData = formattedCategory
+      ? { success: true, data }
+      : { success: true, data, has_more: hasMore };
     const responseString = JSON.stringify(responseData);
 
     context.waitUntil(

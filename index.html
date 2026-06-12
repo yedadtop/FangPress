@@ -66,6 +66,11 @@
         <main id="ssr-post-list" data-ssr="post-list" class="hidden divide-y divide-stone-200/70">
         </main>
 
+        <nav id="ssr-pagination" class="hidden flex justify-between items-center mt-12 pt-8 border-t border-stone-200/70 font-serif text-sm">
+            <a id="ssr-prev-page" href="" class="hidden text-stone-500 hover:text-stone-900 transition-colors">← 上一页</a>
+            <a id="ssr-next-page" href="" class="hidden text-stone-500 hover:text-stone-900 transition-colors ml-auto">下一页 →</a>
+        </nav>
+
         <div id="posts-skeleton" class="divide-y divide-stone-200/70">
             <div class="py-7">
                 <div class="h-6 bg-stone-200/80 rounded w-3/4 mb-3"></div>
@@ -103,6 +108,7 @@
            - title / meta[name="description"]          站点标题与描述
            - #ssr-site-title / #ssr-site-subtitle      站点名/副标题
            - #ssr-post-list                            文章列表容器
+           - #ssr-pagination / #ssr-prev-page / #ssr-next-page  分页控制器
            - #status-error / #status-empty / #posts-skeleton  失败/空/骨架降级
     -->
 </body>

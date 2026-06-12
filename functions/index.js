@@ -1,13 +1,14 @@
 // functions/index.js
-// 首页 SSR：在边缘将 KV 列表注入到 #ssr-post-list 容器
+// 首页 SSR：在边缘将 KV 列表注入到 #ssr-post-list 容器，支持分页（每页 10 篇）
 // 数据契约（与 functions/api/list.js 一致）：
-//   env.KV.get('site:posts:list')      -> { success:true, data:[{id,title,slug,category,views,created_at,excerpt}, ...] }
-//   env.KV.get('site:settings:data')   -> { success:true, data:{site_title,site_subtitle,show_views,...} }
+//   env.KV.get('site:posts:list:page:<n>')  -> { success:true, data:[{id,title,slug,category,views,created_at,excerpt}, ...] }  (最多 10 条)
+//   env.KV.get('site:settings:data')       -> { success:true, data:{site_title,site_subtitle,show_views,...} }
 
 
 import { makeExcerpt } from './api/helpers.js';
-const KV_LIST_KEY = "site:posts:list";
+const KV_LIST_KEY_PREFIX = "site:posts:list:page:";
 const KV_SETTINGS_KEY = "site:settings:data";
+const PAGE_SIZE = 10; // 每页 10 篇；D1 查询时取 PAGE_SIZE+1 用于探测是否有下一页
 
 // ============== Helpers ==============
 
@@ -79,6 +80,12 @@ function safeParseKV(raw) {
 export async function onRequestGet(context) {
     const { request, env } = context;
 
+    // 0. 解析分页参数
+    const url = new URL(request.url);
+    let page = parseInt(url.searchParams.get('page') || '1', 10);
+    if (isNaN(page) || page < 1) page = 1;
+    const currentKvKey = KV_LIST_KEY_PREFIX + page;
+
     // 1. 拉取静态模板
     let templateResp;
     try {
@@ -87,9 +94,9 @@ export async function onRequestGet(context) {
         return new Response('Failed to load template', { status: 500 });
     }
 
-    // 2. 并行拉取列表 + 设置（KV 不可用时不阻塞，try 容错）
+    // 2. 并行拉取当前页列表 + 设置（KV 不可用时不阻塞，try 容错）
     const [listRaw, settingsRaw] = await Promise.all([
-        env.KV.get(KV_LIST_KEY).catch(() => null),
+        env.KV.get(currentKvKey).catch(() => null),
         env.KV.get(KV_SETTINGS_KEY).catch(() => null)
     ]);
 
@@ -98,21 +105,30 @@ export async function onRequestGet(context) {
     let posts = (listObj && listObj.success && Array.isArray(listObj.data)) ? listObj.data : [];
     const settings = (settingsObj && settingsObj.data) ? settingsObj.data : {};
 
-    // ⚡ 核心修复：如果 KV 被清空（没拿到数据），触发 D1 降级查询并异步回填 KV
+    // 默认假设没有下一页；仅在 D1 降级路径下根据 LIMIT 11 实际推断
+    let hasNextPage = false;
+
+    // ⚡ KV 未命中当前页：触发 D1 降级查询（LIMIT 11 探测下一页）并异步回填
     if (posts.length === 0) {
         try {
+            const offset = (page - 1) * PAGE_SIZE;
             const { results } = await env.DB.prepare(
                 `SELECT id, title, slug, content, category, views, created_at
                  FROM posts
                  WHERE status = 'published'
-                 ORDER BY created_at DESC LIMIT 100`
+                 ORDER BY created_at DESC
+                 LIMIT ${PAGE_SIZE + 1} OFFSET ${offset}`
             ).all();
 
             if (results && results.length > 0) {
+                hasNextPage = results.length > PAGE_SIZE;
+
                 const excerptLength = settings.excerpt_length ? parseInt(settings.excerpt_length, 10) : 200;
-                
-                // 构建数据列表
-                posts = results.map(p => ({
+
+                // 探测到下一页时只保留前 10 条用于渲染与回填
+                const pageResults = hasNextPage ? results.slice(0, PAGE_SIZE) : results;
+
+                posts = pageResults.map(p => ({
                     id: p.id,
                     title: p.title,
                     slug: p.slug,
@@ -122,9 +138,9 @@ export async function onRequestGet(context) {
                     excerpt: makeExcerpt(p.content || '', excerptLength)
                 }));
 
-                // 将查到的数据存回 KV（脱离关键路径，异步执行不卡顿）
+                // 异步回填当前页到 KV，脱离关键路径
                 context.waitUntil(
-                    env.KV.put(KV_LIST_KEY, JSON.stringify({ success: true, data: posts }), { expirationTtl: 43200 })
+                    env.KV.put(currentKvKey, JSON.stringify({ success: true, data: posts }), { expirationTtl: 43200 })
                         .catch(err => console.error('KV 回填失败:', err))
                 );
             }
@@ -181,6 +197,45 @@ export async function onRequestGet(context) {
         rewriter.on('#posts-skeleton', { element: el => el.setAttribute('class', 'hidden') });
         // ⚡️ 修复点：保留原有排版类名，去掉 hidden
         rewriter.on('#status-empty', { element: el => el.setAttribute('class', 'py-20 text-center') });
+    }
+
+    // ⚡ 分页控制器：仅当有数据时显示
+    if (posts.length > 0) {
+        // 显示外层 nav（去掉 hidden），保留原有排版类
+        rewriter.on('#ssr-pagination', {
+            element: el => el.setAttribute('class', 'flex justify-between items-center mt-12 pt-8 border-t border-stone-200/70 font-serif text-sm')
+        });
+
+        // 上一页
+        if (page > 1) {
+            rewriter.on('#ssr-prev-page', {
+                element: el => {
+                    el.setAttribute('href', `/?page=${page - 1}`);
+                    el.setAttribute('class', 'text-stone-500 hover:text-stone-900 transition-colors');
+                }
+            });
+        } else {
+            rewriter.on('#ssr-prev-page', {
+                element: el => el.setAttribute('class', 'hidden text-stone-500 hover:text-stone-900 transition-colors')
+            });
+        }
+
+        // 下一页
+        if (hasNextPage) {
+            rewriter.on('#ssr-next-page', {
+                element: el => {
+                    el.setAttribute('href', `/?page=${page + 1}`);
+                    el.setAttribute('class', 'text-stone-500 hover:text-stone-900 transition-colors ml-auto');
+                }
+            });
+        } else {
+            rewriter.on('#ssr-next-page', {
+                element: el => el.setAttribute('class', 'hidden text-stone-500 hover:text-stone-900 transition-colors ml-auto')
+            });
+        }
+    } else {
+        // 无数据时不显示分页
+        rewriter.on('#ssr-pagination', { element: el => el.setAttribute('class', 'hidden') });
     }
 
     // 4. 输出
