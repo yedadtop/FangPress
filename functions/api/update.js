@@ -1,15 +1,13 @@
 // functions/api/update.js
-import { makeExcerpt } from "./helpers.js";
-
 const KV_LIST_KEY = "site:posts:list";
-const POST_CACHE_TTL = 604800; // 7 天，与 get.js 保持一致
+const POST_CACHE_TTL = 604800;
 
 export async function onRequestPost(context) {
   const { request, env } = context;
 
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) return new Response(JSON.stringify({ success: false, error: "未授权" }), { status: 401 });
-  const clientToken = authHeader.replace("Bearer ", "");
+  const clientToken = authHeader.replace(/^Bearer\s+/i, "").trim();
   const apiToken = env.API_TOKEN;
   if (apiToken && clientToken === apiToken) {
   } else {
@@ -25,71 +23,53 @@ export async function onRequestPost(context) {
     }
 
     const newSlug = slug.trim().toLowerCase();
+    const targetCategory = category ? (category.trim() || null) : null;
 
-    // 1) 查出旧 slug 用于精准清除正文 KV，同时取到旧 created_at 避免更新后丢失
-    //    注意：views 不再从 D1 读出来塞进 KV，views 是实时字段，由 get.js 每次直接查 D1
-    const oldPost = await env.DB.prepare("SELECT slug, created_at FROM posts WHERE id = ?").bind(id).first();
+    // 1) 查出旧 slug 和 旧 category，用于精准联动清理分类 KV 缓存
+    const oldPost = await env.DB.prepare("SELECT slug, category, created_at FROM posts WHERE id = ?").bind(id).first();
 
-    let excerptLength = 200;
-    try {
-      const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'excerpt_length'").first();
-      if (row && row.value != null) {
-        excerptLength = parseInt(String(row.value).trim(), 10);
-      }
-    } catch (_) {}
-
-    const excerptText = makeExcerpt(content.trim(), excerptLength);
     const now = new Date().toISOString();
 
+    // 💡 优化：移除 D1 中 excerpt 字段的计算和写入，保持字段精炼
     const result = await env.DB
       .prepare(
         `UPDATE posts
-         SET title = ?, slug = ?, content = ?, excerpt = ?, category = ?, updated_at = ?
+         SET title = ?, slug = ?, content = ?, category = ?, updated_at = ?
          WHERE id = ?`
       )
-      .bind(title.trim(), newSlug, content.trim(), excerptText, category ? (category.trim() || null) : null, now, id)
+      .bind(title.trim(), newSlug, content.trim(), targetCategory, now, id)
       .run();
 
     if (result.meta && result.meta.changes === 0) {
       return new Response(JSON.stringify({ success: false, error: "未找到该文章，可能已被删除" }), { status: 404 });
     }
 
-    // ⚡ 核心修改点：数据库保存成功后，先抹除老正文缓存、再回填新正文到 KV、清理列表缓存。
-    //    全部用 try-catch 容错：KV 写入失败不能让接口 500，D1 已经持久化，下次读会回源。
+    // 2) ⚡ 联动清除缓存链条
     if (oldPost && oldPost.slug) {
-      try {
-        await env.KV.delete(`post:content:${oldPost.slug.trim().toLowerCase()}`);
-      } catch (e) {
-        console.error('KV delete old-slug failed (update.js):', e);
-      }
+      try { await env.KV.delete(`post:content:${oldPost.slug.trim().toLowerCase()}`); } catch (_) {}
     }
-    try {
-      await env.KV.delete(`post:content:${newSlug}`);
-    } catch (e) {
-      console.error('KV delete new-slug failed (update.js):', e);
+    try { await env.KV.delete(`post:content:${newSlug}`); } catch (_) {}
+    try { await env.KV.delete(KV_LIST_KEY); } catch (_) {}
+
+    // 💡 清理受影响的旧分类和新分类列表 KV 缓存
+    if (oldPost && oldPost.category) {
+      try { await env.KV.delete(`site:posts:list:cat:${oldPost.category.trim().toLowerCase()}`); } catch (_) {}
+    }
+    if (targetCategory) {
+      try { await env.KV.delete(`site:posts:list:cat:${targetCategory.toLowerCase()}`); } catch (_) {}
     }
 
-    // 主动回填最新正文到 KV（不包含 views）
+    // 3) 主动回填最新正文到 KV
     const updatedCache = {
       title: title.trim(),
       content: content.trim(),
-      category: category ? (category.trim() || null) : null,
+      category: targetCategory,
       created_at: (oldPost && oldPost.created_at) ? oldPost.created_at : now
     };
     try {
-      await env.KV.put(
-        `post:content:${newSlug}`,
-        JSON.stringify(updatedCache),
-        { expirationTtl: POST_CACHE_TTL }
-      );
+      await env.KV.put(`post:content:${newSlug}`, JSON.stringify(updatedCache), { expirationTtl: POST_CACHE_TTL });
     } catch (e) {
       console.error('KV put failed (update.js):', e);
-    }
-
-    try {
-      await env.KV.delete(KV_LIST_KEY);
-    } catch (e) {
-      console.error('KV delete list failed (update.js):', e);
     }
 
     return new Response(JSON.stringify({ success: true, message: "文章已更新" }), {

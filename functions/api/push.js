@@ -1,15 +1,13 @@
 // functions/api/push.js
-import { makeExcerpt } from "./helpers.js";
-
 const KV_LIST_KEY = "site:posts:list";
-const POST_CACHE_TTL = 604800; // 7 天，与 get.js 保持一致
+const POST_CACHE_TTL = 604800;
 
 export async function onRequestPost(context) {
   const { request, env } = context;
 
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) return new Response(JSON.stringify({ success: false, error: "未授权" }), { status: 401 });
-  const clientToken = authHeader.replace("Bearer ", "");
+  const clientToken = authHeader.replace(/^Bearer\s+/i, "").trim();
   const apiToken = env.API_TOKEN;
   if (apiToken && clientToken === apiToken) {
   } else {
@@ -25,57 +23,41 @@ export async function onRequestPost(context) {
     }
 
     const formattedSlug = slug.trim().toLowerCase();
-
-    let excerptLength = 200; 
-    try {
-      const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'excerpt_length'").first();
-      if (row && row.value != null) {
-        excerptLength = parseInt(String(row.value).trim(), 10);
-      }
-    } catch (_) {}
-
-    const excerptText = makeExcerpt(content.trim(), excerptLength);
+    const targetCategory = category ? (category.trim() || null) : null;
     const currentTime = new Date().toISOString();
 
+    // 💡 优化：移除对并不需要的字段 excerpt 的计算与存储
     await env.DB.prepare(
-      `INSERT INTO posts (title, slug, content, excerpt, category, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO posts (title, slug, content, category, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
     )
     .bind(
       title.trim(),
       formattedSlug,
       content.trim(),
-      excerptText,
-      category ? (category.trim() || null) : null,
+      targetCategory,
       currentTime,
       currentTime
     )
     .run();
 
-    // ⚡ 核心修改点：写库的同时主动把新文章大字段灌入 KV。
-    //    不缓存 views（views 是高频变化字段，交给 get.js 每次实时读 D1）。
     const newPostCache = {
       title: title.trim(),
       content: content.trim(),
-      category: category ? (category.trim() || null) : null,
+      category: targetCategory,
       created_at: currentTime
     };
-    // 缓存写入失败不能让接口 500；D1 已经是 source of truth，下次读会回源并重新回填
+
     try {
-      await env.KV.put(
-        `post:content:${formattedSlug}`,
-        JSON.stringify(newPostCache),
-        { expirationTtl: POST_CACHE_TTL }
-      );
+      await env.KV.put(`post:content:${formattedSlug}`, JSON.stringify(newPostCache), { expirationTtl: POST_CACHE_TTL });
     } catch (e) {
       console.error('KV put failed (push.js):', e);
     }
 
-    // 清理公开列表的 KV 缓存，确保主页更新（同样容错）
-    try {
-      await env.KV.delete(KV_LIST_KEY);
-    } catch (e) {
-      console.error('KV delete list failed (push.js):', e);
+    // ⚡ 精准双清理：首页缓存 + 新归属分类缓存
+    try { await env.KV.delete(KV_LIST_KEY); } catch (_) {}
+    if (targetCategory) {
+      try { await env.KV.delete(`site:posts:list:cat:${targetCategory.toLowerCase()}`); } catch (_) {}
     }
 
     return new Response(JSON.stringify({ success: true, message: "Post saved to D1 successfully" }), {

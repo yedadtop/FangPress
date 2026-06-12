@@ -8,7 +8,8 @@ export async function onRequestGet(context) {
       headers: { "Content-Type": "application/json" }
     });
   }
-  const clientToken = authHeader.replace("Bearer ", "");
+  // 修复：与 push.js / update.js / settings.js 保持一致，正则清洗不区分大小写 + 容忍多空格
+  const clientToken = authHeader.replace(/^Bearer\s+/i, "").trim();
 
   // 修复：直接从环境变量 env 中读取 API_TOKEN
   const apiToken = env.API_TOKEN;

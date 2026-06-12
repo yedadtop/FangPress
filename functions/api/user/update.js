@@ -14,7 +14,8 @@ export async function onRequestPost(context) {
       headers: { "Content-Type": "application/json" }
     });
   }
-  const clientToken = authHeader.replace("Bearer ", "");
+  // 修复：与 push.js / update.js / settings.js / user.js 保持一致，正则清洗不区分大小写 + 容忍多空格
+  const clientToken = authHeader.replace(/^Bearer\s+/i, "").trim();
 
   const apiToken = env.API_TOKEN;
   if (apiToken && clientToken === apiToken) {
