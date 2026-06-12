@@ -105,8 +105,8 @@ export async function onRequestGet(context) {
     let posts = (listObj && listObj.success && Array.isArray(listObj.data)) ? listObj.data : [];
     const settings = (settingsObj && settingsObj.data) ? settingsObj.data : {};
 
-    // 默认假设没有下一页；仅在 D1 降级路径下根据 LIMIT 11 实际推断
-    let hasNextPage = false;
+    // ⚡ 修复 1：如果命中缓存，从 KV 缓存对象中读取真正的下一页状态
+    let hasNextPage = (listObj && listObj.has_more === true) ? true : false;
 
     // ⚡ KV 未命中当前页：触发 D1 降级查询（LIMIT 11 探测下一页）并异步回填
     if (posts.length === 0) {
@@ -138,9 +138,9 @@ export async function onRequestGet(context) {
                     excerpt: makeExcerpt(p.content || '', excerptLength)
                 }));
 
-                // 异步回填当前页到 KV，脱离关键路径
+                // ⚡ 修复 2：异步回填当前页到 KV 时，必须把 has_more: hasNextPage 存进去
                 context.waitUntil(
-                    env.KV.put(currentKvKey, JSON.stringify({ success: true, data: posts }), { expirationTtl: 43200 })
+                    env.KV.put(currentKvKey, JSON.stringify({ success: true, data: posts, has_more: hasNextPage }), { expirationTtl: 43200 })
                         .catch(err => console.error('KV 回填失败:', err))
                 );
             }
@@ -148,6 +148,9 @@ export async function onRequestGet(context) {
             console.error('D1 降级查询失败:', err);
         }
     }
+
+    // 🚀 调试信息：输出当前的页码状态、文章数、是否命中缓存
+    console.log(`[SSR Debug] Page: ${page} | Post Count: ${posts.length} | Has Next Page: ${hasNextPage} | KV Hit: ${!!listRaw}`);
 
     const showViews = String(settings.show_views) === '1';
     const siteTitle = settings.site_title || '';
@@ -199,8 +202,8 @@ export async function onRequestGet(context) {
         rewriter.on('#status-empty', { element: el => el.setAttribute('class', 'py-20 text-center') });
     }
 
-    // ⚡ 分页控制器：仅当有数据时显示
-    if (posts.length > 0) {
+    // ⚡ 分页控制器：仅当有数据，且（不在第一页 或 有下一页）时，才显示底部分页模块
+    if (posts.length > 0 && (page > 1 || hasNextPage)) {
         // 显示外层 nav（去掉 hidden），保留原有排版类
         rewriter.on('#ssr-pagination', {
             element: el => el.setAttribute('class', 'flex justify-between items-center mt-12 pt-8 border-t border-stone-200/70 font-serif text-sm')
@@ -234,7 +237,7 @@ export async function onRequestGet(context) {
             });
         }
     } else {
-        // 无数据时不显示分页
+        // 隐藏整个分页条
         rewriter.on('#ssr-pagination', { element: el => el.setAttribute('class', 'hidden') });
     }
 
