@@ -39,7 +39,45 @@
 </head>
 <body class="bg-[#fafaf9] text-stone-800 min-h-screen selection:bg-stone-200">
 
-    <div class="max-w-2xl mx-auto px-6 py-20 md:py-28">
+    <!-- 透明 Header（全屏宽度 · 固定吸顶 · 背景模糊） -->
+    <header id="site-header" class="fixed top-0 inset-x-0 w-full z-50">
+        <div class="absolute inset-0 bg-stone-50/70 backdrop-blur-md border-b border-stone-200/40"></div>
+        <div class="relative max-w-screen-xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
+            <a href="/" class="group inline-flex items-center" aria-label="返回首页">
+                <span id="ssr-header-title" class="font-serif text-base md:text-lg text-stone-900 tracking-tight link-underline">博客</span>
+            </a>
+            <button id="search-toggle" type="button" aria-label="搜索" class="p-2 -mr-2 text-stone-600 hover:text-stone-900 transition-colors duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.3-4.3"></path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- 搜索遮罩（仅 UI，无搜索逻辑） -->
+    <div id="search-overlay" class="fixed inset-0 z-[60] hidden">
+        <div id="search-backdrop" class="absolute inset-0 bg-stone-50/85 backdrop-blur-xl"></div>
+        <div class="relative max-w-2xl mx-auto px-6 pt-24 md:pt-28 fade-up">
+            <div class="bg-white/95 border border-stone-200/70 rounded-xl shadow-lg shadow-stone-900/5 overflow-hidden">
+                <div class="flex items-center px-5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-stone-400 shrink-0" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.3-4.3"></path>
+                    </svg>
+                    <input id="search-input" type="text" placeholder="搜索文章…" class="flex-1 bg-transparent border-0 focus:outline-none focus:ring-0 py-5 px-4 text-stone-800 placeholder-stone-400 font-sans">
+                    <button id="search-close" type="button" aria-label="关闭" class="p-1.5 text-stone-400 hover:text-stone-700 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 6 6 18"></path>
+                            <path d="m6 6 12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-2xl mx-auto px-6 pt-20 md:pt-28 pb-20 md:pb-28">
         <header class="mb-20">
             <h1 id="ssr-site-title" data-ssr="site-title" class="hidden font-serif text-4xl md:text-5xl font-medium tracking-tight text-stone-900">
             </h1>
@@ -106,10 +144,46 @@
     <!-- Edge SSR: 由 Cloudflare Worker (functions/[[path]].js) 在边缘完成数据注入。
          客户端不再发起 fetch；HTMLRewriter 将通过以下标识进行定位：
            - title / meta[name="description"]          站点标题与描述
-           - #ssr-site-title / #ssr-site-subtitle      站点名/副标题
+           - #ssr-header-title / #ssr-site-title / #ssr-site-subtitle  顶部导航名 / 内容标题 / 副标题
            - #ssr-post-list                            文章列表容器
            - #ssr-pagination / #ssr-prev-page / #ssr-next-page  分页控制器
            - #status-error / #status-empty / #posts-skeleton  失败/空/骨架降级
     -->
+
+    <script>
+    // 1) 透明 header 的搜索弹层 UI 控制（仅交互，无搜索逻辑）
+    (function () {
+        var toggle   = document.getElementById('search-toggle');
+        var overlay  = document.getElementById('search-overlay');
+        var closeBtn = document.getElementById('search-close');
+        var backdrop = document.getElementById('search-backdrop');
+        var input    = document.getElementById('search-input');
+        if (!toggle || !overlay) return;
+
+        var open = function () {
+            overlay.classList.remove('hidden');
+            requestAnimationFrame(function () { input && input.focus(); });
+        };
+        var close = function () {
+            overlay.classList.add('hidden');
+            if (input) input.value = '';
+        };
+
+        toggle.addEventListener('click', open);
+        closeBtn && closeBtn.addEventListener('click', close);
+        backdrop && backdrop.addEventListener('click', close);
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !overlay.classList.contains('hidden')) close();
+        });
+    })();
+
+    // 2) 顶部导航标题与 SSR <title> 保持一致（无需改动 SSR 函数）
+    (function () {
+        var el = document.getElementById('ssr-header-title');
+        if (!el) return;
+        var raw = (document.title || '').split('·')[0].split('|')[0].trim();
+        if (raw) el.textContent = raw;
+    })();
+    </script>
 </body>
 </html>
