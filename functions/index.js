@@ -106,12 +106,8 @@ export async function onRequestGet(context) {
 
     // <title> 与 meta description
     if (siteTitle) {
-        rewriter.on('title', {
-            element: el => el.setInnerContent(siteTitle)
-        });
-        rewriter.on('meta[name="description"]', {
-            element: el => el.setAttribute('content', description)
-        });
+        rewriter.on('title', { element: el => el.setInnerContent(siteTitle) });
+        rewriter.on('meta[name="description"]', { element: el => el.setAttribute('content', description) });
         rewriter.on('#ssr-site-title', {
             element: el => {
                 el.setInnerContent(siteTitle);
@@ -128,6 +124,9 @@ export async function onRequestGet(context) {
         });
     }
 
+    // ⚡️ 修复点：彻底隐藏头部骨架
+    rewriter.on('#site-skeleton', { element: el => el.setAttribute('class', 'hidden') });
+
     // 列表容器
     if (posts.length > 0) {
         const itemsHtml = posts.map((p, i) => renderPostItem(p, i, showViews)).join('');
@@ -137,13 +136,14 @@ export async function onRequestGet(context) {
                 el.setAttribute('class', 'divide-y divide-stone-200/70');
             }
         });
-        // 清掉骨架（用空内容覆盖，避免抖动）
-        rewriter.on('#posts-skeleton', { element: el => el.setInnerContent('', { html: true }) });
+        // ⚡️ 修复点：彻底给文章骨架加上 hidden，而不是单纯清空内容
+        rewriter.on('#posts-skeleton', { element: el => el.setAttribute('class', 'hidden') });
     } else {
         // 空数据：显示空状态
         rewriter.on('#ssr-post-list', { element: el => el.setInnerContent('', { html: true }) });
-        rewriter.on('#posts-skeleton', { element: el => el.setInnerContent('', { html: true }) });
-        rewriter.on('#status-empty', { element: el => el.removeAttribute('class') });
+        rewriter.on('#posts-skeleton', { element: el => el.setAttribute('class', 'hidden') });
+        // ⚡️ 修复点：保留原有排版类名，去掉 hidden
+        rewriter.on('#status-empty', { element: el => el.setAttribute('class', 'py-20 text-center') });
     }
 
     // 4. 输出

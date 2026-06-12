@@ -169,25 +169,26 @@ async function fetchSettings(env) {
  */
 async function renderFallbackPage(env, request, url, type) {
     const statusMap = {
-        'bad-slug':  'status-bad-slug',
-        'not-found': 'status-not-found',
-        'error':     'status-error'
+        'bad-slug':  { id: 'status-bad-slug', cls: 'py-24 text-center' },
+        'not-found': { id: 'status-not-found', cls: 'py-24 text-center' },
+        'error':     { id: 'status-error', cls: 'py-24 text-stone-400 text-sm tracking-wider' }
     };
-    const visibleId = statusMap[type] || 'status-not-found';
+    const fallback = statusMap[type] || statusMap['not-found'];
 
     let templateResp;
     try {
-        templateResp = await env.ASSETS.fetch(new Request(url.origin + '/post.html', request));
+        // ⚡️ 修复点：白屏杀手。不再复用原始 request，纯净拉取内部静态资源
+        templateResp = await env.ASSETS.fetch(new URL('/post.html', request.url));
     } catch (_) {
         return new Response('Not Found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
     const rewriter = new HTMLRewriter()
         .on('title', { element: el => el.setInnerContent('404 - 文章不存在') })
-        .on(`#${visibleId}`, { element: el => el.removeAttribute('class') })
-        // 隐藏文章主体 + 骨架，只留状态块
-        .on('#ssr-post-article', { element: el => el.setInnerContent('', { html: true }) })
-        .on('#post-skeleton',    { element: el => el.setInnerContent('', { html: true }) });
+        // ⚡️ 修复点：保留 Tailwind 排版类名
+        .on(`#${fallback.id}`, { element: el => el.setAttribute('class', fallback.cls) })
+        .on('#ssr-post-article', { element: el => el.setAttribute('class', 'hidden') })
+        .on('#post-skeleton',    { element: el => el.setAttribute('class', 'hidden') });
 
     const response = rewriter.transform(templateResp);
     const headers = new Headers(response.headers);
@@ -217,10 +218,14 @@ export async function onRequestGet(context) {
     const post = result.post;
 
     // 3) 并行拉取模板 + 设置
-    const [templateResp, settings] = await Promise.all([
-        env.ASSETS.fetch(new Request(url.origin + '/post.html', request)),
-        fetchSettings(env)
-    ]);
+    // ⚡️ 修复点：防止 ASSETS fetch 异常导致的白屏死机
+    let templateResp;
+    try {
+        templateResp = await env.ASSETS.fetch(new URL('/post.html', request.url));
+    } catch (err) {
+        return new Response('Internal Server Error: Missing Template', { status: 500 });
+    }
+    const settings = await fetchSettings(env);
 
     // 4) 准备渲染数据
     const siteTitle     = settings.site_title || 'Blog';
@@ -230,40 +235,35 @@ export async function onRequestGet(context) {
     const dateStr       = formatDate(post.created_at);
     const showViews     = String(settings.show_views) === '1';
 
-    // 边缘 Markdown → HTML（marked 包必须在 package.json 中）
     let contentHtml = '';
     try {
+        // 如果文件拉取异常，防崩溃兜底
+        if (typeof marked === 'undefined') throw new Error('marked module is missing');
         contentHtml = marked.parse(post.content || '');
     } catch (e) {
         console.error('Markdown parse failed:', e);
-        contentHtml = `<pre>${escapeHtml(post.content || '')}</pre>`;
+        contentHtml = `<pre class="whitespace-pre-wrap">${escapeHtml(post.content || '')}</pre>`;
     }
 
     // 5) HTMLRewriter
     const rewriter = new HTMLRewriter()
-        // <title> 与 SEO meta
         .on('title',                          { element: el => el.setInnerContent(fullTitle) })
         .on('meta[name="description"]',       { element: el => el.setAttribute('content', safeDesc) })
         .on('meta[property="og:title"]',      { element: el => el.setAttribute('content', safeTitle) })
         .on('meta[property="og:description"]',{ element: el => el.setAttribute('content', safeDesc) })
-        // 文章字段
         .on('#ssr-post-title',    { element: el => el.setInnerContent(safeTitle) })
         .on('#ssr-post-time',     { element: el => el.setInnerContent(dateStr) })
         .on('#ssr-post-content',  { element: el => el.setInnerContent(contentHtml, { html: true }) })
-        // 显示文章、隐藏骨架
         .on('#ssr-post-article',  { element: el => el.setAttribute('class', 'mt-12') })
-        .on('#post-skeleton',     { element: el => el.setInnerContent('', { html: true }) });
+        // ⚡️ 修复点：不要只清空内容，直接把骨架完全隐藏
+        .on('#post-skeleton',     { element: el => el.setAttribute('class', 'hidden') });
 
-    // 分类（有则显示；无则隐藏 category + 分隔点）
+    // 分类
     if (post.category) {
         rewriter.on('#ssr-post-category', { element: el => el.setInnerContent(escapeHtml(post.category)) });
     } else {
-        rewriter.on('#ssr-post-category', {
-            element: el => { el.setInnerContent('', { html: true }); el.setAttribute('class', 'hidden'); }
-        });
-        rewriter.on('#ssr-post-category-sep', {
-            element: el => { el.setInnerContent('', { html: true }); el.setAttribute('class', 'hidden'); }
-        });
+        rewriter.on('#ssr-post-category', { element: el => el.setAttribute('class', 'hidden') });
+        rewriter.on('#ssr-post-category-sep', { element: el => el.setAttribute('class', 'hidden') });
     }
 
     // 阅读量
@@ -272,9 +272,7 @@ export async function onRequestGet(context) {
             element: el => el.setInnerContent(renderViewsInner(post.views), { html: true })
         });
     } else {
-        rewriter.on('#ssr-post-views-group', {
-            element: el => el.setInnerContent('', { html: true })
-        });
+        rewriter.on('#ssr-post-views-group', { element: el => el.setAttribute('class', 'hidden') });
     }
 
     // 6) 输出
