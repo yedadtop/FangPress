@@ -234,7 +234,6 @@
         .fullscreen-mode .enter-fullscreen-btn {
             display: none;
         }
-
     </style>
 </head>
 <body class="bg-[#fafaf9] text-stone-800">
@@ -657,7 +656,6 @@
         }
 
         function enterFullscreen() {
-            // 同步内容到全屏模式
             const normalContent = document.getElementById('post-content').value;
             document.getElementById('post-content-fs').value = normalContent;
 
@@ -665,7 +663,6 @@
             document.getElementById('fullscreen-mode').style.display = 'flex';
             isFullscreen = true;
 
-            // 通知父窗口隐藏侧边栏
             if (window.top !== window) {
                 window.top.postMessage({ type: 'hide-sidebar' }, '*');
             }
@@ -675,7 +672,6 @@
         }
 
         function exitEditorFullscreen() {
-            // 同步内容回普通模式
             const fsContent = document.getElementById('post-content-fs').value;
             document.getElementById('post-content').value = fsContent;
 
@@ -683,7 +679,6 @@
             document.getElementById('normal-mode').style.display = 'block';
             isFullscreen = false;
 
-            // 通知父窗口显示侧边栏并恢复iframe
             if (window.top !== window) {
                 window.top.postMessage({ type: 'exit-fullscreen' }, '*');
             }
@@ -691,14 +686,12 @@
             updateWordCount();
         }
 
-        // ESC 退出全屏
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && isFullscreen) {
                 exitEditorFullscreen();
             }
         });
 
-        // 监听父窗口消息
         window.addEventListener('message', (e) => {
             if (e.data && e.data.type === 'exit-fullscreen' && isFullscreen) {
                 exitEditorFullscreen();
@@ -745,7 +738,8 @@
                 document.getElementById('post-slug').value = post.slug || '';
                 document.getElementById('post-category').value = post.category || '';
 
-                const contentRes = await fetch('/api/get?slug=' + encodeURIComponent(post.slug));
+                // ⚡ 核心修复：添加动态时间戳 _t=，彻底摧毁浏览器的 Disk Cache 缓存，确保回显绝对实时的正文
+                const contentRes = await fetch(`/api/get?slug=${encodeURIComponent(post.slug)}&_t=${Date.now()}`);
                 const contentResult = await contentRes.json();
                 if (contentResult.success && contentResult.data) {
                     document.getElementById('post-content').value = contentResult.data.content || '';
@@ -757,7 +751,7 @@
             }
         }
 
-        let allCategories = []; // 存放所有分类数据
+        let allCategories = [];
 
         async function loadCategorySuggestions() {
             try {
@@ -765,14 +759,12 @@
                 if (res.status === 401) { redirectToLogin(); return; }
                 const result = await res.json();
                 if (result.success) {
-                    // 过滤并去重
                     allCategories = [...new Set(result.data.map(p => p.category || '未分类'))];
                     renderCustomDropdown(allCategories);
                 }
             } catch (e) { /* 忽略 */ }
         }
 
-        // 渲染自定义下拉列表项
         function renderCustomDropdown(categories) {
             const dropdown = document.getElementById('custom-category-list');
             dropdown.innerHTML = '';
@@ -787,11 +779,10 @@
                 div.className = 'px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 cursor-pointer transition-colors';
                 div.textContent = cat;
                 
-                // 点击选项回填到输入框
                 div.addEventListener('click', (e) => {
                     document.getElementById('post-category').value = cat;
                     dropdown.classList.add('hidden');
-                    e.stopPropagation(); // 阻止冒泡
+                    e.stopPropagation();
                 });
                 dropdown.appendChild(div);
             });
@@ -871,7 +862,6 @@
             }
         }
 
-        // 初始化
         document.addEventListener('DOMContentLoaded', async () => {
             if (!(await validateToken())) return;
 
@@ -883,18 +873,15 @@
             slugEl.addEventListener('input', () => slugEl.dataset.touched = '1');
             titleEl.addEventListener('input', autoSlugify);
 
-            // ================= 新增：分类自定义下拉框逻辑 =================
             const categoryInput = document.getElementById('post-category');
             const customDropdown = document.getElementById('custom-category-list');
 
-            // 1. 输入框获得焦点时，显示下拉菜单
             categoryInput.addEventListener('focus', () => {
                 if (allCategories.length > 0) {
                     customDropdown.classList.remove('hidden');
                 }
             });
 
-            // 2. 监听输入，实现边打字边过滤分类
             categoryInput.addEventListener('input', () => {
                 const value = categoryInput.value.trim().toLowerCase();
                 const filtered = allCategories.filter(cat => cat.toLowerCase().includes(value));
@@ -902,18 +889,14 @@
                 customDropdown.classList.remove('hidden');
             });
 
-            // 3. 点击页面其他地方时，自动关闭下拉菜单
             document.addEventListener('click', (e) => {
                 const container = document.getElementById('category-container');
                 if (container && !container.contains(e.target)) {
                     customDropdown.classList.add('hidden');
                 }
             });
-            // =========================================================
 
-            // 监听普通模式编辑框
             contentEl.addEventListener('input', () => {
-                // 如果正在全屏模式，同步到全屏
                 if (isFullscreen) {
                     document.getElementById('post-content-fs').value = contentEl.value;
                     updateWordCount();
@@ -922,7 +905,6 @@
                 }
             });
 
-            // 监听全屏模式编辑框
             contentElFs.addEventListener('input', () => {
                 if (isFullscreen) {
                     document.getElementById('post-content').value = contentElFs.value;
@@ -930,7 +912,6 @@
                 }
             });
 
-            // 键盘快捷键（仅在非全屏模式生效）
             contentEl.addEventListener('keydown', (e) => {
                 if (isFullscreen) return;
                 if (e.ctrlKey || e.metaKey) {
@@ -946,7 +927,6 @@
                 }
             });
 
-            // 全屏模式键盘快捷键
             contentElFs.addEventListener('keydown', (e) => {
                 if (!isFullscreen) return;
                 if (e.ctrlKey || e.metaKey) {
@@ -960,7 +940,6 @@
                 }
             });
 
-            // 监听 JSON 导入输入框：input 事件中自动解析并回填
             const jsonImportEl = document.getElementById('json-import-input');
             jsonImportEl.addEventListener('input', () => {
                 const raw = jsonImportEl.value;
@@ -971,7 +950,7 @@
                 try {
                     data = JSON.parse(trimmed);
                 } catch (_) {
-                    return; // 半截 JSON 时静默忽略
+                    return;
                 }
                 if (!data || typeof data !== 'object') return;
 
