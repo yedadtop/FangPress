@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title></title>
+    <meta name="description" content="">
+    <title data-ssr="site-title"></title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5.0.12/index.css">
     <style>
@@ -41,9 +42,9 @@
 
     <div class="max-w-2xl mx-auto px-6 py-20 md:py-28">
         <header class="mb-20">
-            <h1 id="site-title" class="hidden font-serif text-4xl md:text-5xl font-medium tracking-tight text-stone-900">
+            <h1 id="ssr-site-title" data-ssr="site-title" class="hidden font-serif text-4xl md:text-5xl font-medium tracking-tight text-stone-900">
             </h1>
-            <p id="site-subtitle" class="hidden mt-3 text-stone-500 text-sm tracking-wide">
+            <p id="ssr-site-subtitle" data-ssr="site-subtitle" class="hidden mt-3 text-stone-500 text-sm tracking-wide">
             </p>
             <div id="site-skeleton">
                 <div class="h-10 md:h-12 w-48 md:w-64 bg-stone-200/80 rounded"></div>
@@ -63,7 +64,7 @@
             <span class="font-serif italic">数据获取失败</span> · 请刷新重试
         </div>
 
-        <main id="posts-container" class="hidden divide-y divide-stone-200/70">
+        <main id="ssr-post-list" data-ssr="post-list" class="hidden divide-y divide-stone-200/70">
         </main>
 
         <div id="posts-skeleton" class="divide-y divide-stone-200/70">
@@ -98,139 +99,12 @@
         — End of Stream —
     </footer>
 
-    <script>
-        // 全局默认配置配置项
-        const DEFAULT_SETTINGS = {
-            site_title:      "",
-            site_subtitle:   "",
-            show_views:      "1",
-            excerpt_length:  "200"
-        };
-
-        // 获取站点全局配置信息
-        async function loadSettings() {
-            try {
-                const res = await fetch('/api/settings');
-                const result = await res.json();
-                if (result.success && result.data) {
-                    return Object.assign({}, DEFAULT_SETTINGS, result.data);
-                }
-            } catch (e) { /* 出错回退到默认种子数据 */ }
-            return Object.assign({}, DEFAULT_SETTINGS);
-        }
-
-        // 将配置注入并移除头部骨架屏
-        function applySettings(s) {
-            if (s.site_title) {
-                document.getElementById('site-title').textContent = s.site_title;
-                document.getElementById('site-title').classList.remove('hidden');
-                document.title = s.site_title;
-            }
-            if (s.site_subtitle) {
-                document.getElementById('site-subtitle').textContent = s.site_subtitle;
-                document.getElementById('site-subtitle').classList.remove('hidden');
-            }
-            if (s.site_title || s.site_subtitle) {
-                document.getElementById('site-skeleton').classList.add('hidden');
-            }
-        }
-
-        // 核心渲染流：并行获取、无缝组装
-        async function loadArticles() {
-            const loadingEl = document.getElementById('status-loading');
-            const emptyEl   = document.getElementById('status-empty');
-            const errorEl   = document.getElementById('status-error');
-            const listEl    = document.getElementById('posts-container');
-            const skeletonEl = document.getElementById('posts-skeleton');
-
-            try {
-                // 🚀 并行发起设置和已瘦身的文章列表查询（单次网络往返，解决排队阻塞）
-                const [settings, listRes] = await Promise.all([
-                    loadSettings(),
-                    fetch('/api/list').then(r => r.json()).catch(() => ({ success: false, error: 'network' }))
-                ]);
-                
-                applySettings(settings);
-                const showViews = String(settings.show_views) === '1';
-
-                if (loadingEl) loadingEl.classList.add('hidden');
-
-                // 接口返回异常状态
-                if (!listRes.success) {
-                    errorEl.classList.remove('hidden');
-                    if (skeletonEl) skeletonEl.classList.add('hidden');
-                    return;
-                }
-
-                // 数据不为空，循环渲染
-                if (Array.isArray(listRes.data) && listRes.data.length > 0) {
-                    listEl.classList.remove('hidden');
-                    if (skeletonEl) skeletonEl.classList.add('hidden');
-
-                    listEl.innerHTML = listRes.data.map((post, i) => `
-                        <article class="fade-up py-7 group" style="animation-delay: ${i * 40}ms">
-                            <a href="/post.html?slug=${encodeURIComponent(post.slug || '')}" class="block">
-                                <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-2 md:gap-6">
-                                    <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
-                                        <span class="link-underline pb-0.5">${escapeHtml(post.title)}</span>
-                                    </h2>
-                                    <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5">
-                                        ${showViews ? `
-                                        <span class="flex items-center gap-1 font-sans">
-                                            <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            </svg>
-                                            ${post.views || 0}
-                                        </span>
-                                        <span>·</span>
-                                        ` : ''}
-                                        <time class="font-sans">${formatDate(post.created_at)}</time>
-                                    </div>
-                                </div>
-                                ${post.excerpt ? `
-                                <p class="mt-2.5 font-serif text-stone-500 text-[0.95rem] leading-relaxed">
-                                    ${escapeHtml(post.excerpt)}
-                                </p>
-                                ` : ''}
-                            </a>
-                        </article>
-                    `).join('');
-                } else {
-                    // 数据集为空
-                    emptyEl.classList.remove('hidden');
-                    if (skeletonEl) skeletonEl.classList.add('hidden');
-                }
-            } catch (err) {
-                if (loadingEl) loadingEl.classList.add('hidden');
-                errorEl.classList.remove('hidden');
-                if (skeletonEl) skeletonEl.classList.add('hidden');
-            }
-        }
-
-        // 格式化时间戳
-        function formatDate(ts) {
-            const d = new Date(ts);
-            if (isNaN(d)) return '';
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${y} · ${m} · ${day}`;
-        }
-
-        // XSS 安全过滤
-        function escapeHtml(str) {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-        // 单一挂载点初始化
-        document.addEventListener('DOMContentLoaded', loadArticles);
-    </script>
+    <!-- Edge SSR: 由 Cloudflare Worker (functions/[[path]].js) 在边缘完成数据注入。
+         客户端不再发起 fetch；HTMLRewriter 将通过以下标识进行定位：
+           - title / meta[name="description"]          站点标题与描述
+           - #ssr-site-title / #ssr-site-subtitle      站点名/副标题
+           - #ssr-post-list                            文章列表容器
+           - #status-error / #status-empty / #posts-skeleton  失败/空/骨架降级
+    -->
 </body>
 </html>
