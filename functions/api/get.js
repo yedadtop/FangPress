@@ -49,22 +49,31 @@ export async function onRequestGet(context) {
           });
         }
 
+        const newViews = (Number(c.views) || 0) + 1;
         const post = {
           title: c.title,
           content: c.content,
           category: c.category ?? null,
           created_at: c.created_at,
           // 内存补偿 +1,真实写入交给 waitUntil 异步完成
-          views: c.views + 1
+          views: newViews
         };
 
-        // 浏览量自增完全移出关键路径
+        // 浏览量自增 + 缓存回写 完全移出关键路径；KV 命中时也把最新 views 覆盖回缓存，
+        // 避免后续 7 天缓存期内 KV 一直返回旧值
         if (c.status === 'published') {
           context.waitUntil(
-            env.DB.prepare("UPDATE posts SET views = views + 1 WHERE id = ?")
-              .bind(c.id)
-              .run()
-              .catch(err => console.error('Async views increment failed:', err))
+            Promise.all([
+              env.DB.prepare("UPDATE posts SET views = views + 1 WHERE id = ?")
+                .bind(c.id)
+                .run()
+                .catch(err => console.error('Async views increment failed:', err)),
+              env.KV.put(kvKey, JSON.stringify({
+                ...c,
+                views: newViews
+              }), { expirationTtl: 604800 })
+                .catch(err => console.error('KV put failed (get.js KV hit):', err))
+            ])
           );
         }
 
@@ -98,20 +107,22 @@ export async function onRequestGet(context) {
     }
 
     const category = (!dbPost.category || dbPost.category.trim() === '') ? null : dbPost.category;
+    const newViews = (Number(dbPost.views) || 0) + 1;
     const post = {
       title: dbPost.title,
       content: dbPost.content,
       category,
       created_at: dbPost.created_at,
-      views: dbPost.views + 1
+      views: newViews
     };
 
     if (dbPost.status === 'published') {
-      // ⚡ 回填新格式 KV(下次直接命中关键路径,零 D1 等待)
+      // ⚡ 回填新格式 KV(下次直接命中关键路径,零 D1 等待)；
+      // views 字段使用内存中已 +1 的 newViews，避免下次命中时回退
       const cachePayload = {
         id: dbPost.id,
         status: dbPost.status,
-        views: dbPost.views,
+        views: newViews,
         title: dbPost.title,
         content: dbPost.content,
         category,

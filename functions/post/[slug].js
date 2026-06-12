@@ -87,12 +87,24 @@ async function fetchPost(env, slug, context) {
     if (cached && cached.id != null && cached.status != null && cached.views != null) {
         if (cached.status !== 'published') return { ok: false, status: 404 };
 
+        // 内存中先补偿最新阅读量，避免后续 7 天缓存期内展示旧值
+        const newViews = (Number(cached.views) || 0) + 1;
+
         // 异步浏览量自增（关键路径外）
         context.waitUntil(
             env.DB.prepare('UPDATE posts SET views = views + 1 WHERE id = ?')
                 .bind(cached.id)
                 .run()
                 .catch(err => console.error('Views increment failed:', err))
+        );
+
+        // 回写 KV：将最新阅读量一并写入缓存，避免后续命中时仍返回旧 views
+        context.waitUntil(
+            env.KV.put(kvKey, JSON.stringify({
+                ...cached,
+                views: newViews
+            }), { expirationTtl: 604800 })
+                .catch(err => console.error('KV put failed (post/[slug].js KV hit):', err))
         );
 
         return {
@@ -103,7 +115,7 @@ async function fetchPost(env, slug, context) {
                 content: cached.content,
                 category: cached.category ?? null,
                 created_at: cached.created_at,
-                views: cached.views + 1
+                views: newViews
             }
         };
     }
@@ -122,13 +134,14 @@ async function fetchPost(env, slug, context) {
     if (!dbPost || dbPost.status !== 'published') return { ok: false, status: 404 };
 
     const category = (!dbPost.category || String(dbPost.category).trim() === '') ? null : dbPost.category;
+    const newViews = (Number(dbPost.views) || 0) + 1;
 
-    // 回填 KV（关键路径外）
+    // 回填 KV（关键路径外），views 使用最新值，避免下次命中时回退
     context.waitUntil(
         env.KV.put(kvKey, JSON.stringify({
             id: dbPost.id,
             status: dbPost.status,
-            views: dbPost.views,
+            views: newViews,
             title: dbPost.title,
             content: dbPost.content,
             category,
@@ -152,7 +165,7 @@ async function fetchPost(env, slug, context) {
             content: dbPost.content,
             category,
             created_at: dbPost.created_at,
-            views: dbPost.views + 1
+            views: newViews
         }
     };
 }
