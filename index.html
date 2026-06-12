@@ -198,13 +198,31 @@
             currentToken++; // 令进行中的请求作废，避免竞态覆盖
         }
 
-        function runSearch(keyword) {
+        // 解析日期输入：支持 YYYY[sep]M[sep]D、YYYY-MM-DD、YYYY.M.D、2026-2-06 等
+        // 任意非数字字符视为分隔符；返回规范化的 YYYY-MM-DD，无效返回 null
+        function parseDateInput(raw) {
+            var m = String(raw).match(/^(\d{4})[^\d]+(\d{1,2})[^\d]+(\d{1,2})$/);
+            if (!m) return null;
+            var y  = parseInt(m[1], 10);
+            var mo = parseInt(m[2], 10);
+            var d  = parseInt(m[3], 10);
+            if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+            // 用 Date 反查，拦截 2026-02-30、2026-13-01 等非法日期
+            var test = new Date(Date.UTC(y, mo - 1, d));
+            if (test.getUTCFullYear() !== y ||
+                test.getUTCMonth()    !== mo - 1 ||
+                test.getUTCDate()     !== d) return null;
+            var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+            return y + '-' + pad(mo) + '-' + pad(d);
+        }
+
+        function fetchSearch(url) {
             cancelPending();
             showMessage('搜索中…');
             var token = currentToken;
             debounceTimer = setTimeout(function () {
                 debounceTimer = null;
-                fetch('/api/search?q=' + encodeURIComponent(keyword), {
+                fetch(url, {
                     headers: { 'Accept': 'application/json' },
                     cache: 'no-store'
                 })
@@ -222,6 +240,14 @@
                     showMessage('搜索失败，请稍后再试');
                 });
             }, DEBOUNCE_MS);
+        }
+
+        function runKeywordSearch(keyword) {
+            fetchSearch('/api/search?q=' + encodeURIComponent(keyword));
+        }
+
+        function runDateSearch(dateStr) {
+            fetchSearch('/api/search?date=' + encodeURIComponent(dateStr));
         }
 
         var open = function () {
@@ -246,7 +272,13 @@
             input.addEventListener('input', function () {
                 var keyword = input.value.trim();
                 if (!keyword) { cancelPending(); clearResults(); return; }
-                runSearch(keyword);
+                // 优先按日期搜索；解析失败则回退到关键词搜索
+                var dateStr = parseDateInput(keyword);
+                if (dateStr) {
+                    runDateSearch(dateStr);
+                } else {
+                    runKeywordSearch(keyword);
+                }
             });
         }
     })();
