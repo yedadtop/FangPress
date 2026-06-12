@@ -57,9 +57,9 @@
 
     <!-- 搜索遮罩（仅 UI，无搜索逻辑） -->
     <div id="search-overlay" class="fixed inset-0 z-[60] hidden">
-        <div id="search-backdrop" class="absolute inset-0 bg-stone-50/85 backdrop-blur-xl"></div>
+        <div id="search-backdrop" class="absolute inset-0 bg-stone-50/40 backdrop-blur-2xl"></div>
         <div class="relative max-w-2xl mx-auto px-6 pt-24 md:pt-28 fade-up">
-            <div class="bg-white/95 border border-stone-200/70 rounded-xl shadow-lg shadow-stone-900/5 overflow-hidden">
+            <div class="bg-white/95 border border-stone-200/70 rounded-xl shadow-2xl shadow-stone-900/10 overflow-hidden backdrop-blur-sm">
                 <div class="flex items-center px-5">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-stone-400 shrink-0" aria-hidden="true">
                         <circle cx="11" cy="11" r="8"></circle>
@@ -78,17 +78,6 @@
     </div>
 
     <div class="max-w-2xl mx-auto px-6 pt-20 md:pt-28 pb-20 md:pb-28">
-        <header class="mb-20">
-            <h1 id="ssr-site-title" data-ssr="site-title" class="hidden font-serif text-4xl md:text-5xl font-medium tracking-tight text-stone-900">
-            </h1>
-            <p id="ssr-site-subtitle" data-ssr="site-subtitle" class="hidden mt-3 text-stone-500 text-sm tracking-wide">
-            </p>
-            <div id="site-skeleton">
-                <div class="h-10 md:h-12 w-48 md:w-64 bg-stone-200/80 rounded"></div>
-                <div class="h-4 w-72 md:w-96 bg-stone-200/80 rounded mt-3"></div>
-            </div>
-        </header>
-
         <div id="status-loading" class="hidden">
         </div>
 
@@ -144,7 +133,7 @@
     <!-- Edge SSR: 由 Cloudflare Worker (functions/[[path]].js) 在边缘完成数据注入。
          客户端不再发起 fetch；HTMLRewriter 将通过以下标识进行定位：
            - title / meta[name="description"]          站点标题与描述
-           - #ssr-header-title / #ssr-site-title / #ssr-site-subtitle  顶部导航名 / 内容标题 / 副标题
+           - #ssr-header-title                          顶部导航站点名
            - #ssr-post-list                            文章列表容器
            - #ssr-pagination / #ssr-prev-page / #ssr-next-page  分页控制器
            - #status-error / #status-empty / #posts-skeleton  失败/空/骨架降级
