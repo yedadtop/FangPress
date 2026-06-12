@@ -1,10 +1,11 @@
 // functions/api/update.js
 import { makeExcerpt } from "./helpers.js";
 
+const KV_LIST_KEY = "site:posts:list";
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // ... 你的原有鉴权代码保持不变 ...
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) return new Response(JSON.stringify({ success: false, error: "未授权" }), { status: 401 });
   const clientToken = authHeader.replace("Bearer ", "");
@@ -24,10 +25,9 @@ export async function onRequestPost(context) {
 
     const newSlug = slug.trim().toLowerCase();
 
-    // 1) 找出修改前的旧 slug，用来精准定点清除 KV
+    // 1) 查出旧的 slug 用于精准清除正文 KV
     const oldPost = await env.DB.prepare("SELECT slug FROM posts WHERE id = ?").bind(id).first();
 
-    // 2) 动态获取当前摘要字数配置
     let excerptLength = 200;
     try {
       const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'excerpt_length'").first();
@@ -36,7 +36,6 @@ export async function onRequestPost(context) {
       }
     } catch (_) {}
 
-    // 3) 重新计算摘要
     const excerptText = makeExcerpt(content.trim(), excerptLength);
     const now = new Date().toISOString();
 
@@ -53,13 +52,12 @@ export async function onRequestPost(context) {
       return new Response(JSON.stringify({ success: false, error: "未找到该文章，可能已被删除" }), { status: 404 });
     }
 
-    // 4) 成功更新数据库后，清除 KV 旧脏数据（使用 context.waitUntil 异步清除，不卡响应速度）
-    context.waitUntil((async () => {
-      if (oldPost && oldPost.slug) {
-        await env.KV.delete(`post:content:${oldPost.slug.trim().toLowerCase()}`);
-      }
-      await env.KV.delete(`post:content:${newSlug}`);
-    })());
+    // ⚡ 核心修改点：数据库保存成功后，全线瓦解老正文缓存、新正文缓存、列表缓存
+    if (oldPost && oldPost.slug) {
+      await env.KV.delete(`post:content:${oldPost.slug.trim().toLowerCase()}`);
+    }
+    await env.KV.delete(`post:content:${newSlug}`);
+    await env.KV.delete(KV_LIST_KEY);
 
     return new Response(JSON.stringify({ success: true, message: "文章已更新" }), {
       headers: { "Content-Type": "application/json" }

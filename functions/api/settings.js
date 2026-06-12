@@ -2,23 +2,22 @@
 import { makeExcerpt } from "./helpers.js";
 
 const ALLOWED_KEYS = new Set(["site_title", "site_subtitle", "show_views", "excerpt_length"]);
-const KV_SETTINGS_KEY = "site:settings:data"; // 统一的配置项 KV 缓存键名
+const KV_SETTINGS_KEY = "site:settings:data"; 
+const KV_LIST_KEY = "site:posts:list"; // 引入列表缓存键
 
 export async function onRequestGet(context) {
   const { env } = context;
   try {
-    // 🚀 1) 优先尝试从全球边缘 KV 命中缓存
     const cachedSettings = await env.KV.get(KV_SETTINGS_KEY);
     if (cachedSettings) {
       return new Response(cachedSettings, {
         headers: { 
           "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=10, s-maxage=60" // 允许短时间边缘强缓存
+          "Cache-Control": "public, max-age=10, s-maxage=60"
         }
       });
     }
 
-    // 2) 缓存未命中，回源到 D1 关系型数据库查询
     const { results } = await env.DB.prepare("SELECT key, value FROM site_settings").all();
     const data = {};
     (results || []).forEach(row => { data[row.key] = row.value; });
@@ -26,10 +25,7 @@ export async function onRequestGet(context) {
     const responseData = { success: true, data };
     const responseString = JSON.stringify(responseData);
 
-    // 3) 异步将最新配置写回 KV 挡住后续流量（设置不限时永久缓存，直到后台修改时被清空）
-    context.waitUntil(
-      env.KV.put(KV_SETTINGS_KEY, responseString)
-    );
+    context.waitUntil(env.KV.put(KV_SETTINGS_KEY, responseString));
 
     return new Response(responseString, { 
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } 
@@ -42,7 +38,6 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // ... 鉴权逻辑保持绝对不变 ...
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) return new Response(JSON.stringify({ success: false, error: "未授权" }), { status: 401 });
   const clientToken = authHeader.replace("Bearer ", "");
@@ -86,7 +81,6 @@ export async function onRequestPost(context) {
       touched++;
     }
 
-    // 核心联动逻辑：如果修改了摘要字数，批量重刷历史文章摘要
     if (newExcerptLength !== null) {
       const { results } = await env.DB.prepare("SELECT id, content FROM posts").all();
       const posts = results || [];
@@ -101,11 +95,11 @@ export async function onRequestPost(context) {
       }
     }
 
-    // ⚡ 核心提速修改点：保存成功后，立刻将 KV 里的配置项脏缓存抹除
-    // 这样下次前台不管是访问主页还是单页，都会触发全新的回源，动态获取最新配置并重新生成无缝的 KV 缓存
+    // ⚡ 核心修改点：联动清理配置 KV 和列表 KV（因为列表展示受设置影响）
     await env.KV.delete(KV_SETTINGS_KEY);
+    await env.KV.delete(KV_LIST_KEY);
 
-    return new Response(JSON.stringify({ success: true, message: `已更新 ${touched} 项配置，完成全站摘要及 KV 缓存刷新。` }), {
+    return new Response(JSON.stringify({ success: true, message: `已更新 ${touched} 项配置并同步清理全站全量缓存。` }), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {

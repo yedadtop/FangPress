@@ -1,10 +1,11 @@
 // functions/api/push.js
 import { makeExcerpt } from "./helpers.js";
 
+const KV_LIST_KEY = "site:posts:list";
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // ... 你的原有鉴权代码保持不变 ...
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) return new Response(JSON.stringify({ success: false, error: "未授权" }), { status: 401 });
   const clientToken = authHeader.replace("Bearer ", "");
@@ -24,7 +25,6 @@ export async function onRequestPost(context) {
 
     const formattedSlug = slug.trim().toLowerCase();
 
-    // 1) 动态拉取设置中的摘要字数
     let excerptLength = 200; 
     try {
       const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'excerpt_length'").first();
@@ -33,11 +33,9 @@ export async function onRequestPost(context) {
       }
     } catch (_) {}
 
-    // 2) 提前计算好纯文本摘要
     const excerptText = makeExcerpt(content.trim(), excerptLength);
     const currentTime = new Date().toISOString();
 
-    // 3) 存入 D1 数据库（包含 excerpt 字段）
     await env.DB.prepare(
       `INSERT INTO posts (title, slug, content, excerpt, category, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
@@ -53,7 +51,8 @@ export async function onRequestPost(context) {
     )
     .run();
 
-    // 提示：发布新文章不需要主动写入 KV，交给 get.js 动态按需懒加载缓存即可，减轻写入锁压力。
+    // ⚡ 核心修改点：新文章发布成功，立刻清理公开列表的 KV 缓存，确保主页更新
+    await env.KV.delete(KV_LIST_KEY);
 
     return new Response(JSON.stringify({ success: true, message: "Post saved to D1 successfully" }), {
       headers: { "Content-Type": "application/json" }
