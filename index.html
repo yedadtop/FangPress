@@ -13,7 +13,7 @@
             --reader-text: hsl(24, 10%, 0%);          /* 墨质字色暗度 0% (纯黑) */
             --reader-size: 1.2rem;                    /* 正文字号 1.2rem */
             --reader-line-height: 1.85;               /* 呼吸行高 1.85 */
-            --reader-width: 49rem;                    /* 容器黄金行宽 49rem */
+            --reader-width: 44rem;                    /* 容器黄金行宽 44rem */
             --reader-paragraph-spacing: 1.40em;       /* 段落底部间距 */
             --reader-letter-spacing: 0.02em;          /* 字间距微调 */
             --reader-title-weight: 700;               /* 标题加粗字重 */
@@ -27,61 +27,28 @@
             --reader-body-font: var(--font-serif-stack);
         }
 
-        body { 
-            font-family: var(--reader-body-font); 
-            background-color: var(--reader-bg);
-            color: var(--reader-text);
-            letter-spacing: var(--reader-letter-spacing);
-        }
+        body { font-family: var(--reader-body-font); background-color: var(--reader-bg); color: var(--reader-text); letter-spacing: var(--reader-letter-spacing); }
 
         .font-serif { font-family: var(--reader-title-font); }
         .font-sans { font-family: var(--font-sans-stack); }
 
         /* === 扁平化自定义滚动条 === */
-        html {
-            scrollbar-width: thin;
-            scrollbar-color: hsl(40, 10%, 80%) var(--reader-bg); /* Firefox */
-        }
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: var(--reader-bg); /* 轨道融入纸张背景 */
-        }
-        ::-webkit-scrollbar-thumb {
-            background: hsl(40, 10%, 82%); /* 暖灰色调的滑块 */
-            border-radius: 0; /* 极致扁平，摒弃圆角 */
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: hsl(40, 10%, 70%); /* 悬停加深 */
-        }
+        html { scrollbar-width: thin; scrollbar-color: hsl(40, 10%, 80%) var(--reader-bg); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--reader-bg); }
+        ::-webkit-scrollbar-thumb { background: hsl(40, 10%, 82%); border-radius: 0; }
+        ::-webkit-scrollbar-thumb:hover { background: hsl(40, 10%, 70%); }
 
         /* 优雅的下划线动画 */
-        .link-underline {
-            background-image: linear-gradient(currentColor, currentColor);
-            background-size: 0% 1px;
-            background-repeat: no-repeat;
-            background-position: 0 100%;
-            transition: background-size 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .group:hover .link-underline,
-        .link-underline:hover {
-            background-size: 100% 1px;
-        }
+        .link-underline { background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1px; background-repeat: no-repeat; background-position: 0 100%; transition: background-size 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+        .group:hover .link-underline, .link-underline:hover { background-size: 100% 1px; }
 
         /* 列表/组件入场动画 */
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(6px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .fade-up { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
         /* 遮罩层渐显动画 */
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to   { opacity: 1; }
-        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .fade-in { animation: fadeIn 0.4s ease-out both; }
     </style>
 </head>
