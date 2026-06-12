@@ -149,8 +149,6 @@ export async function onRequestGet(context) {
         }
     }
 
-    // 🚀 调试信息：输出当前的页码状态、文章数、是否命中缓存
-    console.log(`[SSR Debug] Page: ${page} | Post Count: ${posts.length} | Has Next Page: ${hasNextPage} | KV Hit: ${!!listRaw}`);
 
     const showViews = String(settings.show_views) === '1';
     const siteTitle = settings.site_title || '';
@@ -240,6 +238,11 @@ export async function onRequestGet(context) {
         // 隐藏整个分页条
         rewriter.on('#ssr-pagination', { element: el => el.setAttribute('class', 'hidden') });
     }
+
+    const debugMsg = `[SSR 调试器] 页码: ${page} | 获取到的文章数: ${posts.length} | hasNextPage变量: ${hasNextPage} | 命中KV缓存: ${!!listRaw}`;
+    rewriter.on('body', {
+        element: el => el.append(`<div style="position:fixed;bottom:0;left:0;width:100%;background:#fee2e2;color:#991b1b;font-size:12px;padding:8px;text-align:center;z-index:9999;font-family:monospace;border-top:1px solid #f87171;">${debugMsg}</div>`, { html: true })
+    });
 
     // 4. 输出
     const response = rewriter.transform(templateResp);
