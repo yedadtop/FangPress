@@ -27,16 +27,23 @@ export async function onRequestPost(context) {
 
     // ⚡ 批量清除所有分页的首页列表缓存，防止漏网之鱼导致错位
     try {
-      const listKeys = await env.KV.list({ prefix: "site:posts:list:page:" });
-      for (const k of listKeys.keys) {
-        await env.KV.delete(k.name);
+      let isComplete = false, cursor = undefined;
+      while (!isComplete) {
+        const listKeys = await env.KV.list({ prefix: "site:posts:list:page:", cursor });
+        for (const k of listKeys.keys) await env.KV.delete(k.name);
+        isComplete = listKeys.list_complete; cursor = listKeys.cursor;
       }
     } catch (_) {}
 
-    // 💡 清理该文章归属的分类页列表缓存，防止分类页出现幽灵文章数据
-    if (post && post.category) {
-      try { await env.KV.delete(`site:posts:list:cat:${post.category.trim().toLowerCase()}`); } catch (_) {}
-    }
+    // 清理分类缓存
+    try {
+      let isComplete = false, cursor = undefined;
+      while (!isComplete) {
+        const kvKeys = await env.KV.list({ prefix: "site:posts:list:cat:", cursor });
+        for (const k of kvKeys.keys) await env.KV.delete(k.name);
+        isComplete = kvKeys.list_complete; cursor = kvKeys.cursor;
+      }
+    } catch (_) {}
 
     // 3) 最后执行 D1 的物理删除
     const result = await env.DB.prepare("DELETE FROM posts WHERE id = ?").bind(id).run();

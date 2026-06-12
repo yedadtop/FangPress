@@ -53,18 +53,23 @@ export async function onRequestPost(context) {
 
     // ⚡ 批量清除所有分页的首页列表缓存，防止漏网之鱼导致错位
     try {
-      const listKeys = await env.KV.list({ prefix: "site:posts:list:page:" });
-      for (const k of listKeys.keys) {
-        await env.KV.delete(k.name);
+      let isComplete = false, cursor = undefined;
+      while (!isComplete) {
+        const listKeys = await env.KV.list({ prefix: "site:posts:list:page:", cursor });
+        for (const k of listKeys.keys) await env.KV.delete(k.name);
+        isComplete = listKeys.list_complete; cursor = listKeys.cursor;
       }
     } catch (_) {}
 
-    if (oldPost && oldPost.category) {
-      try { await env.KV.delete(`site:posts:list:cat:${oldPost.category.trim().toLowerCase()}`); } catch (_) {}
-    }
-    if (targetCategory) {
-      try { await env.KV.delete(`site:posts:list:cat:${targetCategory.toLowerCase()}`); } catch (_) {}
-    }
+    // 清理分类缓存
+    try {
+      let isComplete = false, cursor = undefined;
+      while (!isComplete) {
+        const kvKeys = await env.KV.list({ prefix: "site:posts:list:cat:", cursor });
+        for (const k of kvKeys.keys) await env.KV.delete(k.name);
+        isComplete = kvKeys.list_complete; cursor = kvKeys.cursor;
+      }
+    } catch (_) {}
 
     // ⚡ 核心修改：只有状态依旧是 published 的文章才允许主动回填 KV；
     // 如果是 draft，上面已经全面 delete 干净了，这就完美了！
