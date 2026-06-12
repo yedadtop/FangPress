@@ -239,11 +239,6 @@ export async function onRequestGet(context) {
         rewriter.on('#ssr-pagination', { element: el => el.setAttribute('class', 'hidden') });
     }
 
-    const debugMsg = `[SSR 调试器] 页码: ${page} | 获取到的文章数: ${posts.length} | hasNextPage变量: ${hasNextPage} | 命中KV缓存: ${!!listRaw}`;
-    rewriter.on('body', {
-        element: el => el.append(`<div style="position:fixed;bottom:0;left:0;width:100%;background:#fee2e2;color:#991b1b;font-size:12px;padding:8px;text-align:center;z-index:9999;font-family:monospace;border-top:1px solid #f87171;">${debugMsg}</div>`, { html: true })
-    });
-
     // 4. 输出
     const response = rewriter.transform(templateResp);
     const headers = new Headers(response.headers);
