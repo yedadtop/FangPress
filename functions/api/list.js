@@ -79,7 +79,6 @@ export async function onRequestGet(context) {
          ORDER BY created_at DESC LIMIT 100`
       ).bind(formattedCategory);
     } else if (isPaginated) {
-      // ⚡ 前台分页查询：严格限制 published
       const offset = (page - 1) * PAGE_SIZE;
       stmt = env.DB.prepare(
         `SELECT id, title, slug, content, category, views, created_at
@@ -89,11 +88,11 @@ export async function onRequestGet(context) {
          LIMIT ${PAGE_SIZE + 1} OFFSET ${offset}`
       );
     } else {
-      // ⚡ 管理后台查询：查询所有状态文章（包含草稿），且直接查 D1 保证实时性
+      // ⚡ 修复 2：管理后台查询去除 LIMIT 100，确保加载所有文章
       stmt = env.DB.prepare(
         `SELECT id, title, slug, content, category, views, created_at, status
          FROM posts
-         ORDER BY created_at DESC LIMIT 100`
+         ORDER BY created_at DESC`
       );
     }
     

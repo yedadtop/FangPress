@@ -87,35 +87,27 @@ async function fetchPost(env, slug, context) {
     if (cached && cached.id != null && cached.status != null && cached.views != null) {
         if (cached.status !== 'published') return { ok: false, status: 404 };
 
-        // 内存中先补偿最新阅读量，避免后续 7 天缓存期内展示旧值
-        const newViews = (Number(cached.views) || 0) + 1;
+        const newViews = (Number(cached.views) || 0) + 1; // 仅用于前台立刻显示的乐观数值
 
-        // 异步浏览量自增（关键路径外）
-        context.waitUntil(
-            env.DB.prepare('UPDATE posts SET views = views + 1 WHERE id = ?')
-                .bind(cached.id)
-                .run()
-                .catch(err => console.error('Views increment failed:', err))
-        );
-
-        // 回写 KV：将最新阅读量一并写入缓存，避免后续命中时仍返回旧 views
-        context.waitUntil(
-            env.KV.put(kvKey, JSON.stringify({
-                ...cached,
-                views: newViews
-            }), { expirationTtl: 604800 })
-                .catch(err => console.error('KV put failed (post/[slug].js KV hit):', err))
-        );
+        // ⚡ 修复 3：解决高并发竞态条件。让数据库加1，并直接返回真实权威值再塞回 KV
+        context.waitUntil((async () => {
+            try {
+                // 执行自增并立刻取回真值
+                const res = await env.DB.prepare('UPDATE posts SET views = views + 1 WHERE id = ? RETURNING views').bind(cached.id).first();
+                const trueDbViews = res ? res.views : newViews;
+                // 将绝对真实的浏览量盖回 KV
+                await env.KV.put(kvKey, JSON.stringify({ ...cached, views: trueDbViews }), { expirationTtl: 604800 });
+            } catch (err) {
+                console.error('Views sync failed:', err);
+            }
+        })());
 
         return {
             ok: true,
             post: {
-                id: cached.id,
-                title: cached.title,
-                content: cached.content,
-                category: cached.category ?? null,
-                created_at: cached.created_at,
-                views: newViews
+                id: cached.id, title: cached.title, content: cached.content,
+                category: cached.category ?? null, created_at: cached.created_at,
+                views: newViews // 返回给访客依然无延迟
             }
         };
     }
@@ -123,11 +115,8 @@ async function fetchPost(env, slug, context) {
     // 2) D1 降级
     let dbPost;
     try {
-        dbPost = await env.DB.prepare(
-            'SELECT id, status, views, title, content, category, created_at FROM posts WHERE slug = ?'
-        ).bind(normalized).first();
+        dbPost = await env.DB.prepare('SELECT id, status, views, title, content, category, created_at FROM posts WHERE slug = ?').bind(normalized).first();
     } catch (err) {
-        console.error('D1 query failed:', err);
         return { ok: false, status: 500, error: err.message };
     }
 
@@ -136,36 +125,26 @@ async function fetchPost(env, slug, context) {
     const category = (!dbPost.category || String(dbPost.category).trim() === '') ? null : dbPost.category;
     const newViews = (Number(dbPost.views) || 0) + 1;
 
-    // 回填 KV（关键路径外），views 使用最新值，避免下次命中时回退
-    context.waitUntil(
-        env.KV.put(kvKey, JSON.stringify({
-            id: dbPost.id,
-            status: dbPost.status,
-            views: newViews,
-            title: dbPost.title,
-            content: dbPost.content,
-            category,
-            created_at: dbPost.created_at
-        }), { expirationTtl: 604800 }).catch(err => console.error('KV put failed:', err))
-    );
-
-    // 异步浏览量自增
-    context.waitUntil(
-        env.DB.prepare('UPDATE posts SET views = views + 1 WHERE id = ?')
-            .bind(dbPost.id)
-            .run()
-            .catch(err => console.error('Views increment failed:', err))
-    );
+    // ⚡ 同样处理降级分支
+    context.waitUntil((async () => {
+        try {
+            const res = await env.DB.prepare('UPDATE posts SET views = views + 1 WHERE id = ? RETURNING views').bind(dbPost.id).first();
+            const trueDbViews = res ? res.views : newViews;
+            await env.KV.put(kvKey, JSON.stringify({
+                id: dbPost.id, status: dbPost.status, title: dbPost.title,
+                content: dbPost.content, category, created_at: dbPost.created_at,
+                views: trueDbViews // 使用 D1 真实反馈值
+            }), { expirationTtl: 604800 });
+        } catch (err) {
+            console.error('Fallback views sync failed:', err);
+        }
+    })());
 
     return {
         ok: true,
         post: {
-            id: dbPost.id,
-            title: dbPost.title,
-            content: dbPost.content,
-            category,
-            created_at: dbPost.created_at,
-            views: newViews
+            id: dbPost.id, title: dbPost.title, content: dbPost.content,
+            category, created_at: dbPost.created_at, views: newViews
         }
     };
 }

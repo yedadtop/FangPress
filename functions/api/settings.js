@@ -1,18 +1,15 @@
 // functions/api/settings.js
 const ALLOWED_KEYS = new Set(["site_title", "site_subtitle", "show_views", "excerpt_length"]);
 const KV_SETTINGS_KEY = "site:settings:data"; 
-const KV_LIST_KEY = "site:posts:list"; 
 
 export async function onRequestGet(context) {
+  // ... 保持原有代码不变 ...
   const { env } = context;
   try {
     const cachedSettings = await env.KV.get(KV_SETTINGS_KEY);
     if (cachedSettings) {
       return new Response(cachedSettings, {
-        headers: { 
-          "Content-Type": "application/json",
-          "Cache-Control": "public, max-age=10, s-maxage=60"
-        }
+        headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=10, s-maxage=60" }
       });
     }
 
@@ -25,9 +22,7 @@ export async function onRequestGet(context) {
 
     context.waitUntil(env.KV.put(KV_SETTINGS_KEY, responseString));
 
-    return new Response(responseString, { 
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } 
-    });
+    return new Response(responseString, { headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
   } catch (err) { 
     return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 }); 
   }
@@ -38,7 +33,6 @@ export async function onRequestPost(context) {
 
   const authHeader = request.headers.get("Authorization");
   if (!authHeader) return new Response(JSON.stringify({ success: false, error: "未授权" }), { status: 401 });
-  // 修复：不区分大小写的 Bearer 清洗
   const clientToken = authHeader.replace(/^Bearer\s+/i, "").trim();
   const apiToken = env.API_TOKEN;
   if (apiToken && clientToken === apiToken) {
@@ -49,19 +43,14 @@ export async function onRequestPost(context) {
 
   try {
     const body = await request.json();
-    if (!body || typeof body !== "object") {
-      return new Response(JSON.stringify({ success: false, error: "请求体不是有效对象" }), { status: 400 });
-    }
+    if (!body || typeof body !== "object") return new Response(JSON.stringify({ success: false, error: "请求体不是有效对象" }), { status: 400 });
 
     const now = new Date().toISOString();
     const upsert = env.DB.prepare(
-      `INSERT INTO site_settings (key, value, updated_at)
-       VALUES (?, ?, ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+      `INSERT INTO site_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
     );
 
     let touched = 0;
-
     for (const [key, value] of Object.entries(body)) {
       if (!ALLOWED_KEYS.has(key)) continue;
       let strValue = String(value ?? "").trim();
@@ -78,38 +67,36 @@ export async function onRequestPost(context) {
       touched++;
     }
 
-    // ⚡ 核心移除：这里彻底删除了原先消耗海量 CPU 的 D1 `posts` 表批量 UPDATE
-    // 由于我们在 list.js 实现了动态裁剪，这里只需精准让 KV 失效：
-    await env.KV.delete(KV_SETTINGS_KEY);
+    // ⚡ 修复 1：删除 await env.KV.delete(KV_SETTINGS_KEY); 杜绝 SSR 白屏窗口期
 
-    // ⚡ 批量清除所有分页的首页列表缓存，防止漏网之鱼导致错位
+    // 清理分页和分类缓存
     try {
-      const listKeys = await env.KV.list({ prefix: "site:posts:list:page:" });
-      for (const k of listKeys.keys) {
-        await env.KV.delete(k.name);
+      let isComplete = false, cursor = undefined;
+      while (!isComplete) {
+        const listKeys = await env.KV.list({ prefix: "site:posts:list:page:", cursor });
+        for (const k of listKeys.keys) await env.KV.delete(k.name);
+        isComplete = listKeys.list_complete; cursor = listKeys.cursor;
       }
     } catch (_) {}
 
-    // 💡 进阶联动优化：因为修改设置可能导致全站的分类列表布局也发生变动，
-    // 我们利用 KV 的 list 机制把带有特定分类前缀的列表缓存一口气全部扫除清除
     try {
-      const kvKeys = await env.KV.list({ prefix: "site:posts:list:cat:" });
-      for (const k of kvKeys.keys) {
-        await env.KV.delete(k.name);
+      let isComplete = false, cursor = undefined;
+      while (!isComplete) {
+        const kvKeys = await env.KV.list({ prefix: "site:posts:list:cat:", cursor });
+        for (const k of kvKeys.keys) await env.KV.delete(k.name);
+        isComplete = kvKeys.list_complete; cursor = kvKeys.cursor;
       }
     } catch (_) {}
 
-    // 主动把更新后的最新配置回填到 KV（异步，不阻塞响应；与 GET 路径、list.js 风格一致）
+    // ⚡ 修复 1：直接查出新数据，通过 overwrite 覆盖旧的 settings 缓存
     const { results: freshSettings } = await env.DB.prepare("SELECT key, value FROM site_settings").all();
     const freshData = {};
     (freshSettings || []).forEach(row => { freshData[row.key] = row.value; });
-    context.waitUntil(
-      env.KV.put(KV_SETTINGS_KEY, JSON.stringify({ success: true, data: freshData }))
-    );
+    
+    // 使用 await 确保在响应前 KV 已经更新完毕，彻底抹除不同步
+    await env.KV.put(KV_SETTINGS_KEY, JSON.stringify({ success: true, data: freshData }));
 
-    return new Response(JSON.stringify({ success: true, message: `已更新 ${touched} 项配置并联动清空全站缓存。` }), {
-      headers: { "Content-Type": "application/json" }
-    });
+    return new Response(JSON.stringify({ success: true, message: `已更新 ${touched} 项配置并联动清空全站缓存。` }), { headers: { "Content-Type": "application/json" } });
   } catch (err) {
     return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
   }

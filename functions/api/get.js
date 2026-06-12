@@ -61,20 +61,18 @@ export async function onRequestGet(context) {
 
         // 浏览量自增 + 缓存回写 完全移出关键路径；KV 命中时也把最新 views 覆盖回缓存，
         // 避免后续 7 天缓存期内 KV 一直返回旧值
+        // ⚡ 修复 3：解决高并发时 KV 互相覆盖的问题
         if (c.status === 'published') {
-          context.waitUntil(
-            Promise.all([
-              env.DB.prepare("UPDATE posts SET views = views + 1 WHERE id = ?")
-                .bind(c.id)
-                .run()
-                .catch(err => console.error('Async views increment failed:', err)),
-              env.KV.put(kvKey, JSON.stringify({
-                ...c,
-                views: newViews
-              }), { expirationTtl: 604800 })
-                .catch(err => console.error('KV put failed (get.js KV hit):', err))
-            ])
-          );
+          context.waitUntil((async () => {
+            try {
+              const res = await env.DB.prepare("UPDATE posts SET views = views + 1 WHERE id = ? RETURNING views")
+                .bind(c.id).first();
+              const trueViews = res ? res.views : newViews;
+              await env.KV.put(kvKey, JSON.stringify({ ...c, views: trueViews }), { expirationTtl: 604800 });
+            } catch (err) {
+              console.error('Async views increment failed (get.js):', err);
+            }
+          })());
         }
 
         return new Response(JSON.stringify({ success: true, data: post }), {
@@ -117,28 +115,22 @@ export async function onRequestGet(context) {
     };
 
     if (dbPost.status === 'published') {
-      // ⚡ 回填新格式 KV(下次直接命中关键路径,零 D1 等待)；
-      // views 字段使用内存中已 +1 的 newViews，避免下次命中时回退
-      const cachePayload = {
-        id: dbPost.id,
-        status: dbPost.status,
-        views: newViews,
-        title: dbPost.title,
-        content: dbPost.content,
-        category,
-        created_at: dbPost.created_at
-      };
-      context.waitUntil(
-        env.KV.put(kvKey, JSON.stringify(cachePayload), { expirationTtl: 604800 })
-          .catch(err => console.error('KV put failed (get.js):', err))
-      );
-      // 浏览量自增异步化
-      context.waitUntil(
-        env.DB.prepare("UPDATE posts SET views = views + 1 WHERE id = ?")
-          .bind(dbPost.id)
-          .run()
-          .catch(err => console.error('Async views increment failed:', err))
-      );
+      context.waitUntil((async () => {
+        try {
+          const res = await env.DB.prepare("UPDATE posts SET views = views + 1 WHERE id = ? RETURNING views")
+            .bind(dbPost.id).first();
+          const trueViews = res ? res.views : newViews;
+          
+          const cachePayload = {
+            id: dbPost.id, status: dbPost.status, title: dbPost.title,
+            content: dbPost.content, category, created_at: dbPost.created_at,
+            views: trueViews
+          };
+          await env.KV.put(kvKey, JSON.stringify(cachePayload), { expirationTtl: 604800 });
+        } catch (err) {
+            console.error('Async DB fallback failed (get.js):', err);
+        }
+      })());
     }
 
     return new Response(JSON.stringify({ success: true, data: post }), {
