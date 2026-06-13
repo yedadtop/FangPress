@@ -1,6 +1,6 @@
 # API 接口文档
 
-> Quinn's Space  ·  Cloudflare Pages Functions  ·  **10 个端点**
+> Quinn's Space  ·  Cloudflare Pages Functions  ·  **11 个端点**
 > 数据源：Cloudflare D1（关系型 SQLite）
 > 鉴权：Bearer Token（支持两种方式：① 账号密码登录的 token = `users.password_hash` ② 系统环境变量 `API_TOKEN`）
 
@@ -167,6 +167,31 @@
 
 ---
 
+### 1.5 `GET /api/navs` — 读取 header 导航
+成功响应 200：
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "label": "文章",
+      "href": "/posts",
+      "tab_key": "posts",
+      "open_in_new_tab": false,
+      "is_active": true,
+      "sort_order": 10
+    }
+  ]
+}
+```
+- 仅返回 `is_active = 1` 的项，按 `sort_order` 升序
+- 缓存键：`site:navs:list:active`
+- 缓存：`Cache-Control: public, max-age=10, s-maxage=60`
+- 加 `?admin=1` 需带 Bearer Token，返回全量（含禁用项）
+
+---
+
 ## 2. 受保护端点（必须带 Bearer Token）
 
 > 所有受保护接口请求头：
@@ -297,6 +322,52 @@
 
 ---
 
+### 2.7 `POST /api/navs` — 新建 header 导航项
+请求体：
+```json
+{
+  "label":           "关于",           // 必填，1-20 字
+  "href":            "/about",         // 必填，1-500 字符
+  "tab_key":         "about",          // 可空；用于高亮当前页面 tab
+  "open_in_new_tab": 0,                // 0/1
+  "is_active":       1                 // 0/1；默认 1
+  // sort_order 省略时自动追加在末尾
+}
+```
+
+### 2.8 `POST /api/navs?action=update` — 更新 header 导航项
+请求体（必传 `id`）：
+```json
+{
+  "id":              1,
+  "label":           "...",
+  "href":            "...",
+  "tab_key":         "...",
+  "open_in_new_tab": 0,
+  "is_active":       1,
+  "sort_order":      10
+}
+```
+- 未传的字段保留原值；`tab_key` 传空串视为 null
+- `label` / `href` 任何时候都不能为空字符串
+
+### 2.9 `POST /api/navs?action=delete` — 删除 header 导航项
+请求体：
+```json
+{ "id": 1 }
+```
+
+### 2.10 `POST /api/navs?action=reorder` — 批量调整顺序
+请求体：
+```json
+{ "order": [3, 1, 4, 2] }   // id 数组，按数组顺序重新赋 sort_order
+```
+- 服务端按数组下标自动赋 `sort_order = (idx+1) * 10`，留出插入新项的空间
+
+> ⚡ 2.7 / 2.8 / 2.9 / 2.10 任一写操作都会**立刻**重建 `site:navs:list:active` KV 缓存，确保前台 SSR 下次访问立即生效。
+
+---
+
 ## 3. 完整 curl 测试脚本
 
 ```bash
@@ -359,6 +430,34 @@ curl -s -X POST https://YOUR-DOMAIN/api/user/update \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $API_TOKEN" \
   -d '{"nickname":"新昵称"}'  # 返回 403
+
+# 6) header 导航
+curl -s https://YOUR-DOMAIN/api/navs
+
+curl -s -X POST https://YOUR-DOMAIN/api/navs \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_TOKEN" \
+  -d '{"label":"关于","href":"/about","tab_key":"about","is_active":1}'
+
+curl -s -X POST https://YOUR-DOMAIN/api/navs \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_TOKEN" \
+  -d '{"label":"GitHub","href":"https://github.com/foo","open_in_new_tab":1,"sort_order":99}'
+
+curl -s -X POST "https://YOUR-DOMAIN/api/navs?action=update" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_TOKEN" \
+  -d '{"id":1,"is_active":0}'
+
+curl -s -X POST "https://YOUR-DOMAIN/api/navs?action=reorder" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_TOKEN" \
+  -d '{"order":[2,1,3]}'
+
+curl -s -X POST "https://YOUR-DOMAIN/api/navs?action=delete" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_TOKEN" \
+  -d '{"id":1}'
 ```
 
 ---
@@ -382,6 +481,17 @@ posts(
 
 -- 站点设置（key-value）
 site_settings(key PK, value, updated_at)
+
+-- 站点 header 导航
+site_navs(
+  id, label,                              -- 显示文字，1-20 字
+  href,                                   -- 跳转 URL，1-500 字符
+  tab_key,                                -- 当前页高亮键，可空
+  open_in_new_tab,                        -- 0/1
+  is_active,                              -- 0/1，仅启用项进 KV 与前台
+  sort_order,                             -- 升序
+  created_at, updated_at
+)
 ```
 
 允许的设置 key：`site_title` / `site_subtitle` / `show_views` / `excerpt_length`
@@ -402,5 +512,5 @@ site_settings(key PK, value, updated_at)
 ---
 
 > 文档版本：2026-06-13
-> 新增：推文（`type='tweet'`）支持、`/posts` 与 `/tweets` 独立列表页、API list 支持 `type` / `page` 参数
+> 新增：导航管理（`/api/navs`，支持 KV 缓存 + 拖拽排序 + 启用/禁用）、推文（`type='tweet'`）支持、`/posts` 与 `/tweets` 独立列表页、API list 支持 `type` / `page` 参数
 > 维护者：随源码演进同步更新

@@ -3,12 +3,15 @@
 // 数据契约（与 functions/api/list.js 一致）：
 //   env.KV.get('site:posts:list:page:<n>')  -> { success:true, data:[{id,title,slug,category,type,views,created_at,excerpt}, ...] }  (最多 10 条)
 //   env.KV.get('site:settings:data')       -> { success:true, data:{site_title,site_subtitle,show_views,...} }
+//   env.KV.get('site:navs:list:active')     -> { success:true, data:[{id,label,href,tab_key,open_in_new_tab,is_active,sort_order}, ...] }
 
 
 import { makeExcerpt } from './api/helpers.js';
 import { renderPostItem, formatDate, safeParseKV } from './lib/list-render.js';
+import { renderHeaderNav, renderMobileMenu } from './lib/nav-render.js';
 const KV_LIST_KEY_PREFIX = "site:posts:list:page:";
 const KV_SETTINGS_KEY = "site:settings:data";
+const KV_NAVS_KEY = "site:navs:list:active";
 const PAGE_SIZE = 10; // 每页 10 篇；D1 查询时取 PAGE_SIZE+1 用于探测是否有下一页
 
 // ============== Helpers 已抽取到 lib/list-render.js ==============
@@ -32,16 +35,19 @@ export async function onRequestGet(context) {
         return new Response('Failed to load template', { status: 500 });
     }
 
-    // 2. 并行拉取当前页列表 + 设置（KV 不可用时不阻塞，try 容错）
-    const [listRaw, settingsRaw] = await Promise.all([
+    // 2. 并行拉取当前页列表 + 设置 + 导航（KV 不可用时不阻塞，try 容错）
+    const [listRaw, settingsRaw, navsRaw] = await Promise.all([
         env.KV.get(currentKvKey).catch(() => null),
-        env.KV.get(KV_SETTINGS_KEY).catch(() => null)
+        env.KV.get(KV_SETTINGS_KEY).catch(() => null),
+        env.KV.get(KV_NAVS_KEY).catch(() => null)
     ]);
 
     const listObj = safeParseKV(listRaw);
     const settingsObj = safeParseKV(settingsRaw);
     let posts = (listObj && listObj.success && Array.isArray(listObj.data)) ? listObj.data : [];
     const settings = (settingsObj && settingsObj.data) ? settingsObj.data : {};
+    const navsObj = safeParseKV(navsRaw);
+    const navs = (navsObj && navsObj.success && Array.isArray(navsObj.data)) ? navsObj.data : [];
 
     // ⚡ 默认主页：根据 home_mode 把根路径重定向到 /posts 或 /tweets
     // 缺省/非法值回落到 mix（保持原有行为）
@@ -110,6 +116,16 @@ export async function onRequestGet(context) {
 
     // 3. 构造 HTMLRewriter
     const rewriter = new HTMLRewriter();
+
+    // ⚡️ 注入动态导航：替换 #ssr-header-nav 与 #ssr-mobile-nav 的内部内容
+    const headerNavHtml = renderHeaderNav(navs);
+    const mobileNavHtml = renderMobileMenu(navs);
+    rewriter.on('#ssr-header-nav', {
+        element: el => el.setInnerContent(headerNavHtml, { html: true })
+    });
+    rewriter.on('#ssr-mobile-nav', {
+        element: el => el.setInnerContent(mobileNavHtml, { html: true })
+    });
 
     // <title> 与 meta description
     if (siteTitle) {

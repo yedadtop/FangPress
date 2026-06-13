@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>导航管理 · 创作中心</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        :root {
+            --font-serif: serif;
+            --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+        }
+        body { font-family: var(--font-sans); }
+        .font-serif { font-family: var(--font-serif); }
+
+        .nav-row { transition: background-color .2s ease, border-color .2s ease; }
+        .nav-row:hover { background: #fafaf9; }
+        .drag-handle { cursor: grab; }
+        .drag-handle:active { cursor: grabbing; }
+        .nav-row.dragging { opacity: .5; }
+        .nav-row.drag-over-top { box-shadow: inset 0 2px 0 #0c0a09; }
+        .nav-row.drag-over-bottom { box-shadow: inset 0 -2px 0 #0c0a09; }
+
+        .action-btn { transition: color .2s ease, background-color .2s ease; }
+
+        /* 自定义开关 */
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 34px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: #d6d3d1;
+            border-radius: 9999px;
+            transition: background-color .2s ease;
+        }
+        .toggle-slider::before {
+            content: "";
+            position: absolute;
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            top: 2px;
+            background-color: #fff;
+            border-radius: 9999px;
+            transition: transform .2s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .toggle input:checked + .toggle-slider { background-color: #0c0a09; }
+        .toggle input:checked + .toggle-slider::before { transform: translateX(14px); }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+
+        /* 弹窗动画 */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .modal-backdrop { animation: fadeIn .2s ease-out both; }
+        .modal-panel { animation: scaleIn .2s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    </style>
+</head>
+<body class="bg-[#fafaf9] text-stone-800 min-h-screen">
+
+    <div class="max-w-3xl mx-auto px-6 md:px-10 py-10 md:py-14">
+
+        <header class="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+                <p class="text-xs uppercase tracking-widest text-stone-400">Navigation</p>
+                <h1 class="font-serif text-3xl md:text-[2rem] font-medium text-stone-900 mt-2">导航管理</h1>
+                <p class="text-sm text-stone-500 mt-2">配置站点 header 上的导航链接，拖动调整顺序</p>
+            </div>
+            <div class="flex items-center gap-2 self-start md:self-auto">
+                <button onclick="openCreateModal()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-sm rounded-md transition-colors cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    新增导航
+                </button>
+            </div>
+        </header>
+
+        <!-- 顶部预览 -->
+        <section class="mb-8">
+            <h2 class="text-[10px] uppercase tracking-widest text-stone-400 mb-3">桌面端预览</h2>
+            <div class="bg-white border border-stone-200/60 rounded-2xl px-6 py-4 flex items-center gap-5 text-sm font-sans">
+                <span class="font-serif text-base text-stone-900">博客</span>
+                <div id="preview-header" class="flex items-center gap-5"></div>
+            </div>
+        </section>
+
+        <!-- 提示条 -->
+        <div class="mb-4 flex items-center justify-between text-xs text-stone-500">
+            <p>
+                共 <span id="total-count" class="font-semibold text-stone-700 tabular-nums">0</span> 项 ·
+                启用 <span id="active-count" class="font-semibold text-stone-700 tabular-nums">0</span> 项
+            </p>
+            <p class="text-stone-400">保存顺序：<button id="save-order-btn" onclick="saveOrder()" disabled class="text-stone-400 cursor-not-allowed underline-offset-2 hover:underline hover:text-stone-700 transition-colors">点击保存</button></p>
+        </div>
+
+        <div id="loading" class="hidden py-16 text-center">
+            <p class="font-serif italic text-stone-400 text-sm">正在加载…</p>
+        </div>
+
+        <div id="empty" class="hidden py-20 text-center">
+            <div class="inline-block w-12 h-px bg-stone-300 mb-6"></div>
+            <p class="font-serif italic text-stone-500 text-base">还没有导航项</p>
+            <p class="mt-2 text-stone-400 text-xs tracking-wider">点击右上角「新增导航」开始</p>
+        </div>
+
+        <div id="navs-list" class="hidden bg-white rounded-2xl border border-stone-200/60 divide-y divide-stone-200/60 overflow-hidden"></div>
+
+    </div>
+
+    <!-- ============== 弹窗 ============== -->
+    <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-stone-900/40 modal-backdrop" onclick="closeModal()"></div>
+        <div class="relative w-full max-w-md bg-white rounded-2xl border border-stone-200/60 shadow-xl modal-panel">
+            <div class="px-6 py-5 border-b border-stone-200/60 flex items-center justify-between">
+                <h3 id="modal-title" class="font-serif text-lg font-medium text-stone-900">新增导航</h3>
+                <button onclick="closeModal()" class="text-stone-400 hover:text-stone-900 transition-colors cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <form id="nav-form" class="px-6 py-5 space-y-4" onsubmit="return false;">
+                <div>
+                    <label class="block text-xs text-stone-600 mb-1.5">显示文字 <span class="text-red-400">*</span></label>
+                    <input type="text" id="f-label" maxlength="20" required
+                           class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500"
+                           placeholder="例如：文章 / 关于 / 项目">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-600 mb-1.5">链接 <span class="text-red-400">*</span></label>
+                    <input type="text" id="f-href" maxlength="500" required
+                           class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500"
+                           placeholder="/posts 或 https://example.com">
+                </div>
+                <div>
+                    <label class="block text-xs text-stone-600 mb-1.5">Tab 高亮键（可选）</label>
+                    <input type="text" id="f-tab-key" maxlength="32"
+                           class="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500"
+                           placeholder="posts / tweets / 自定义；留空则不高亮">
+                    <p class="text-[11px] text-stone-400 mt-1.5">站内页面（<code class="font-mono text-[10px] bg-stone-100 px-1 rounded">/posts</code>、<code class="font-mono text-[10px] bg-stone-100 px-1 rounded">/tweets</code>）的高亮锚点</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4 pt-1">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <span class="toggle">
+                            <input type="checkbox" id="f-active" checked>
+                            <span class="toggle-slider"></span>
+                        </span>
+                        <span class="text-sm text-stone-700">启用</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <span class="toggle">
+                            <input type="checkbox" id="f-newtab">
+                            <span class="toggle-slider"></span>
+                        </span>
+                        <span class="text-sm text-stone-700">新窗口打开</span>
+                    </label>
+                </div>
+            </form>
+            <div class="px-6 py-4 border-t border-stone-200/60 flex items-center justify-end gap-3 bg-stone-50 rounded-b-2xl">
+                <button type="button" onclick="closeModal()" class="px-3 py-2 text-sm text-stone-500 hover:text-stone-900 transition-colors cursor-pointer">取消</button>
+                <button type="button" id="modal-save" onclick="submitModal()" class="px-5 py-2 bg-stone-900 hover:bg-stone-800 text-white text-sm rounded-md transition-colors cursor-pointer">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============== 全局提示条 ============== -->
+    <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-md text-sm shadow-lg"></div>
+
+    <script>
+        let allNavs = [];
+        let editingId = null;            // null = 新增；非 null = 编辑
+        let orderDirty = false;          // 是否调整过顺序
+
+        // ========== 工具 ==========
+        function getToken() { return localStorage.getItem('admin_token'); }
+        function authHeaders() { return { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' }; }
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function showToast(msg, kind) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-md text-sm shadow-lg ' +
+                (kind === 'error' ? 'bg-red-500 text-white' : 'bg-stone-900 text-white');
+            el.classList.remove('hidden');
+            clearTimeout(el._hideTimer);
+            el._hideTimer = setTimeout(() => el.classList.add('hidden'), 2400);
+        }
+
+        // ========== 数据加载 ==========
+        async function loadNavs() {
+            if (!getToken()) {
+                document.getElementById('loading').classList.add('hidden');
+                return;
+            }
+            try {
+                const res = await fetch('/api/navs?admin=1', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+                const result = await res.json();
+                document.getElementById('loading').classList.add('hidden');
+                if (result.success && Array.isArray(result.data)) {
+                    allNavs = result.data;
+                    orderDirty = false;
+                    renderList();
+                } else {
+                    document.getElementById('empty').classList.remove('hidden');
+                }
+            } catch (e) {
+                document.getElementById('loading').classList.add('hidden');
+                showToast('加载失败，请检查网络', 'error');
+            }
+        }
+
+        function renderList() {
+            const listEl = document.getElementById('navs-list');
+            const emptyEl = document.getElementById('empty');
+            const totalEl = document.getElementById('total-count');
+            const activeEl = document.getElementById('active-count');
+            const saveBtn = document.getElementById('save-order-btn');
+
+            totalEl.textContent = allNavs.length;
+            activeEl.textContent = allNavs.filter(n => n.is_active).length;
+            saveBtn.disabled = !orderDirty;
+            saveBtn.classList.toggle('text-stone-400', !orderDirty);
+            saveBtn.classList.toggle('cursor-not-allowed', !orderDirty);
+            saveBtn.classList.toggle('text-stone-700', orderDirty);
+            saveBtn.classList.toggle('cursor-pointer', orderDirty);
+
+            if (allNavs.length === 0) {
+                listEl.classList.add('hidden');
+                emptyEl.classList.remove('hidden');
+                renderPreview();
+                return;
+            }
+            emptyEl.classList.add('hidden');
+            listEl.classList.remove('hidden');
+
+            listEl.innerHTML = allNavs.map((n, i) => {
+                const targetAttr = n.open_in_new_tab ? '新窗口' : '当前窗口';
+                const isExt = /^https?:\/\//i.test(n.href || '');
+                return `
+                <div class="nav-row px-5 md:px-6 py-4 flex items-start gap-3" draggable="true" data-id="${n.id}" data-idx="${i}">
+                    <svg class="drag-handle w-4 h-4 mt-1 text-stone-300 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5h.008v.008H8.25V4.5zm0 7.5h.008v.008H8.25V12zm0 7.5h.008v.008H8.25v-.008zm7.5-15h.008v.008h-.008V4.5zm0 7.5h.008v.008h-.008V12zm0 7.5h.008v.008h-.008v-.008z" />
+                    </svg>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h3 class="font-serif text-base text-stone-900">${escapeHtml(n.label)}</h3>
+                            ${n.is_active
+                                ? '<span class="text-[10px] uppercase tracking-wider font-semibold text-emerald-600 border border-emerald-200 px-1.5 py-0.5 rounded-sm bg-emerald-50">启用</span>'
+                                : '<span class="text-[10px] uppercase tracking-wider font-semibold text-stone-500 border border-stone-200 px-1.5 py-0.5 rounded-sm bg-stone-100/60">禁用</span>'}
+                            ${isExt ? '<span class="text-[10px] uppercase tracking-wider font-semibold text-stone-500 border border-stone-200 px-1.5 py-0.5 rounded-sm bg-stone-100/60">外链</span>' : ''}
+                            ${n.open_in_new_tab ? '<span class="text-[10px] uppercase tracking-wider font-semibold text-stone-500 border border-stone-200 px-1.5 py-0.5 rounded-sm bg-stone-100/60">新窗口</span>' : ''}
+                        </div>
+                        <p class="text-[11px] text-stone-400 font-mono mt-1 break-all">
+                            <span class="text-stone-500">${escapeHtml(n.href)}</span>
+                            ${n.tab_key ? '<span class="mx-1.5 text-stone-300">·</span>tab=' + escapeHtml(n.tab_key) : ''}
+                            <span class="mx-1.5 text-stone-300">·</span>${targetAttr}
+                            <span class="mx-1.5 text-stone-300">·</span>排序 ${n.sort_order}
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <label class="toggle" title="启用/禁用">
+                            <input type="checkbox" ${n.is_active ? 'checked' : ''} data-id="${n.id}" class="toggle-active-input">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <button data-id="${n.id}" class="action-btn edit-btn p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded cursor-pointer" title="编辑">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" /></svg>
+                        </button>
+                        <button data-id="${n.id}" data-label="${escapeHtml(n.label)}" class="action-btn delete-btn p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer" title="删除">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // 绑定事件
+            listEl.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', () => openEditModal(Number(btn.dataset.id)));
+            });
+            listEl.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => deleteNav(Number(btn.dataset.id), btn.dataset.label));
+            });
+            listEl.querySelectorAll('.toggle-active-input').forEach(inp => {
+                inp.addEventListener('change', () => toggleActive(Number(inp.dataset.id), inp.checked));
+            });
+
+            // 拖拽排序
+            initDragSort(listEl);
+
+            renderPreview();
+        }
+
+        function renderPreview() {
+            const wrap = document.getElementById('preview-header');
+            const active = allNavs.filter(n => n.is_active).slice().sort((a, b) => a.sort_order - b.sort_order);
+            if (active.length === 0) {
+                wrap.innerHTML = '<span class="text-stone-300 text-xs italic font-serif">（无启用项）</span>';
+                return;
+            }
+            wrap.innerHTML = active.map(n => {
+                const t = n.open_in_new_tab ? '新窗口' : '';
+                return `<span class="text-stone-500 hover:text-stone-900 transition-colors" ${t ? 'title="' + t + '"' : ''}>${escapeHtml(n.label)}</span>`;
+            }).join('');
+        }
+
+        // ========== 弹窗：新增 / 编辑 ==========
+        function openCreateModal() {
+            editingId = null;
+            document.getElementById('modal-title').textContent = '新增导航';
+            document.getElementById('f-label').value = '';
+            document.getElementById('f-href').value = '';
+            document.getElementById('f-tab-key').value = '';
+            document.getElementById('f-active').checked = true;
+            document.getElementById('f-newtab').checked = false;
+            document.getElementById('modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('f-label').focus(), 50);
+        }
+
+        function openEditModal(id) {
+            const n = allNavs.find(x => x.id === id);
+            if (!n) return;
+            editingId = id;
+            document.getElementById('modal-title').textContent = '编辑导航';
+            document.getElementById('f-label').value   = n.label || '';
+            document.getElementById('f-href').value    = n.href || '';
+            document.getElementById('f-tab-key').value = n.tab_key || '';
+            document.getElementById('f-active').checked  = !!n.is_active;
+            document.getElementById('f-newtab').checked  = !!n.open_in_new_tab;
+            document.getElementById('modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('f-label').focus(), 50);
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            editingId = null;
+        }
+
+        async function submitModal() {
+            const label = document.getElementById('f-label').value.trim();
+            const href  = document.getElementById('f-href').value.trim();
+            const tabKey = document.getElementById('f-tab-key').value.trim();
+            const isActive  = document.getElementById('f-active').checked;
+            const isNewTab  = document.getElementById('f-newtab').checked;
+
+            if (!label) { showToast('请填写显示文字', 'error'); return; }
+            if (!href)  { showToast('请填写链接', 'error');  return; }
+            if (label.length > 20) { showToast('显示文字不能超过 20 个字符', 'error'); return; }
+            if (href.length > 500) { showToast('链接不能超过 500 个字符', 'error'); return; }
+
+            const btn = document.getElementById('modal-save');
+            btn.disabled = true; btn.classList.add('opacity-60', 'cursor-wait');
+
+            try {
+                let url, body;
+                if (editingId == null) {
+                    url = '/api/navs';
+                    body = { label, href, tab_key: tabKey || null, is_active: isActive ? 1 : 0, open_in_new_tab: isNewTab ? 1 : 0 };
+                } else {
+                    url = '/api/navs?action=update';
+                    body = { id: editingId, label, href, tab_key: tabKey || null, is_active: isActive ? 1 : 0, open_in_new_tab: isNewTab ? 1 : 0 };
+                }
+                const res = await fetch(url, { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+                const result = await res.json();
+                if (result.success) {
+                    showToast(editingId == null ? '已添加 · 公开页面已立即生效' : '已更新 · 公开页面已立即生效');
+                    closeModal();
+                    loadNavs();
+                } else {
+                    showToast('失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (e) {
+                showToast('请求失败，请检查网络', 'error');
+            } finally {
+                btn.disabled = false; btn.classList.remove('opacity-60', 'cursor-wait');
+            }
+        }
+
+        // ========== 启用/禁用 ==========
+        async function toggleActive(id, checked) {
+            const n = allNavs.find(x => x.id === id);
+            if (!n) return;
+            n.is_active = checked; // 乐观更新
+            renderList();
+            try {
+                const res = await fetch('/api/navs?action=update', {
+                    method: 'POST', headers: authHeaders(),
+                    body: JSON.stringify({ id, is_active: checked ? 1 : 0 })
+                });
+                const result = await res.json();
+                if (!result.success) {
+                    n.is_active = !checked;
+                    renderList();
+                    showToast('失败: ' + (result.error || '未知错误'), 'error');
+                } else {
+                    showToast(checked ? '已启用' : '已禁用');
+                }
+            } catch (e) {
+                n.is_active = !checked;
+                renderList();
+                showToast('请求失败', 'error');
+            }
+        }
+
+        // ========== 删除 ==========
+        async function deleteNav(id, label) {
+            if (!confirm(`确定删除「${label}」？此操作不可恢复。`)) return;
+            try {
+                const res = await fetch('/api/navs?action=delete', {
+                    method: 'POST', headers: authHeaders(),
+                    body: JSON.stringify({ id })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showToast('已删除');
+                    loadNavs();
+                } else {
+                    showToast('失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (e) {
+                showToast('请求失败', 'error');
+            }
+        }
+
+        // ========== 拖拽排序 ==========
+        let dragSrcId = null;
+        function initDragSort(listEl) {
+            listEl.querySelectorAll('.nav-row').forEach(row => {
+                row.addEventListener('dragstart', (e) => {
+                    dragSrcId = Number(row.dataset.id);
+                    row.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                row.addEventListener('dragend', () => {
+                    row.classList.remove('dragging');
+                    listEl.querySelectorAll('.nav-row').forEach(r => {
+                        r.classList.remove('drag-over-top', 'drag-over-bottom');
+                    });
+                });
+                row.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    if (Number(row.dataset.id) === dragSrcId) return;
+                    const rect = row.getBoundingClientRect();
+                    const before = (e.clientY - rect.top) < rect.height / 2;
+                    listEl.querySelectorAll('.nav-row').forEach(r => {
+                        r.classList.remove('drag-over-top', 'drag-over-bottom');
+                    });
+                    row.classList.add(before ? 'drag-over-top' : 'drag-over-bottom');
+                });
+                row.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (!dragSrcId || dragSrcId === Number(row.dataset.id)) return;
+                    const rect = row.getBoundingClientRect();
+                    const before = (e.clientY - rect.top) < rect.height / 2;
+                    const fromIdx = allNavs.findIndex(n => n.id === dragSrcId);
+                    let toIdx = allNavs.findIndex(n => n.id === Number(row.dataset.id));
+                    if (fromIdx < 0 || toIdx < 0) return;
+                    const [moved] = allNavs.splice(fromIdx, 1);
+                    // 重新计算 toIdx（splice 后）
+                    toIdx = allNavs.findIndex(n => n.id === Number(row.dataset.id));
+                    if (!before) toIdx += 1;
+                    allNavs.splice(toIdx, 0, moved);
+                    orderDirty = true;
+                    renderList();
+                });
+            });
+        }
+
+        async function saveOrder() {
+            if (!orderDirty) return;
+            const order = allNavs.map(n => n.id);
+            const btn = document.getElementById('save-order-btn');
+            btn.disabled = true; btn.classList.add('opacity-60');
+            try {
+                const res = await fetch('/api/navs?action=reorder', {
+                    method: 'POST', headers: authHeaders(),
+                    body: JSON.stringify({ order })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showToast('顺序已保存 · 公开页面已立即生效');
+                    orderDirty = false;
+                    loadNavs();
+                } else {
+                    showToast('失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (e) {
+                showToast('请求失败', 'error');
+            } finally {
+                btn.disabled = false; btn.classList.remove('opacity-60');
+            }
+        }
+
+        // ========== 入口 ==========
+        document.addEventListener('DOMContentLoaded', loadNavs);
+    </script>
+</body>
+</html>

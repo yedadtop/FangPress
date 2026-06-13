@@ -5,8 +5,10 @@
 // 依赖：marked（边缘 Markdown→HTML）。请确保 package.json 含 "marked" 依赖。
 
 import { marked } from '../lib/marked.esm.js';
+import { renderHeaderNav, renderMobileMenu } from '../lib/nav-render.js';
 
 const KV_SETTINGS_KEY = 'site:settings:data';
+const KV_NAVS_KEY = 'site:navs:list:active';
 
 // ============== HTML 工具 ==============
 
@@ -190,6 +192,11 @@ async function fetchSettings(env) {
     return (obj && obj.data) ? obj.data : {};
 }
 
+async function fetchNavs(env) {
+    const obj = safeParse(await env.KV.get(KV_NAVS_KEY).catch(() => null));
+    return (obj && obj.success && Array.isArray(obj.data)) ? obj.data : [];
+}
+
 // ============== 降级页 ==============
 
 /**
@@ -213,11 +220,17 @@ async function renderFallbackPage(env, request, url, type) {
 
     const settings404 = await fetchSettings(env);
     const siteTitle404 = (settings404 && settings404.site_title) ? settings404.site_title : 'Blog';
+    const navs404 = await fetchNavs(env);
+    const headerNavHtml404 = renderHeaderNav(navs404);
+    const mobileNavHtml404 = renderMobileMenu(navs404);
 
     const rewriter = new HTMLRewriter()
         .on('title', { element: el => el.setInnerContent('404 - 文章不存在') })
         // ⚡ 头部 logo 同步为站点主标题
         .on('#ssr-header-title', { element: el => el.setInnerContent(escapeHtml(siteTitle404)) })
+        // ⚡ 注入动态导航
+        .on('#ssr-header-nav', { element: el => el.setInnerContent(headerNavHtml404, { html: true }) })
+        .on('#ssr-mobile-nav',  { element: el => el.setInnerContent(mobileNavHtml404, { html: true }) })
         // ⚡️ 修复点：保留 Tailwind 排版类名
         .on(`#${fallback.id}`, { element: el => el.setAttribute('class', fallback.cls) })
         .on('#ssr-post-article', { element: el => el.setAttribute('class', 'hidden') })
@@ -259,6 +272,9 @@ export async function onRequestGet(context) {
         return new Response('Internal Server Error: Missing Template', { status: 500 });
     }
     const settings = await fetchSettings(env);
+    const navs = await fetchNavs(env);
+    const headerNavHtml = renderHeaderNav(navs);
+    const mobileNavHtml = renderMobileMenu(navs);
 
     // 4) 准备渲染数据
     const siteTitle     = settings.site_title || 'Blog';
@@ -291,6 +307,9 @@ export async function onRequestGet(context) {
         .on('meta[property="og:description"]',{ element: el => el.setAttribute('content', safeDesc) })
         // ⚡ 头部 logo 同步为站点主标题
         .on('#ssr-header-title',              { element: el => el.setInnerContent(headerTitle) })
+        // ⚡ 注入动态导航
+        .on('#ssr-header-nav',                { element: el => el.setInnerContent(headerNavHtml, { html: true }) })
+        .on('#ssr-mobile-nav',                { element: el => el.setInnerContent(mobileNavHtml, { html: true }) })
         .on('#ssr-post-time',     { element: el => el.setInnerContent(dateStr) })
         .on('#ssr-post-content',  { element: el => el.setInnerContent(contentHtml, { html: true }) })
         .on('#ssr-post-article',  { element: el => el.setAttribute('class', 'mt-12') })

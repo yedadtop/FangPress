@@ -4,9 +4,11 @@
 
 import { makeExcerpt } from './api/helpers.js';
 import { renderPostItem, safeParseKV, escapeHtml } from './lib/list-render.js';
+import { renderHeaderNav, renderMobileMenu } from './lib/nav-render.js';
 
 const KV_LIST_KEY_PREFIX = "site:posts:list:type:tweet:page:";
 const KV_SETTINGS_KEY = "site:settings:data";
+const KV_NAVS_KEY = "site:navs:list:active";
 const PAGE_SIZE = 10;
 
 const PAGE_TAB = 'tweets';
@@ -25,15 +27,18 @@ export async function onRequestGet(context) {
         return new Response('Failed to load template', { status: 500 });
     }
 
-    const [listRaw, settingsRaw] = await Promise.all([
+    const [listRaw, settingsRaw, navsRaw] = await Promise.all([
         env.KV.get(currentKvKey).catch(() => null),
-        env.KV.get(KV_SETTINGS_KEY).catch(() => null)
+        env.KV.get(KV_SETTINGS_KEY).catch(() => null),
+        env.KV.get(KV_NAVS_KEY).catch(() => null)
     ]);
 
     const listObj = safeParseKV(listRaw);
     const settingsObj = safeParseKV(settingsRaw);
     let posts = (listObj && listObj.success && Array.isArray(listObj.data)) ? listObj.data : [];
     const settings = (settingsObj && settingsObj.data) ? settingsObj.data : {};
+    const navsObj = safeParseKV(navsRaw);
+    const navs = (navsObj && navsObj.success && Array.isArray(navsObj.data)) ? navsObj.data : [];
 
     let hasNextPage = (listObj && listObj.has_more === true) ? true : false;
 
@@ -80,6 +85,14 @@ export async function onRequestGet(context) {
     const pageTitle = siteTitle ? `推文 · ${siteTitle}` : '推文';
 
     const rewriter = new HTMLRewriter();
+
+    // ⚡️ 注入动态导航：替换 #ssr-header-nav 与 #ssr-mobile-nav 的内部内容
+    rewriter.on('#ssr-header-nav', {
+        element: el => el.setInnerContent(renderHeaderNav(navs), { html: true })
+    });
+    rewriter.on('#ssr-mobile-nav', {
+        element: el => el.setInnerContent(renderMobileMenu(navs), { html: true })
+    });
 
     if (siteTitle) {
         rewriter.on('title', { element: el => el.setInnerContent(pageTitle) });

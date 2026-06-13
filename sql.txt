@@ -1,5 +1,6 @@
 -- functions/sql.txt
 
+DROP TABLE IF EXISTS site_navs;
 DROP TABLE IF EXISTS site_settings;
 DROP TABLE IF EXISTS posts;
 DROP TABLE IF EXISTS users;
@@ -55,3 +56,22 @@ INSERT INTO site_settings (key, value, updated_at) VALUES
     ('show_views',     '1',                                                     '2026-06-12T05:00:00.000Z'),
     ('excerpt_length', '200',                                                   '2026-06-12T05:00:00.000Z'),
     ('home_mode',      'mix',                                                   '2026-06-12T05:00:00.000Z');
+
+-- 7. 创建站点导航表（header 上的链接，可后台动态增删改）
+CREATE TABLE site_navs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    label TEXT NOT NULL,                  -- 显示文字，例如「文章」「推文」「关于」
+    href  TEXT NOT NULL,                  -- 跳转 URL，例如 /posts、https://example.com
+    tab_key TEXT DEFAULT NULL,            -- 与页面 body[data-active-tab] 对应的键；用于高亮；外部链接留空
+    open_in_new_tab INTEGER NOT NULL DEFAULT 0, -- 是否在新窗口打开（0/1）
+    is_active     INTEGER NOT NULL DEFAULT 1,    -- 是否启用（0/1）
+    sort_order    INTEGER NOT NULL DEFAULT 0,    -- 排序（升序）
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX idx_site_navs_active ON site_navs(is_active, sort_order);
+
+-- 8. 注入默认导航项（沿用旧版静态导航的内容）
+INSERT INTO site_navs (label, href, tab_key, open_in_new_tab, is_active, sort_order, created_at, updated_at) VALUES
+    ('文章', '/posts',  'posts',  0, 1, 10, '2026-06-12T05:00:00.000Z', '2026-06-12T05:00:00.000Z'),
+    ('推文', '/tweets', 'tweets', 0, 1, 20, '2026-06-12T05:00:00.000Z', '2026-06-12T05:00:00.000Z');

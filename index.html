@@ -64,9 +64,11 @@
                 <a href="/" class="group inline-flex items-center" aria-label="返回首页">
                     <span id="ssr-header-title" class="font-serif text-base md:text-lg text-stone-900 tracking-tight link-underline" style="font-weight: var(--reader-title-weight);">博客</span>
                 </a>
-                <nav class="hidden md:flex items-center gap-5 text-sm font-sans">
-                    <a href="/posts" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="posts">文章</a>
-                    <a href="/tweets" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="tweets">推文</a>
+                <nav class="hidden md:flex items-center gap-5 text-sm font-sans" id="ssr-header-nav-wrap">
+                    <div id="ssr-header-nav" data-ssr="header-nav" class="contents">
+                        <a href="/posts" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="posts">文章</a>
+                        <a href="/tweets" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="tweets">推文</a>
+                    </div>
                 </nav>
             </div>
             <div class="flex items-center gap-1">
@@ -85,8 +87,10 @@
                         </svg>
                     </button>
                     <div id="mobile-menu" class="hidden absolute right-0 top-full mt-2 w-40 bg-[hsla(40,23%,97%,0.95)] backdrop-blur-md border border-stone-200/60 rounded-md shadow-lg overflow-hidden font-sans text-sm z-[55]">
-                        <a href="/posts" data-tab="posts" class="mobile-menu-link block px-4 py-2.5 text-stone-600 hover:bg-stone-100/60 hover:text-stone-900 transition-colors">文章</a>
-                        <a href="/tweets" data-tab="tweets" class="mobile-menu-link block px-4 py-2.5 text-stone-600 hover:bg-stone-100/60 hover:text-stone-900 transition-colors border-t border-stone-200/60">推文</a>
+                        <div id="ssr-mobile-nav" data-ssr="mobile-nav">
+                            <a href="/posts" data-tab="posts" class="mobile-menu-link block px-4 py-2.5 text-stone-600 hover:bg-stone-100/60 hover:text-stone-900 transition-colors">文章</a>
+                            <a href="/tweets" data-tab="tweets" class="mobile-menu-link block px-4 py-2.5 text-stone-600 hover:bg-stone-100/60 hover:text-stone-900 transition-colors border-t border-stone-200/60">推文</a>
+                        </div>
                     </div>
                 </div>
             </div>
