@@ -1,6 +1,8 @@
 // functions/api/settings.js
 const ALLOWED_KEYS = new Set(["site_title", "site_subtitle", "show_views", "excerpt_length"]);
-const KV_SETTINGS_KEY = "site:settings:data"; 
+const KV_SETTINGS_KEY = "site:settings:data";
+
+import { nowInShanghai } from "../../lib/time.js";
 
 export async function onRequestGet(context) {
   // ... 保持原有代码不变 ...
@@ -45,7 +47,8 @@ export async function onRequestPost(context) {
     const body = await request.json();
     if (!body || typeof body !== "object") return new Response(JSON.stringify({ success: false, error: "请求体不是有效对象" }), { status: 400 });
 
-    const now = new Date().toISOString();
+    // 新数据使用上海时区（+08:00），历史数据保留原 UTC 不动
+    const now = nowInShanghai();
     const upsert = env.DB.prepare(
       `INSERT INTO site_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
     );

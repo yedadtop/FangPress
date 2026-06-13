@@ -2,6 +2,8 @@
 const KV_LIST_KEY = "site:posts:list";
 const POST_CACHE_TTL = 604800;
 
+import { nowInShanghai } from "../../lib/time.js";
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -24,7 +26,8 @@ export async function onRequestPost(context) {
 
     const formattedSlug = slug.trim().toLowerCase();
     const targetCategory = category ? (category.trim() || null) : null;
-    const currentTime = new Date().toISOString();
+    // 新数据使用上海时区（+08:00），历史数据保留原 UTC 不动
+    const currentTime = nowInShanghai();
 
     // 💡 优化：移除对并不需要的字段 excerpt 的计算与存储
     // 💡 进阶：使用 RETURNING 一次性拿到 id/status/views,让 get.js 的关键路径完全脱离 D1

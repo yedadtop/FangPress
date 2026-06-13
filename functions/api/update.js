@@ -1,6 +1,8 @@
 // functions/api/update.js
 const POST_CACHE_TTL = 604800;
 
+import { nowInShanghai } from "../../lib/time.js";
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -28,7 +30,8 @@ export async function onRequestPost(context) {
     const targetStatus = (status && status.trim() === 'draft') ? 'draft' : 'published';
 
     const oldPost = await env.DB.prepare("SELECT slug, category, created_at FROM posts WHERE id = ?").bind(id).first();
-    const now = new Date().toISOString();
+    // 新数据使用上海时区（+08:00），历史数据保留原 UTC 不动
+    const now = nowInShanghai();
 
     // 💡 进阶:用 RETURNING 一次性拿到 id/status/views/created_at,让 get.js 关键路径完全脱离 D1
     const updated = await env.DB

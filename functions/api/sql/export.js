@@ -6,6 +6,8 @@
 
 const BATCH_SIZE = 100;
 
+import { nowInShanghai } from "../../lib/time.js";
+
 function sqlEscape(v) {
   if (v === null || v === undefined) return "NULL";
   if (typeof v === "number") return Number.isFinite(v) ? String(v) : "NULL";
@@ -70,7 +72,8 @@ export async function onRequestGet(context) {
     async start(controller) {
       try {
         // 1) 文件头 + 事务开始
-        const now = new Date().toISOString();
+        // 与数据库新数据保持一致，导出时间也用上海时区显示
+        const now = nowInShanghai();
         let head = "";
         head += `-- Quinn's Space 数据库导出\n`;
         head += `-- 导出时间: ${now}\n`;
