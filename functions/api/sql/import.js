@@ -1,9 +1,16 @@
 // functions/api/sql/import.js
 // POST /api/sql/import   Content-Type: application/json
 // 鉴权：Bearer Token
-// 请求体：{ sqlArray: ["stmt1", "stmt2", ...], isLastChunk: true|false }
+// 请求体：{ sqlArray: ["stmt1", "stmt2", ...], isLastChunk: true|false, mode: "overwrite"|"incremental" }
 // 使用 env.DB.batch() 把整批 SQL 作为单个事务执行；
 // 仅当 isLastChunk === true 时才清理全站 KV 缓存。
+//
+// 模式说明：
+//   - overwrite  （默认）：原样执行所有语句（除 D1 不支持的事务控制语句），
+//                         适合从本系统导出的全量备份恢复，会先 DROP 再重建表。
+//   - incremental        ：增量合并。跳过 DROP TABLE / CREATE INDEX；
+//                         将 INSERT INTO 改写为 INSERT OR IGNORE INTO，
+//                         已存在（主键 / 唯一约束冲突）的记录会被保留，仅插入新行。
 
 const MAX_BATCH_SIZE = 200;            // 单批最多语句数
 const MAX_STMT_BYTES = 256 * 1024;     // 单条语句最大字节数
@@ -30,6 +37,40 @@ function filterD1Incompatible(sqlArray) {
     filtered.push(stmt);
   }
   return filtered;
+}
+
+// 增量模式下需要跳过的语句：开头（去掉前置注释）是 DROP TABLE / CREATE [UNIQUE] INDEX
+const DROP_TABLE_STMT   = /^(?:\s*--[^\n]*\n|\s*\/\*[\s\S]*?\*\/\s*)*DROP\s+TABLE(?:\s+IF\s+EXISTS)?\s+(?:"[^"]+"|`[^`]+`|\[[^\]]+\]|\w+)(?:\s*\.("?[^"]+"?))?\s*;?\s*$/i;
+const CREATE_INDEX_STMT = /^(?:\s*--[^\n]*\n|\s*\/\*[\s\S]*?\*\/\s*)*CREATE\s+(?:UNIQUE\s+)?INDEX\s+/i;
+// 把 INSERT 后面紧跟的 INTO 改写成 INSERT OR IGNORE INTO。
+// 用 \bINSERT\s+INTO\b 可以避开 INSERT OR IGNORE INTO / INSERT OR REPLACE INTO。
+const INSERT_INTO_RE = /\bINSERT\s+INTO\b/;
+
+function transformForIncremental(sqlArray) {
+  const result = [];
+  let droppedTables = 0;
+  let droppedIndexes = 0;
+  let transformedInserts = 0;
+
+  for (let i = 0; i < sqlArray.length; i++) {
+    const stmt = sqlArray[i];
+    if (DROP_TABLE_STMT.test(stmt))   { droppedTables++;   continue; }
+    if (CREATE_INDEX_STMT.test(stmt)) { droppedIndexes++;  continue; }
+
+    if (INSERT_INTO_RE.test(stmt)) {
+      result.push(stmt.replace(INSERT_INTO_RE, 'INSERT OR IGNORE INTO'));
+      transformedInserts++;
+    } else {
+      result.push(stmt);
+    }
+  }
+
+  return {
+    sqlArray: result,
+    droppedTables,
+    droppedIndexes,
+    transformedInserts
+  };
 }
 
 async function clearKvByPrefix(env, prefix) {
@@ -93,9 +134,14 @@ export async function onRequestPost(context) {
     }
 
     const isLastChunk = !!(body && body.isLastChunk === true);
+    const mode = (body && typeof body.mode === "string") ? body.mode.toLowerCase() : "overwrite";
+    if (mode !== "overwrite" && mode !== "incremental") {
+      return new Response(JSON.stringify({ success: false, error: `不支持的导入模式: ${mode}` }), {
+        status: 400, headers: { "Content-Type": "application/json" }
+      });
+    }
 
-    // ========== 核心：用 D1 batch() 把整批作为一个事务执行 ==========
-    // 先剥掉 D1 不支持的事务/PRAGMA 语句（详见 filterD1Incompatible）
+    // ========== 1) 剥掉 D1 不支持的事务/PRAGMA 语句 ==========
     const compatibleSql = filterD1Incompatible(sqlArray);
     const skipped = sqlArray.length - compatibleSql.length;
     // 极端情况：本批全是被过滤的事务控制语句，视为无害空批
@@ -106,13 +152,37 @@ export async function onRequestPost(context) {
         executed: 0,
         skipped,
         isLastChunk,
+        mode,
         detail: null
       }), { headers: { "Content-Type": "application/json" } });
     }
-    const prepared = compatibleSql.map(s => env.DB.prepare(s));
+
+    // ========== 2) 按模式改写 / 过滤 ==========
+    let toExecute = compatibleSql;
+    let modeStats = { droppedTables: 0, droppedIndexes: 0, transformedInserts: 0 };
+    if (mode === "incremental") {
+      const t = transformForIncremental(compatibleSql);
+      toExecute = t.sqlArray;
+      modeStats = { droppedTables: t.droppedTables, droppedIndexes: t.droppedIndexes, transformedInserts: t.transformedInserts };
+      if (toExecute.length === 0) {
+        return new Response(JSON.stringify({
+          success: true,
+          message: `增量模式下本批 ${compatibleSql.length} 条全部被跳过（${t.droppedTables} 条 DROP TABLE + ${t.droppedIndexes} 条 CREATE INDEX）`,
+          executed: 0,
+          skipped,
+          isLastChunk,
+          mode,
+          modeStats,
+          detail: null
+        }), { headers: { "Content-Type": "application/json" } });
+      }
+    }
+
+    // ========== 3) 用 D1 batch() 把整批作为一个事务执行 ==========
+    const prepared = toExecute.map(s => env.DB.prepare(s));
     const results = await env.DB.batch(prepared);
 
-    // ========== 仅在最后一个批次清理全站缓存 ==========
+    // ========== 4) 仅在最后一个批次清理全站缓存 ==========
     if (isLastChunk) {
       try { await clearKvByPrefix(env, "site:posts:list:page:"); } catch (_) {}
       try { await clearKvByPrefix(env, "site:posts:list:type:"); } catch (_) {}
@@ -121,14 +191,30 @@ export async function onRequestPost(context) {
       try { await clearKvByPrefix(env, "post:content:"); } catch (_) {}
     }
 
+    const executed = toExecute.length;
+    let message;
+    if (mode === "incremental") {
+      const parts = [];
+      if (modeStats.droppedTables)   parts.push(`跳过 ${modeStats.droppedTables} 条 DROP TABLE`);
+      if (modeStats.droppedIndexes)  parts.push(`跳过 ${modeStats.droppedIndexes} 条 CREATE INDEX`);
+      if (modeStats.transformedInserts) parts.push(`改写 ${modeStats.transformedInserts} 条 INSERT 为 INSERT OR IGNORE`);
+      const tail = skipped ? `（另有 ${skipped} 条 D1 不支持的事务/PRAGMA 已跳过）` : '';
+      const cache = isLastChunk ? '，全站缓存已清理' : '';
+      message = `增量模式：已执行 ${executed} 条语句${parts.length ? '，' + parts.join('、') : ''}${tail}${cache}`;
+    } else {
+      message = isLastChunk
+        ? `覆盖模式：已成功执行 ${executed} 条语句${skipped ? `（已跳过 ${skipped} 条 D1 不支持的事务/PRAGMA 语句）` : ''}，全站缓存已清理`
+        : `覆盖模式：已成功执行 ${executed} 条语句${skipped ? `（已跳过 ${skipped} 条 D1 不支持的语句）` : ''}`;
+    }
+
     return new Response(JSON.stringify({
       success: true,
-      message: isLastChunk
-        ? `已成功执行 ${compatibleSql.length} 条语句${skipped ? `（已跳过 ${skipped} 条 D1 不支持的事务/PRAGMA 语句）` : ''}，全站缓存已清理`
-        : `已成功执行 ${compatibleSql.length} 条语句${skipped ? `（已跳过 ${skipped} 条 D1 不支持的语句）` : ''}`,
-      executed: compatibleSql.length,
+      message,
+      executed,
       skipped,
       isLastChunk,
+      mode,
+      modeStats,
       detail: results || null
     }), { headers: { "Content-Type": "application/json" } });
   } catch (err) {

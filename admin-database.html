@@ -48,6 +48,44 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+
+        /* 模态框 */
+        .modal-backdrop { background: rgba(28, 25, 23, 0.55); backdrop-filter: blur(2px); }
+        .modal-dialog { animation: modalIn .18s ease-out; }
+        @keyframes modalIn {
+            from { opacity: 0; transform: translateY(8px) scale(.98); }
+            to   { opacity: 1; transform: translateY(0)   scale(1);   }
+        }
+        .modal-option {
+            border: 1px solid #e7e5e4;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            cursor: pointer;
+            transition: border-color .15s ease, background-color .15s ease;
+            display: block;
+        }
+        .modal-option:hover { border-color: #a8a29e; }
+        .modal-option:has(input:checked) {
+            border-color: #0c0a09;
+            background-color: #fafaf9;
+        }
+        .modal-radio {
+            width: 1rem; height: 1rem;
+            border-radius: 9999px;
+            border: 2px solid #d6d3d1;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: border-color .15s ease;
+        }
+        .modal-radio-dot {
+            width: 0.5rem; height: 0.5rem;
+            border-radius: 9999px;
+            background-color: #0c0a09;
+            opacity: 0;
+            transition: opacity .15s ease;
+        }
+        .modal-option:has(input:checked) .modal-radio { border-color: #0c0a09; }
+        .modal-option:has(input:checked) .modal-radio-dot { opacity: 1; }
     </style>
 </head>
 <body class="bg-[#fafaf9] text-stone-800 min-h-screen">
@@ -214,6 +252,66 @@
                 </div>
             </div>
         </section>
+    </div>
+
+    <!-- 导入模式选择模态框 -->
+    <div id="import-mode-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="import-mode-title">
+        <div class="modal-backdrop absolute inset-0" onclick="closeImportModeModal()"></div>
+        <div class="modal-dialog relative bg-white rounded-2xl border border-stone-200/60 shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="px-6 py-5 border-b border-stone-200/60">
+                <h3 id="import-mode-title" class="font-serif text-lg font-medium text-stone-900">选择导入模式</h3>
+                <p class="text-xs text-stone-500 mt-1">
+                    即将导入 <span id="modal-stmt-count" class="font-semibold text-stone-700 tabular-nums">0</span> 条 SQL 语句
+                </p>
+            </div>
+
+            <div class="p-6 space-y-3">
+                <label class="modal-option">
+                    <input type="radio" name="import-mode" value="overwrite" class="sr-only" checked>
+                    <div class="flex items-start gap-2.5">
+                        <div class="modal-radio mt-0.5">
+                            <div class="modal-radio-dot"></div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span class="font-medium text-sm text-stone-900">覆盖全部数据</span>
+                                <span class="text-[10px] font-semibold uppercase tracking-wider text-red-600 bg-red-50 border border-red-200/60 px-1.5 py-0.5 rounded">危险</span>
+                            </div>
+                            <p class="text-xs text-stone-500 leading-relaxed">
+                                会先 <span class="font-semibold text-red-700">删除</span> 现有数据库中所有同名的表与数据，再重新建表导入。
+                                现有内容 <span class="font-semibold text-red-700">不可恢复</span>，建议先导出一份备份再继续。
+                            </p>
+                        </div>
+                    </div>
+                </label>
+
+                <label class="modal-option">
+                    <input type="radio" name="import-mode" value="incremental" class="sr-only">
+                    <div class="flex items-start gap-2.5">
+                        <div class="modal-radio mt-0.5">
+                            <div class="modal-radio-dot"></div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span class="font-medium text-sm text-stone-900">增量模式</span>
+                                <span class="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.5 rounded">安全</span>
+                            </div>
+                            <p class="text-xs text-stone-500 leading-relaxed">
+                                不会删除任何现有数据。如果记录已存在（主键 / 唯一约束冲突），将
+                                <span class="font-semibold text-emerald-700">保留</span> 原值、跳过新值；仅插入新增内容。
+                                同时会跳过 <code class="font-mono text-[11px] bg-stone-100 px-1 py-0.5 rounded">DROP TABLE</code> 与
+                                <code class="font-mono text-[11px] bg-stone-100 px-1 py-0.5 rounded">CREATE INDEX</code> 语句以避免冲突。
+                            </p>
+                        </div>
+                    </div>
+                </label>
+            </div>
+
+            <div class="px-6 py-4 border-t border-stone-200/60 bg-stone-50 flex items-center justify-end gap-2">
+                <button type="button" onclick="closeImportModeModal()" class="px-4 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-md transition-colors cursor-pointer">取消</button>
+                <button type="button" id="modal-confirm-btn" onclick="confirmImportMode()" class="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-sm rounded-md transition-colors cursor-pointer">开始导入</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -458,7 +556,7 @@
         }
 
         // —— 把切分出的语句分批提交到后端 /api/sql/import ——
-        async function submitImport(stmts) {
+        async function submitImport(stmts, mode) {
             const statusEl = document.getElementById('import-status');
             const BATCH = 200; // 与后端 MAX_BATCH_SIZE 一致
             const total = stmts.length;
@@ -472,7 +570,7 @@
                 const res = await fetch('/api/sql/import', {
                     method: 'POST',
                     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sqlArray: chunk, isLastChunk: isLast })
+                    body: JSON.stringify({ sqlArray: chunk, isLastChunk: isLast, mode: mode })
                 });
                 const result = await res.json();
                 if (!result.success) {
@@ -482,6 +580,54 @@
             }
             return { executed };
         }
+
+        // —— 模态框：保存待导入语句，用户在弹窗里选择模式后再真正提交 ——
+        let _pendingImportStmts = null;
+
+        function openImportModeModal(stmtCount) {
+            _pendingImportStmts = null;
+            document.getElementById('modal-stmt-count').textContent = stmtCount;
+            // 默认回到「覆盖模式」，避免上一次的勾选残留
+            const radios = document.querySelectorAll('input[name="import-mode"]');
+            radios.forEach(r => { r.checked = (r.value === 'overwrite'); });
+            document.getElementById('import-mode-modal').classList.remove('hidden');
+        }
+
+        function closeImportModeModal() {
+            document.getElementById('import-mode-modal').classList.add('hidden');
+            _pendingImportStmts = null;
+        }
+
+        async function confirmImportMode() {
+            const stmts = _pendingImportStmts;
+            if (!stmts) return;
+            const modeEl = document.querySelector('input[name="import-mode"]:checked');
+            const mode = modeEl ? modeEl.value : 'overwrite';
+
+            // 关闭弹窗，释放引用
+            document.getElementById('import-mode-modal').classList.add('hidden');
+            _pendingImportStmts = null;
+
+            const btn = document.getElementById('import-btn');
+            const statusEl = document.getElementById('import-status');
+            btn.disabled = true;
+            try {
+                const { executed } = await submitImport(stmts, mode);
+                const tag = mode === 'incremental' ? '（增量模式）' : '（覆盖模式）';
+                setStatus(statusEl, `✓ ${tag} 已成功执行 ${executed} 条语句，全站缓存已清理`, 'info');
+            } catch (e) {
+                setStatus(statusEl, '✗ ' + (e.message || e), 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ESC 关闭模态框
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !document.getElementById('import-mode-modal').classList.contains('hidden')) {
+                closeImportModeModal();
+            }
+        });
 
         async function importSql() {
             const btn = document.getElementById('import-btn');
@@ -511,12 +657,10 @@
                     setStatus(statusEl, '✗ 未解析到任何 SQL 语句', 'error');
                     return;
                 }
-                if (!confirm(`将执行 ${stmts.length} 条 SQL 语句（可能覆盖现有数据），是否继续？`)) {
-                    return;
-                }
 
-                const { executed } = await submitImport(stmts);
-                setStatus(statusEl, `✓ 已成功执行 ${executed} 条语句，全站缓存已清理`, 'info');
+                // 弹出模态框，让用户在「覆盖」和「增量」之间二选一
+                _pendingImportStmts = stmts;
+                openImportModeModal(stmts.length);
             } catch (e) {
                 setStatus(statusEl, '✗ ' + (e.message || e), 'error');
             } finally {
