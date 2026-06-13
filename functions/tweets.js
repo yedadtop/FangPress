@@ -1,9 +1,15 @@
 // functions/tweets.js
 // /tweets 列表页 SSR：仅 type='tweet' 的推文
 // 数据契约：env.KV.get('site:posts:list:type:tweet:page:<n>')
+//
+// 渲染策略：
+//  - 首屏 SSR 出前 10 条推文（完整正文 + 无「推文」小标）
+//  - 不再输出传统分页 <nav>，而是在 #ssr-post-list 上挂 data-has-more / data-next-page
+//  - 客户端通过 IntersectionObserver 触发 /api/list?type=tweet&page=N+1 实现懒加载
+//  - KV 缓存机制无需调整：list.js 与本页使用同一份键 'site:posts:list:type:tweet:page:<n>'
 
 import { makeExcerpt } from './api/helpers.js';
-import { renderPostItem, safeParseKV, escapeHtml } from './lib/list-render.js';
+import { renderTweetItem, safeParseKV, escapeHtml } from './lib/list-render.js';
 import { renderHeaderNav, renderMobileMenu, getActiveNavs, getSettings } from './lib/nav-render.js';
 
 const KV_LIST_KEY_PREFIX = "site:posts:list:type:tweet:page:";
@@ -14,6 +20,7 @@ const PAGE_TAB = 'tweets';
 export async function onRequestGet(context) {
     const { request, env } = context;
     const url = new URL(request.url);
+    // 推文页面无视 ?page=N：始终渲染首页（懒加载由前端处理）
     let page = parseInt(url.searchParams.get('page') || '1', 10);
     if (isNaN(page) || page < 1) page = 1;
     const currentKvKey = KV_LIST_KEY_PREFIX + page;
@@ -65,6 +72,8 @@ export async function onRequestGet(context) {
                     type: p.type || 'tweet',
                     views: p.views,
                     created_at: p.created_at,
+                    // 推文列表需要完整正文（前端懒加载同样依赖此字段）
+                    content: p.content || '',
                     excerpt: makeExcerpt(p.content || '', excerptLength)
                 }));
 
@@ -78,8 +87,6 @@ export async function onRequestGet(context) {
         }
     }
 
-    // 推文列表不显示阅读量
-    const showViews = false;
     const siteTitle = settings.site_title || '';
     const pageTitle = siteTitle ? `推文 · ${siteTitle}` : '推文';
 
@@ -105,11 +112,14 @@ export async function onRequestGet(context) {
     rewriter.on('#site-skeleton', { element: el => el.setAttribute('class', 'hidden') });
 
     if (posts.length > 0) {
-        const itemsHtml = posts.map((p, i) => renderPostItem(p, i, showViews)).join('');
+        const itemsHtml = posts.map((p, i) => renderTweetItem(p, i)).join('');
         rewriter.on('#ssr-post-list', {
             element: el => {
                 el.setInnerContent(itemsHtml, { html: true });
                 el.setAttribute('class', 'divide-y divide-stone-200/70');
+                // 懒加载状态：告诉前端是否还有下一页、下次请求的 page 编号
+                el.setAttribute('data-has-more', hasNextPage ? 'true' : 'false');
+                el.setAttribute('data-next-page', String(page + 1));
             }
         });
         rewriter.on('#posts-skeleton', { element: el => el.setAttribute('class', 'hidden') });
@@ -120,39 +130,9 @@ export async function onRequestGet(context) {
         rewriter.on('#status-empty', { element: el => el.setAttribute('class', 'py-20 text-center') });
     }
 
-    if (posts.length > 0 && (page > 1 || hasNextPage)) {
-        rewriter.on('#ssr-pagination', {
-            element: el => el.setAttribute('class', 'flex justify-between items-center mt-12 pt-8 border-t border-stone-200/70 font-serif text-sm')
-        });
-
-        if (page > 1) {
-            rewriter.on('#ssr-prev-page', {
-                element: el => {
-                    el.setAttribute('href', `/tweets?page=${page - 1}`);
-                    el.setAttribute('class', 'text-stone-500 hover:text-stone-900 transition-colors');
-                }
-            });
-        } else {
-            rewriter.on('#ssr-prev-page', {
-                element: el => el.setAttribute('class', 'hidden text-stone-500 hover:text-stone-900 transition-colors')
-            });
-        }
-
-        if (hasNextPage) {
-            rewriter.on('#ssr-next-page', {
-                element: el => {
-                    el.setAttribute('href', `/tweets?page=${page + 1}`);
-                    el.setAttribute('class', 'text-stone-500 hover:text-stone-900 transition-colors ml-auto');
-                }
-            });
-        } else {
-            rewriter.on('#ssr-next-page', {
-                element: el => el.setAttribute('class', 'hidden text-stone-500 hover:text-stone-900 transition-colors ml-auto')
-            });
-        }
-    } else {
-        rewriter.on('#ssr-pagination', { element: el => el.setAttribute('class', 'hidden') });
-    }
+    // ⚡️ 推文页不再需要 #ssr-pagination 容器：懒加载逻辑已迁移到 #tweet-load-more-sentinel
+    //    保留隐藏操作以兼容可能的旧模板残留
+    rewriter.on('#ssr-pagination', { element: el => el.setAttribute('class', 'hidden') });
 
     const response = rewriter.transform(templateResp);
     const headers = new Headers(response.headers);

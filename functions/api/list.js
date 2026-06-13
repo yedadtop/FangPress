@@ -144,17 +144,24 @@ export async function onRequestGet(context) {
       if (hasMore) pageResults = rawResults.slice(0, PAGE_SIZE);
     }
 
-    const data = pageResults.map(p => ({
-      id: p.id,
-      title: p.title || null,
-      slug: p.slug,
-      category: (!p.category || p.category.trim() === '') ? null : p.category,
-      type: p.type || 'post',
-      views: p.views,
-      created_at: p.created_at,
-      status: p.status || 'published', // 后台可以读取这个字段区分草稿
-      excerpt: makeExcerpt(p.content || '', excerptLength)
-    }));
+    const data = pageResults.map(p => {
+      const base = {
+        id: p.id,
+        title: p.title || null,
+        slug: p.slug,
+        category: (!p.category || p.category.trim() === '') ? null : p.category,
+        type: p.type || 'post',
+        views: p.views,
+        created_at: p.created_at,
+        status: p.status || 'published', // 后台可以读取这个字段区分草稿
+        excerpt: makeExcerpt(p.content || '', excerptLength)
+      };
+      // 推文专用:/tweets 页面需要展示完整正文,因此对 tweet 类型额外带回 content 字段
+      if ((p.type || 'post') === 'tweet' && p.content) {
+        base.content = p.content;
+      }
+      return base;
+    });
 
     // ⚡ 修复 2：所有分页请求都返回 has_more
     const responseData = isPaginated

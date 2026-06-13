@@ -51,7 +51,7 @@ export function renderPostItem(post, i, showViews) {
     const slug = post.slug || '';
     const type = post.type || 'post';
 
-    // 推文渲染：左侧竖线、无标题、直接展示内容片段、时间附「推文」小标
+    // 推文渲染(混合列表场景,如首页 mix 模式):左侧竖线、无标题、直接展示内容片段、时间附「推文」小标
     if (type === 'tweet') {
         const body = post.excerpt
             ? `<p class="mt-1.5 font-serif text-stone-700 text-base leading-relaxed">${escapeHtml(post.excerpt)}</p>`
@@ -89,6 +89,31 @@ export function renderPostItem(post, i, showViews) {
                     </div>
                 </div>
                 ${excerpt}
+            </a>
+        </article>
+    `;
+}
+
+/**
+ * 推文专用渲染器(用于 /tweets 页面)
+ *  - 展示完整正文(优先 post.content,缺失时回退 excerpt)
+ *  - 不显示「推文」分类小标
+ *  - 保留左侧竖线 + 时间戳的极简观感
+ */
+export function renderTweetItem(post, i) {
+    if (!post) return '';
+    const slug = post.slug || '';
+    const raw = (post.content != null && post.content !== '') ? post.content : (post.excerpt || '');
+    const body = raw
+        ? `<p class="mt-1.5 font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(raw)}</p>`
+        : '';
+    return `
+        <article class="fade-up py-5 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
+            <a href="/post/${encodeURIComponent(slug)}" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">
+                ${body}
+                <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1.5 font-sans">
+                    <time>${formatDate(post.created_at)}</time>
+                </div>
             </a>
         </article>
     `;

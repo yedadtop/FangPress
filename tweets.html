@@ -126,12 +126,25 @@
             <span class="font-serif italic">数据获取失败</span> · 请刷新重试
         </div>
 
-        <main id="ssr-post-list" data-ssr="post-list" class="hidden divide-y divide-stone-200/70"></main>
+        <main id="ssr-post-list" data-ssr="post-list" class="hidden divide-y divide-stone-200/70" data-has-more="false" data-next-page="2"></main>
 
         <nav id="ssr-pagination" class="hidden flex justify-between items-center mt-12 pt-8 border-t border-stone-200/70 font-serif text-sm">
             <a id="ssr-prev-page" href="" class="hidden text-stone-500 hover:text-stone-900 transition-colors">← 上一页</a>
             <a id="ssr-next-page" href="" class="hidden text-stone-500 hover:text-stone-900 transition-colors ml-auto">下一页 →</a>
         </nav>
+
+        <div id="tweet-load-more-sentinel" class="h-px w-full"></div>
+        <div id="tweet-loading-more" class="hidden py-10 text-center fade-in">
+            <div class="inline-block w-12 h-px bg-stone-300 mb-3"></div>
+            <p class="font-serif text-stone-500 text-sm italic tracking-widest">正在加载更多推文…</p>
+        </div>
+        <div id="tweet-load-error" class="hidden py-10 text-stone-400 text-sm tracking-wider text-center">
+            <span class="font-serif italic">加载失败</span> ·
+            <button type="button" id="tweet-retry" class="underline underline-offset-2 hover:text-stone-700 transition-colors">重试</button>
+        </div>
+        <div id="tweet-end" class="hidden py-12 text-center text-stone-400 text-xs tracking-widest uppercase">
+            — End of Stream —
+        </div>
     </div>
 
     <footer class="max-w-[44rem] mx-auto px-6 pb-12 text-center text-stone-400 text-xs tracking-widest uppercase">
@@ -169,6 +182,155 @@
                 mobileMenu.classList.add('hidden');
             }
         });
+    })();
+
+    // ⚡️ 推文懒加载：滚动到哨兵时后台拉取 /api/list?type=tweet&page=N+1 并就地拼接
+    (function () {
+        var list     = document.getElementById('ssr-post-list');
+        var sentinel = document.getElementById('tweet-load-more-sentinel');
+        var loading  = document.getElementById('tweet-loading-more');
+        var errEl    = document.getElementById('tweet-load-error');
+        var retryBtn = document.getElementById('tweet-retry');
+        var endEl    = document.getElementById('tweet-end');
+        if (!list || !sentinel) return;
+
+        var hasMore   = list.getAttribute('data-has-more') === 'true';
+        var nextPage  = parseInt(list.getAttribute('data-next-page') || '2', 10);
+        var inFlight  = false;
+        var observer  = null;
+
+        function escapeHTML(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatDate(ts) {
+            if (!ts) return '';
+            var d = new Date(ts);
+            if (isNaN(d)) return '';
+            var y  = d.getFullYear();
+            var m  = String(d.getMonth() + 1).padStart(2, '0');
+            var dd = String(d.getDate()).padStart(2, '0');
+            return y + ' · ' + m + ' · ' + dd;
+        }
+
+        function renderItem(p) {
+            var slug = encodeURIComponent(p.slug || '');
+            var raw  = (p.content != null && p.content !== '') ? p.content : (p.excerpt || '');
+            var body = raw
+                ? '<p class="mt-1.5 font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words">' + escapeHTML(raw) + '</p>'
+                : '';
+            var d = formatDate(p.created_at);
+            var timeHTML = d ? '<time>' + escapeHTML(d) + '</time>' : '';
+            return '<article class="fade-up py-5 group" data-ssr-item>' +
+                '<a href="/post/' + slug + '" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">' +
+                    body +
+                    '<div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1.5 font-sans">' +
+                        timeHTML +
+                    '</div>' +
+                '</a>' +
+            '</article>';
+        }
+
+        function appendItems(items) {
+            if (!items || !items.length) return;
+            var wrap = document.createElement('div');
+            wrap.innerHTML = items.map(renderItem).join('');
+            while (wrap.firstChild) list.appendChild(wrap.firstChild);
+        }
+
+        function setLoading(v) {
+            inFlight = v;
+            if (loading) loading.classList.toggle('hidden', !v);
+        }
+
+        function showError() {
+            if (errEl) errEl.classList.remove('hidden');
+        }
+
+        function hideError() {
+            if (errEl) errEl.classList.add('hidden');
+        }
+
+        function finish(hasNext) {
+            hasMore = hasNext;
+            if (!hasMore) {
+                if (sentinel) sentinel.style.display = 'none';
+                if (endEl) endEl.classList.remove('hidden');
+                if (observer) observer.disconnect();
+            }
+        }
+
+        function loadMore() {
+            if (inFlight || !hasMore) return;
+            hideError();
+            setLoading(true);
+
+            fetch('/api/list?type=tweet&page=' + nextPage, {
+                headers: { 'Accept': 'application/json' },
+                cache: 'no-store'
+            })
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (json) {
+                if (json && json.success && Array.isArray(json.data)) {
+                    appendItems(json.data);
+                    nextPage++;
+                    list.setAttribute('data-next-page', String(nextPage));
+                    finish(json.has_more === true);
+                } else {
+                    showError();
+                }
+            })
+            .catch(function () {
+                showError();
+            })
+            .then(function () {
+                setLoading(false);
+            });
+        }
+
+        if (retryBtn) {
+            retryBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                loadMore();
+            });
+        }
+
+        if (!hasMore) {
+            // 一次性内容：直接展示结束标记,无需观察哨兵
+            if (sentinel) sentinel.style.display = 'none';
+            if (endEl) endEl.classList.remove('hidden');
+            return;
+        }
+
+        if (!('IntersectionObserver' in window)) {
+            // 旧浏览器兜底：监听 scroll,到底部 300px 内触发
+            var triggered = false;
+            window.addEventListener('scroll', function () {
+                if (triggered || inFlight || !hasMore) return;
+                var rect = sentinel.getBoundingClientRect();
+                if (rect.top < (window.innerHeight || document.documentElement.clientHeight) + 300) {
+                    triggered = true;
+                    loadMore();
+                    setTimeout(function () { triggered = false; }, 200);
+                }
+            }, { passive: true });
+            return;
+        }
+
+        observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) loadMore();
+            });
+        }, { rootMargin: '300px 0px' });
+        observer.observe(sentinel);
     })();
     </script>
 </body>
