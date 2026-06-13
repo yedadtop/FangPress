@@ -287,13 +287,21 @@
 
 ---
 
-### 2.4 `POST /api/delete` — 删除文章
-请求体：
+### 2.4 `POST /api/delete` — 删除文章（支持单删 / 批量）
+请求体（任选其一；`ids` 与 `id` 同时给时以 `ids` 为准）：
 ```json
-{ "id": 1 }
+{ "id": 1 }                    // 单删
+{ "ids": [1, 2, 3] }           // ⚡ 批量（推荐）
 ```
-成功响应 200：`{ "success": true, "message": "文章已删除" }`
-错误：`404 { success:false, error:"未找到该文章" }`（基于 `meta.changes === 0`）
+- `ids` 元素必须为正整数；非法值会被静默过滤
+- 后端用 `IN (...)` 一次性 D1 物理删除 + 一次性遍历清理各文章 `post:content:<slug>` KV
+- 三种列表缓存（`site:posts:list:page:*` / `site:posts:list:type:*` / `site:posts:list:cat:*`）清空策略保持原样
+
+成功响应 200：
+```json
+{ "success": true, "message": "已删除 3 篇文章", "deleted": 3 }
+```
+错误：`404 { success:false, error:"未找到任何待删文章" }`（基于 `meta.changes === 0`）
 
 ---
 
@@ -435,6 +443,12 @@ curl -s -X POST https://YOUR-DOMAIN/api/delete \
   -H "Authorization: Bearer $API_TOKEN" \
   -d '{"id":1}'
 
+# ⚡ 批量删除
+curl -s -X POST https://YOUR-DOMAIN/api/delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $API_TOKEN" \
+  -d '{"ids":[1,2,3]}'
+
 # 4) 设置（支持 API_TOKEN）
 curl -s -X POST https://YOUR-DOMAIN/api/settings \
   -H "Content-Type: application/json" \
@@ -530,5 +544,5 @@ site_navs(
 ---
 
 > 文档版本：2026-06-13
-> 新增：导航管理（`/api/navs`，支持 KV 缓存 + 拖拽排序 + 启用/禁用）、推文（`type='tweet'`）支持、`/posts` 与 `/tweets` 独立列表页、API list 支持 `type` / `page` 参数
+> 新增：导航管理（`/api/navs`，支持 KV 缓存 + 拖拽排序 + 启用/禁用）、推文（`type='tweet'`）支持、`/posts` 与 `/tweets` 独立列表页、API list 支持 `type` / `page` 参数、`/api/delete` 支持 `ids` 批量删除
 > 维护者：随源码演进同步更新

@@ -46,6 +46,27 @@
             </div>
         </header>
 
+        <!-- ⚡ 批量操作浮动条：选中项 > 0 时从顶部滑入 -->
+        <div id="batch-bar" class="hidden sticky top-3 z-20 mb-4 flex items-center justify-between gap-3 px-4 py-2.5 bg-stone-900 text-white text-sm rounded-lg shadow-lg">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                已选 <span id="selected-count" class="font-semibold">0</span> 篇
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="batch-cancel" class="px-3 py-1.5 text-xs text-stone-200 hover:text-white hover:bg-stone-700 rounded transition-colors cursor-pointer">
+                    取消
+                </button>
+                <button id="batch-delete" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-600 hover:bg-red-500 text-white rounded transition-colors cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                    </svg>
+                    批量删除
+                </button>
+            </div>
+        </div>
+
         <div class="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div class="relative flex-1">
                 <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -83,6 +104,8 @@
 
     <script>
         let allPosts = [];
+        // ⚡ 当前选中的文章 id 集合（字符串型，避免数字/字符串比较的坑）
+        const selectedIds = new Set();
 
         function getToken() {
             return localStorage.getItem('admin_token');
@@ -180,7 +203,15 @@
             emptyEl.classList.add('hidden');
             listEl.classList.remove('hidden');
 
-            listEl.innerHTML = posts.map(p => {
+            listEl.innerHTML = `
+                <div class="px-5 md:px-6 py-2.5 bg-stone-50/60 border-b border-stone-200/60 flex items-center gap-3 text-[11px] uppercase tracking-wider text-stone-500">
+                    <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="select-all" class="w-3.5 h-3.5 accent-stone-900 cursor-pointer">
+                        <span>全选 / 反选</span>
+                    </label>
+                    <span class="ml-auto text-stone-400 normal-case tracking-normal">${posts.length} 项</span>
+                </div>
+            ` + posts.map(p => {
                 const postType = p.type || 'post';
                 const isTweet = postType === 'tweet';
                 const typeBadge = isTweet
@@ -190,8 +221,13 @@
                 const titleDisplay = isTweet && !p.title
                     ? `<span class="text-stone-400 italic font-serif">${escapeHtml((p.excerpt || p.slug || '').slice(0, 60))}${(p.excerpt || '').length > 60 ? '…' : ''}</span>`
                     : escapeHtml(p.title || '（无标题）');
+                const checked = selectedIds.has(String(p.id)) ? 'checked' : '';
                 return `
-                <div class="post-row px-5 md:px-6 py-5 flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+                <div class="post-row px-5 md:px-6 py-5 flex flex-col md:flex-row md:items-center gap-3 md:gap-4 ${checked ? 'bg-stone-50/60' : ''}">
+                    <div class="md:self-stretch md:flex md:items-start md:pt-1 shrink-0">
+                        <input type="checkbox" data-id="${p.id}" ${checked}
+                               class="post-checkbox w-3.5 h-3.5 accent-stone-900 cursor-pointer">
+                    </div>
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 mb-1.5">
                             ${typeBadge}
@@ -226,10 +262,57 @@
             `;
             }).join('');
 
-            // 绑定删除
+            // 绑定删除（单删走老接口 id）
             listEl.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', () => deletePost(btn.dataset.id, btn.dataset.title));
             });
+
+            // 绑定单行复选框
+            listEl.querySelectorAll('.post-checkbox').forEach(cb => {
+                cb.addEventListener('change', () => {
+                    if (cb.checked) selectedIds.add(cb.dataset.id);
+                    else selectedIds.delete(cb.dataset.id);
+                    syncBatchBar();
+                    // 行底色反馈
+                    const row = cb.closest('.post-row');
+                    if (row) row.classList.toggle('bg-stone-50/60', cb.checked);
+                    syncSelectAllState();
+                });
+            });
+
+            // 绑定全选/反选
+            const selectAll = listEl.querySelector('#select-all');
+            if (selectAll) {
+                selectAll.addEventListener('change', () => {
+                    const visibleIds = posts.map(p => String(p.id));
+                    if (selectAll.checked) {
+                        visibleIds.forEach(id => selectedIds.add(id));
+                    } else {
+                        visibleIds.forEach(id => selectedIds.delete(id));
+                    }
+                    // 重新渲染一次让复选框 + 行底色同步（仅在当前视图内）
+                    renderPosts();
+                });
+            }
+            syncSelectAllState();
+        }
+
+        function syncSelectAllState() {
+            const selectAll = document.getElementById('select-all');
+            if (!selectAll) return;
+            const visibleCheckboxes = document.querySelectorAll('.post-checkbox');
+            if (visibleCheckboxes.length === 0) { selectAll.checked = false; return; }
+            const checkedCount = [...visibleCheckboxes].filter(c => c.checked).length;
+            selectAll.checked = checkedCount === visibleCheckboxes.length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < visibleCheckboxes.length;
+        }
+
+        function syncBatchBar() {
+            const bar = document.getElementById('batch-bar');
+            const countEl = document.getElementById('selected-count');
+            const n = selectedIds.size;
+            countEl.textContent = n;
+            bar.classList.toggle('hidden', n === 0);
         }
 
         async function deletePost(id, title) {
@@ -249,8 +332,10 @@
 
                 if (result.success) {
                     allPosts = allPosts.filter(p => String(p.id) !== String(id));
+                    selectedIds.delete(String(id));
                     document.getElementById('total-count').textContent = allPosts.length;
                     renderPosts();
+                    syncBatchBar();
                 } else {
                     alert('删除失败: ' + (result.error || '未知错误'));
                 }
@@ -259,9 +344,59 @@
             }
         }
 
+        // ⚡ 批量删除：把当前选中的 id 一次性发给后端
+        async function batchDelete() {
+            if (selectedIds.size === 0) return;
+            if (!confirm(`确定要删除选中的 ${selectedIds.size} 篇文章？此操作不可恢复。`)) return;
+
+            const token = getToken();
+            const ids = [...selectedIds].map(v => Number(v)).filter(n => Number.isFinite(n) && n > 0);
+            if (ids.length === 0) {
+                alert('所选 id 无效');
+                return;
+            }
+
+            const btn = document.getElementById('batch-delete');
+            if (btn) { btn.disabled = true; btn.classList.add('opacity-60', 'cursor-not-allowed'); }
+
+            try {
+                const res = await fetch('/api/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ ids })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    const removed = ids.map(String);
+                    allPosts = allPosts.filter(p => !removed.includes(String(p.id)));
+                    selectedIds.clear();
+                    document.getElementById('total-count').textContent = allPosts.length;
+                    renderPosts();
+                    syncBatchBar();
+                } else {
+                    alert('批量删除失败: ' + (result.error || '未知错误'));
+                }
+            } catch (e) {
+                alert('请求失败，请检查网络');
+            } finally {
+                if (btn) { btn.disabled = false; btn.classList.remove('opacity-60', 'cursor-not-allowed'); }
+            }
+        }
+
         document.getElementById('search').addEventListener('input', renderPosts);
         document.getElementById('filter-category').addEventListener('change', renderPosts);
         document.getElementById('filter-type').addEventListener('change', renderPosts);
+
+        document.getElementById('batch-cancel').addEventListener('click', () => {
+            selectedIds.clear();
+            renderPosts();
+            syncBatchBar();
+        });
+        document.getElementById('batch-delete').addEventListener('click', batchDelete);
 
         document.addEventListener('DOMContentLoaded', loadPosts);
     </script>

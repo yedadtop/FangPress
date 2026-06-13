@@ -14,16 +14,36 @@ export async function onRequestPost(context) {
   }
 
   try {
-    const { id } = await request.json();
-    if (!id) return new Response(JSON.stringify({ success: false, error: "缺少文章 id" }), { status: 400 });
-
-    // 1) 先从 D1 拿到 slug 和 category 用于清理相关 KV 链条
-    const post = await env.DB.prepare("SELECT slug, category FROM posts WHERE id = ?").bind(id).first();
-
-    // 2) ⚡ 顺序安全擦除全套边缘缓存
-    if (post && post.slug) {
-      try { await env.KV.delete(`post:content:${post.slug.trim().toLowerCase()}`); } catch (_) {}
+    // ⚡ 支持单删（id）与批量（ids）。两者皆给时以 ids 为准。
+    const body = await request.json();
+    let idList = [];
+    if (Array.isArray(body.ids)) {
+      idList = body.ids.map(v => Number(v)).filter(n => Number.isFinite(n) && n > 0);
+    } else if (body.id != null) {
+      const n = Number(body.id);
+      if (Number.isFinite(n) && n > 0) idList = [n];
     }
+
+    if (idList.length === 0) {
+      return new Response(JSON.stringify({ success: false, error: "缺少文章 id" }), { status: 400 });
+    }
+
+    // 1) 先从 D1 拿到所有待删文章的 slug 用于清理相关 KV 链条
+    //    使用 IN (...) 一次性查，slug 为 null 的推文跳过 KV
+    const placeholders = idList.map(() => "?").join(",");
+    const posts = await env.DB
+      .prepare(`SELECT slug FROM posts WHERE id IN (${placeholders})`)
+      .bind(...idList)
+      .all();
+
+    // 2) ⚡ 顺序安全擦除每篇文章的内容缓存
+    try {
+      for (const p of (posts.results || [])) {
+        if (p && p.slug) {
+          try { await env.KV.delete(`post:content:${String(p.slug).trim().toLowerCase()}`); } catch (_) {}
+        }
+      }
+    } catch (_) {}
 
     // ⚡ 批量清除所有分页的首页列表缓存，防止漏网之鱼导致错位
     try {
@@ -55,14 +75,23 @@ export async function onRequestPost(context) {
       }
     } catch (_) {}
 
-    // 3) 最后执行 D1 的物理删除
-    const result = await env.DB.prepare("DELETE FROM posts WHERE id = ?").bind(id).run();
+    // 3) 最后执行 D1 的物理删除（同样用 IN，一次性搞定）
+    const result = await env.DB
+      .prepare(`DELETE FROM posts WHERE id IN (${placeholders})`)
+      .bind(...idList)
+      .run();
 
-    if (result.meta && result.meta.changes === 0) {
-      return new Response(JSON.stringify({ success: false, error: "未找到该文章" }), { status: 404 });
+    const deleted = (result.meta && typeof result.meta.changes === 'number') ? result.meta.changes : 0;
+    if (deleted === 0) {
+      return new Response(JSON.stringify({ success: false, error: "未找到任何待删文章" }), { status: 404 });
     }
 
-    return new Response(JSON.stringify({ success: true, message: "文章已删除" }), {
+    // 批量场景下允许部分命中（deleted < idList.length），按实际成功数量返回
+    return new Response(JSON.stringify({
+      success: true,
+      message: `已删除 ${deleted} 篇文章`,
+      deleted
+    }), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
