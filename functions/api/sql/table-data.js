@@ -74,10 +74,11 @@ export async function onRequestGet(context) {
     const total = (cntRow && cntRow[0]) ? cntRow[0].cnt : 0;
 
     const offset = (page - 1) * pageSize;
-    // 使用 sqlite 内置 rowid 排序，保证结果稳定
+    // ⚠️ D1 不支持 LIMIT/OFFSET 用 ? 占位符绑定（会抛 SQLITE_AUTH），
+    // 必须字符串插值。pageSize / offset 已在上面被 Number.isInteger 校验过，无注入风险。
     const { results: rows } = await env.DB.prepare(
-      `SELECT * FROM "${table}" ORDER BY rowid DESC LIMIT ? OFFSET ?`
-    ).bind(pageSize, offset).all();
+      `SELECT * FROM "${table}" ORDER BY rowid DESC LIMIT ${pageSize} OFFSET ${offset}`
+    ).all();
 
     return new Response(JSON.stringify({
       success: true,

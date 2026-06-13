@@ -104,9 +104,11 @@ export async function onRequestGet(context) {
           // —— 分页读取 INSERT 并立即推送 ——
           let offset = 0;
           while (true) {
+            // ⚠️ D1 不支持 LIMIT/OFFSET 用 ? 占位符绑定（会抛 SQLITE_AUTH），
+            // 必须字符串插值。BATCH_SIZE 是常量、offset 是数字，安全。
             const { results } = await env.DB.prepare(
-              `SELECT * FROM "${t.name}" LIMIT ? OFFSET ?`
-            ).bind(BATCH_SIZE, offset).all();
+              `SELECT * FROM "${t.name}" LIMIT ${BATCH_SIZE} OFFSET ${offset}`
+            ).all();
 
             if (!results || results.length === 0) break;
 
