@@ -300,13 +300,10 @@
                         <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">
                             内容类型 <span class="text-stone-300 normal-case tracking-normal">（根据标题自动判断）</span>
                         </label>
-                        <div class="flex items-center gap-2 px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm">
+                        <div class="flex items-center gap-2 px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm min-h-[42px]">
                             <span id="post-type-badge"
                                   class="shrink-0 text-[10px] uppercase tracking-wider font-semibold text-stone-600 border border-stone-300 px-1.5 py-0.5 rounded-sm bg-stone-200/40">
                                 推文
-                            </span>
-                            <span class="text-stone-500">
-                                <span id="post-type-hint">标题留空 → 将作为推文发布</span>
                             </span>
                         </div>
                     </div>
@@ -731,17 +728,14 @@
         // ⚡ 类型徽标：标题为空 → 推文，标题有内容 → 文章。无下拉框，纯联动。
         function updateTypeBadge(titleText) {
             const badge = document.getElementById('post-type-badge');
-            const hint  = document.getElementById('post-type-hint');
-            if (!badge || !hint) return;
+            if (!badge) return;
             const isTweet = !titleText || !titleText.trim();
             if (isTweet) {
                 badge.textContent = '推文';
                 badge.className = 'shrink-0 text-[10px] uppercase tracking-wider font-semibold text-stone-600 border border-stone-300 px-1.5 py-0.5 rounded-sm bg-stone-200/40';
-                hint.textContent  = '标题留空 → 将作为推文发布';
             } else {
                 badge.textContent = '文章';
                 badge.className = 'shrink-0 text-[10px] uppercase tracking-wider font-semibold text-stone-500 border border-stone-200 px-1.5 py-0.5 rounded-sm bg-stone-100/50';
-                hint.textContent  = '已填写标题 → 将作为文章发布';
             }
         }
 
