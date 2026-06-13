@@ -585,7 +585,7 @@
         let _pendingImportStmts = null;
 
         function openImportModeModal(stmtCount) {
-            _pendingImportStmts = null;
+            // _pendingImportStmts 由 importSql() 在调用本函数前赋值，不要在这里清掉
             document.getElementById('modal-stmt-count').textContent = stmtCount;
             // 默认回到「覆盖模式」，避免上一次的勾选残留
             const radios = document.querySelectorAll('input[name="import-mode"]');
