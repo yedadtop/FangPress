@@ -61,12 +61,27 @@
                     <a href="/tweets" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="tweets">推文</a>
                 </nav>
             </div>
-            <button id="search-toggle" type="button" aria-label="搜索" class="p-2 -mr-2 text-stone-600 hover:text-stone-900 transition-colors duration-300">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.3-4.3"></path>
-                </svg>
-            </button>
+            <div class="flex items-center gap-1">
+                <button id="search-toggle" type="button" aria-label="搜索" class="p-2 text-stone-600 hover:text-stone-900 transition-colors duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.3-4.3"></path>
+                    </svg>
+                </button>
+                <div class="relative md:hidden">
+                    <button id="menu-toggle" type="button" aria-label="菜单" class="p-2 -mr-2 text-stone-600 hover:text-stone-900 transition-colors duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="3.75" y1="6.75" x2="20.25" y2="6.75"></line>
+                            <line x1="3.75" y1="12" x2="20.25" y2="12"></line>
+                            <line x1="3.75" y1="17.25" x2="20.25" y2="17.25"></line>
+                        </svg>
+                    </button>
+                    <div id="mobile-menu" class="hidden absolute right-0 top-full mt-2 w-40 bg-[hsla(40,23%,97%,0.95)] backdrop-blur-md border border-stone-200/60 rounded-md shadow-lg overflow-hidden font-sans text-sm z-[55]">
+                        <a href="/posts" data-tab="posts" class="mobile-menu-link block px-4 py-2.5 text-stone-600 hover:bg-stone-100/60 hover:text-stone-900 transition-colors">文章</a>
+                        <a href="/tweets" data-tab="tweets" class="mobile-menu-link block px-4 py-2.5 text-stone-600 hover:bg-stone-100/60 hover:text-stone-900 transition-colors border-t border-stone-200/60">推文</a>
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -121,12 +136,35 @@
 
     <script>
     (function () {
+        // ⚡ 顶部 tab 高亮：基于 body[data-active-tab]
         var active = document.body.getAttribute('data-active-tab');
         if (active) {
-            document.querySelectorAll('.tab-link').forEach(function (el) {
-                if (el.getAttribute('data-tab') === active) el.setAttribute('data-active', 'true');
+            document.querySelectorAll('.tab-link, .mobile-menu-link').forEach(function (el) {
+                if (el.getAttribute('data-tab') === active) {
+                    el.setAttribute('data-active', 'true');
+                    el.classList.remove('text-stone-500', 'text-stone-600');
+                    el.classList.add('text-stone-900', 'font-medium');
+                }
             });
         }
+    })();
+
+    (function () {
+        var menuToggle = document.getElementById('menu-toggle');
+        var mobileMenu = document.getElementById('mobile-menu');
+        if (!menuToggle || !mobileMenu) return;
+
+        menuToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            mobileMenu.classList.toggle('hidden');
+        });
+        document.addEventListener('click', function (e) {
+            if (!mobileMenu.classList.contains('hidden') &&
+                !mobileMenu.contains(e.target) &&
+                !menuToggle.contains(e.target)) {
+                mobileMenu.classList.add('hidden');
+            }
+        });
     })();
     </script>
 </body>
