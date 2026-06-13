@@ -13,6 +13,10 @@
         body { font-family: var(--font-sans); }
         .font-serif { font-family: var(--font-serif); }
 
+        .table-row { transition: background-color .2s ease; }
+        .table-row:hover { background: #fafaf9; }
+        .action-btn { transition: color .2s ease, background-color .2s ease; }
+
         /* Tab */
         .tab {
             padding: 0.5rem 0.875rem;
@@ -23,7 +27,6 @@
             transition: color .2s ease, border-color .2s ease;
             background: transparent;
             border-top: 0; border-left: 0; border-right: 0;
-            white-space: nowrap;
         }
         .tab:hover { color: #0c0a09; }
         .tab.active {
@@ -43,11 +46,39 @@
             background: #f5f5f4;
         }
 
-        /* 滚动条美化 */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+        /* 数据表行内单元格省略 */
+        .cell-ellipsis {
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* 等宽数字 */
+        .tabular { font-variant-numeric: tabular-nums; }
+
+        /* 滚动表格 */
+        .data-table-wrap { overflow-x: auto; }
+        .data-table { border-collapse: collapse; width: 100%; }
+        .data-table th, .data-table td {
+            border-bottom: 1px solid #e7e5e4;
+            padding: 0.55rem 0.875rem;
+            font-size: 0.8125rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        .data-table th {
+            background: #fafaf9;
+            color: #57534e;
+            font-weight: 500;
+            font-size: 0.6875rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            position: sticky;
+            top: 0;
+        }
+        .data-table td { color: #292524; }
+        .data-table tr:hover td { background: #fafaf9; }
     </style>
 </head>
 <body class="bg-[#fafaf9] text-stone-800 min-h-screen">
@@ -60,17 +91,19 @@
             <p class="text-sm text-stone-500 mt-2">浏览数据表、导入导出 SQL、查看 KV 缓存</p>
         </header>
 
+        <!-- Tab 切换 -->
         <div class="border-b border-stone-200 mb-8 flex items-center gap-1 overflow-x-auto">
             <button class="tab active" data-tab="tables">数据表</button>
             <button class="tab" data-tab="sql">SQL 导入 / 导出</button>
             <button class="tab" data-tab="kv">KV 缓存</button>
         </div>
 
+        <!-- ====================== Tab: 数据表 ====================== -->
         <section data-pane="tables" class="space-y-6">
             <div class="flex items-center justify-between">
                 <p class="text-sm text-stone-500">
-                    共 <span id="table-count" class="font-semibold text-stone-700 tabular-nums">0</span> 张表 ·
-                    总计 <span id="row-count" class="font-semibold text-stone-700 tabular-nums">0</span> 行
+                    共 <span id="table-count" class="font-semibold text-stone-700 tabular">0</span> 张表 ·
+                    总计 <span id="row-count" class="font-semibold text-stone-700 tabular">0</span> 行
                 </p>
                 <button onclick="loadTables()" class="text-xs text-stone-500 hover:text-stone-900 transition-colors cursor-pointer">刷新</button>
             </div>
@@ -84,42 +117,41 @@
                 <p class="font-serif italic text-stone-500 text-base">数据库里还没有表</p>
             </div>
 
-            <div id="tables-list" class="hidden bg-white rounded-2xl border border-stone-200/60 overflow-hidden"></div>
+            <div id="tables-list" class="hidden bg-white rounded-2xl border border-stone-200/60 divide-y divide-stone-200/60 overflow-hidden"></div>
 
-            <div id="table-data-panel" class="hidden bg-white rounded-2xl border border-stone-200/60 overflow-hidden shadow-sm">
-                <div class="px-5 md:px-6 py-4 border-b border-stone-200/60 flex items-center justify-between gap-3 bg-white">
+            <!-- 表格数据查看器（默认隐藏） -->
+            <div id="table-data-panel" class="hidden bg-white rounded-2xl border border-stone-200/60 overflow-hidden">
+                <div class="px-5 md:px-6 py-4 border-b border-stone-200/60 flex items-center justify-between gap-3">
                     <div class="min-w-0">
-                        <h3 id="table-data-title" class="font-mono text-[15px] font-semibold text-stone-900 truncate">—</h3>
-                        <p class="text-[11px] text-stone-400 mt-1">
-                            <span id="table-data-total" class="tabular-nums">0</span> 行 ·
-                            第 <span id="table-data-page" class="tabular-nums">1</span> / <span id="table-data-pages" class="tabular-nums">1</span> 页
+                        <h3 id="table-data-title" class="font-serif text-base text-stone-900 truncate">—</h3>
+                        <p class="text-[11px] text-stone-400 mt-0.5">
+                            <span id="table-data-total" class="tabular">0</span> 行 ·
+                            第 <span id="table-data-page" class="tabular">1</span> / <span id="table-data-pages" class="tabular">1</span> 页
                         </p>
                     </div>
-                    <button onclick="closeTableData()" class="text-stone-400 hover:text-stone-900 transition-colors cursor-pointer bg-stone-100 hover:bg-stone-200 p-1.5 rounded-md" title="关闭">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <button onclick="closeTableData()" class="text-stone-400 hover:text-stone-900 transition-colors cursor-pointer p-1.5 -mr-1.5" title="关闭">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
-                
-                <div class="data-table-wrap overflow-x-auto" style="max-height: 60vh;">
-                    <table class="w-full text-left border-collapse whitespace-nowrap">
-                        <thead class="bg-stone-50 sticky top-0 shadow-[0_1px_0_#e7e5e4] z-10">
-                            <tr id="table-data-thead"></tr>
-                        </thead>
-                        <tbody id="table-data-tbody" class="divide-y divide-stone-200/60 bg-white"></tbody>
+                <div class="data-table-wrap" style="max-height: 60vh;">
+                    <table class="data-table">
+                        <thead id="table-data-thead"></thead>
+                        <tbody id="table-data-tbody"></tbody>
                     </table>
                 </div>
-
-                <div class="px-5 md:px-6 py-3 border-t border-stone-200/60 flex items-center justify-between text-xs text-stone-500 bg-stone-50">
-                    <button id="td-prev" onclick="changeTablePage(-1)" class="px-3 py-1.5 rounded-md border border-stone-200 bg-white hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors">← 上一页</button>
+                <div class="px-5 md:px-6 py-3 border-t border-stone-200/60 flex items-center justify-between text-xs text-stone-500">
+                    <button id="td-prev" onclick="changeTablePage(-1)" class="action-btn px-3 py-1.5 rounded hover:bg-stone-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">← 上一页</button>
                     <span>每页 50 行</span>
-                    <button id="td-next" onclick="changeTablePage(1)" class="px-3 py-1.5 rounded-md border border-stone-200 bg-white hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors">下一页 →</button>
+                    <button id="td-next" onclick="changeTablePage(1)" class="action-btn px-3 py-1.5 rounded hover:bg-stone-100 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">下一页 →</button>
                 </div>
             </div>
         </section>
 
+        <!-- ====================== Tab: SQL 导入 / 导出 ====================== -->
         <section data-pane="sql" class="hidden space-y-8">
+            <!-- 导出 -->
             <section>
                 <h2 class="text-[10px] uppercase tracking-widest text-stone-400 mb-3">导出数据库</h2>
                 <div class="bg-white border border-stone-200/60 rounded-2xl p-6">
@@ -139,6 +171,7 @@
                 </div>
             </section>
 
+            <!-- 导入 -->
             <section>
                 <h2 class="text-[10px] uppercase tracking-widest text-stone-400 mb-3">导入 SQL</h2>
                 <div class="bg-white border border-stone-200/60 rounded-2xl p-6 space-y-4">
@@ -146,7 +179,17 @@
                         <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                         </svg>
-                        <span>SQL 一旦执行将立即生效，导入完成后会自动清理全站缓存。</span>
+                        <span>SQL 一旦执行将立即生效，导入完成后会自动清理全站缓存。执行多条语句时会作为一个事务串行执行，若任一条失败将终止后续语句。</span>
+                    </div>
+
+                    <div class="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200/60 rounded-md px-3 py-2 leading-relaxed">
+                        <svg class="w-3.5 h-3.5 mt-0.5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                        <div>
+                            <p class="font-semibold mb-1">重要：导入过程缺乏端到端原子性</p>
+                            <p>受 Cloudflare 后端限制，<span class="font-semibold">跨批次之间无法构成一个事务</span>，每一批（50 条）虽然在数据库内部是原子的，但批次之间相互独立。若在导入过程中发生<span class="font-semibold">网络中断、浏览器关闭或后端异常</span>，已成功提交的批次<span class="font-semibold">无法回滚</span>，数据库可能留下脏数据。建议在导入前先导出当前数据作为备份，并优先在网络稳定的环境下执行。</p>
+                        </div>
                     </div>
 
                     <div id="dropzone" class="dropzone rounded-xl p-6 text-center cursor-pointer">
@@ -154,17 +197,24 @@
                         <svg class="w-7 h-7 mx-auto text-stone-400 mb-2" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                         </svg>
-                        <p class="text-sm text-stone-600">将 <code class="font-mono text-xs bg-stone-100 px-1.5 py-0.5 rounded">.sql</code> 文件拖到此处或点击选择</p>
+                        <p class="text-sm text-stone-600">
+                            将 <code class="font-mono text-xs bg-stone-100 px-1.5 py-0.5 rounded">.sql</code> 文件拖到此处，或
+                            <span class="text-stone-900 underline underline-offset-2">点击选择文件</span>
+                        </p>
                         <p id="file-info" class="text-[11px] text-stone-400 mt-2 hidden"></p>
                     </div>
 
                     <div>
-                        <textarea id="sql-text" rows="8" placeholder="-- 或在此处直接粘贴 SQL 语句"
+                        <label class="block text-xs text-stone-600 mb-1.5">或直接粘贴 SQL 文本</label>
+                        <textarea id="sql-text" rows="8" placeholder="-- 支持多条 SQL 语句（以 ; 结束）"
                                   class="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-xs font-mono leading-relaxed focus:outline-none focus:border-stone-500"></textarea>
                     </div>
 
                     <div class="flex items-center gap-3 pt-1">
                         <button id="import-btn" onclick="importSql()" class="inline-flex items-center gap-1.5 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-sm rounded-md transition-colors cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                            </svg>
                             执行导入
                         </button>
                         <span id="import-status" class="text-xs italic font-serif hidden"></span>
@@ -173,36 +223,48 @@
             </section>
         </section>
 
+        <!-- ====================== Tab: KV 缓存 ====================== -->
         <section data-pane="kv" class="hidden space-y-6">
             <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div class="relative flex-1">
+                    <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                    </svg>
                     <input id="kv-prefix" type="text" placeholder="按前缀过滤（留空 = 全部）"
-                           class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500">
+                           class="w-full pl-9 pr-3 py-2 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500">
                 </div>
-                <button onclick="loadKvList(true)" class="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-sm rounded-md transition-colors cursor-pointer">查询</button>
+                <button onclick="loadKvList(true)" class="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-sm rounded-md transition-colors cursor-pointer">查询</button>
             </div>
 
             <div class="flex items-center justify-between text-xs text-stone-500">
-                <p>当前显示 <span id="kv-shown" class="font-semibold text-stone-700 tabular-nums">0</span> 个键
-                    <span id="kv-more-hint" class="hidden text-stone-400 ml-1">· 还有更多</span>
+                <p>当前显示 <span id="kv-shown" class="font-semibold text-stone-700 tabular">0</span> 个键
+                    <span id="kv-more-hint" class="hidden text-stone-400 ml-1">· 还有更多，点击「加载更多」</span>
                 </p>
-                <button id="kv-more-btn" onclick="loadKvList(false)" class="hidden px-3 py-1.5 rounded-md border border-stone-200 bg-white hover:bg-stone-100 cursor-pointer">加载更多 →</button>
+                <button id="kv-more-btn" onclick="loadKvList(false)" class="hidden action-btn px-2.5 py-1.5 rounded text-stone-500 hover:text-stone-900 hover:bg-stone-100 cursor-pointer">加载更多 →</button>
             </div>
 
             <div id="kv-loading" class="hidden py-12 text-center font-serif italic text-stone-400 text-sm">正在加载…</div>
-            <div id="kv-list" class="hidden bg-white rounded-2xl border border-stone-200/60 overflow-hidden divide-y divide-stone-100"></div>
-            <div id="kv-empty" class="hidden py-16 text-center font-serif italic text-stone-500 text-base">没有匹配的键</div>
 
+            <div id="kv-list" class="hidden bg-white rounded-2xl border border-stone-200/60 divide-y divide-stone-200/60 overflow-hidden"></div>
+
+            <div id="kv-empty" class="hidden py-16 text-center">
+                <div class="inline-block w-12 h-px bg-stone-300 mb-6"></div>
+                <p class="font-serif italic text-stone-500 text-base">没有匹配的键</p>
+            </div>
+
+            <!-- KV 值查看器（默认隐藏） -->
             <div id="kv-value-panel" class="hidden bg-white rounded-2xl border border-stone-200/60 overflow-hidden">
                 <div class="px-5 md:px-6 py-4 border-b border-stone-200/60 flex items-center justify-between gap-3">
                     <div class="min-w-0 flex-1">
                         <p class="text-[10px] uppercase tracking-widest text-stone-400">KEY</p>
                         <p id="kv-value-key" class="font-mono text-sm text-stone-900 mt-0.5 break-all">—</p>
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <button id="kv-toggle-parse" onclick="toggleKvParse()" class="text-xs px-3 py-1.5 border border-stone-200 bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-md cursor-pointer transition-colors">尝试 JSON</button>
-                        <button onclick="closeKvValue()" class="text-stone-400 hover:text-stone-900 transition-colors cursor-pointer bg-stone-100 hover:bg-stone-200 p-1.5 rounded-md">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button id="kv-toggle-parse" onclick="toggleKvParse()" class="text-xs px-2.5 py-1.5 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded cursor-pointer">尝试 JSON</button>
+                        <button onclick="closeKvValue()" class="text-stone-400 hover:text-stone-900 transition-colors cursor-pointer p-1.5 -mr-1.5" title="关闭">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -210,7 +272,7 @@
                     <div class="flex items-center justify-between text-[11px] text-stone-400 mb-2">
                         <span id="kv-value-meta">—</span>
                     </div>
-                    <pre id="kv-value-body" class="bg-stone-50 border border-stone-200 rounded-md p-4 text-xs font-mono leading-relaxed overflow-x-auto whitespace-pre-wrap break-all" style="max-height: 50vh;"></pre>
+                    <pre id="kv-value-body" class="bg-stone-50 border border-stone-200 rounded-md p-3 text-xs font-mono leading-relaxed overflow-x-auto whitespace-pre-wrap break-all" style="max-height: 50vh;"></pre>
                 </div>
             </div>
         </section>
@@ -218,19 +280,33 @@
 
     <script>
         // ============== 通用 ==============
-        function getToken() { return localStorage.getItem('admin_token'); }
-        function authHeaders() { return { 'Authorization': 'Bearer ' + getToken() }; }
+        function getToken() {
+            return localStorage.getItem('admin_token');
+        }
+
+        function authHeaders() {
+            return { 'Authorization': 'Bearer ' + getToken() };
+        }
+
         function escapeHtml(str) {
             if (str === null || str === undefined) return '';
-            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
+
         function formatBytes(n) {
             if (!Number.isFinite(n)) return '—';
             if (n < 1024) return n + ' B';
             if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
             return (n / 1024 / 1024).toFixed(2) + ' MB';
         }
+
         function setStatus(el, msg, kind) {
+            // 每次新设置都清掉上一次的自动隐藏定时器，避免进度更新被旧 timer 误隐藏
             if (el._hideTimer) { clearTimeout(el._hideTimer); el._hideTimer = null; }
             el.textContent = msg;
             el.classList.remove('hidden');
@@ -245,7 +321,10 @@
             btn.addEventListener('click', () => {
                 const target = btn.dataset.tab;
                 document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
-                document.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== target));
+                document.querySelectorAll('[data-pane]').forEach(p => {
+                    p.classList.toggle('hidden', p.dataset.pane !== target);
+                });
+                // 进入 KV 时若未加载过，自动加载一次
                 if (target === 'kv' && !kvState.loaded) loadKvList(true);
             });
         });
@@ -260,13 +339,18 @@
             try {
                 const res = await fetch('/api/sql/tables', { headers: authHeaders() });
                 const result = await res.json();
+
                 document.getElementById('tables-loading').classList.add('hidden');
 
-                if (!result.success) { alert('加载失败: ' + (result.error || '未知错误')); return; }
+                if (!result.success) {
+                    alert('加载失败: ' + (result.error || '未知错误'));
+                    return;
+                }
 
                 const tables = result.data || [];
+                const totalRows = tables.reduce((s, t) => s + (t.rows || 0), 0);
                 document.getElementById('table-count').textContent = tables.length;
-                document.getElementById('row-count').textContent = tables.reduce((s, t) => s + (t.rows || 0), 0);
+                document.getElementById('row-count').textContent = totalRows;
 
                 if (tables.length === 0) {
                     document.getElementById('tables-empty').classList.remove('hidden');
@@ -274,23 +358,25 @@
                 }
 
                 const listEl = document.getElementById('tables-list');
-                // 修复了 Flex 布局问题，强制横向排列
                 listEl.innerHTML = tables.map(t => `
-                    <div class="px-5 md:px-6 py-4 flex flex-row items-center justify-between cursor-pointer hover:bg-stone-50 transition-colors border-b border-stone-100 last:border-0" data-name="${escapeHtml(t.name)}">
-                        <div class="flex flex-row items-center gap-3 min-w-0">
-                            <svg class="w-5 h-5 text-stone-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125 1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5" />
-                            </svg>
-                            <span class="font-mono text-[14px] font-medium text-stone-800">${escapeHtml(t.name)}</span>
+                    <div class="table-row px-5 md:px-6 py-4 flex items-center gap-3 cursor-pointer" data-name="${escapeHtml(t.name)}">
+                        <svg class="w-4 h-4 text-stone-400 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5" />
+                        </svg>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-mono text-sm text-stone-900">${escapeHtml(t.name)}</p>
                         </div>
-                        <div class="flex flex-row items-center gap-3 shrink-0">
-                            <span class="text-[11px] font-medium text-stone-500 tabular-nums bg-stone-100 px-2.5 py-1 rounded-full">${t.rows} 行</span>
-                            <svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-                        </div>
+                        <span class="shrink-0 text-[11px] text-stone-400 tabular">${t.rows} 行</span>
+                        <svg class="w-3.5 h-3.5 text-stone-300 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
                     </div>
                 `).join('');
+
                 listEl.classList.remove('hidden');
-                listEl.querySelectorAll('[data-name]').forEach(row => row.addEventListener('click', () => openTableData(row.dataset.name)));
+                listEl.querySelectorAll('[data-name]').forEach(row => {
+                    row.addEventListener('click', () => openTableData(row.dataset.name));
+                });
             } catch (e) {
                 document.getElementById('tables-loading').classList.add('hidden');
                 alert('请求失败，请检查网络');
@@ -300,10 +386,12 @@
         const tableDataState = { table: '', page: 1, totalPages: 1 };
 
         async function openTableData(name) {
-            tableDataState.table = name; tableDataState.page = 1;
+            tableDataState.table = name;
+            tableDataState.page = 1;
             document.getElementById('table-data-title').textContent = name;
             document.getElementById('table-data-panel').classList.remove('hidden');
             await fetchTableData();
+            // 滚到查看器
             document.getElementById('table-data-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
@@ -312,39 +400,46 @@
             try {
                 const res = await fetch(`/api/sql/table-data?table=${encodeURIComponent(table)}&page=${page}&pageSize=50`, { headers: authHeaders() });
                 const result = await res.json();
-                if (!result.success) { alert('加载失败: ' + (result.error || '未知错误')); return; }
-                
+                if (!result.success) {
+                    alert('加载失败: ' + (result.error || '未知错误'));
+                    return;
+                }
                 const d = result.data;
                 tableDataState.totalPages = d.totalPages;
 
-                // 优化表头排版
-                document.getElementById('table-data-thead').innerHTML = d.columns.map(c => `
-                    <th class="px-4 py-3 text-left text-[11px] font-medium text-stone-500 uppercase tracking-wider">
-                        <span class="font-mono text-stone-700">${escapeHtml(c.name)}</span>
-                        ${c.type ? `<span class="ml-1 text-stone-400 normal-case font-sans">(${escapeHtml(c.type)})</span>` : ''}
-                    </th>
-                `).join('');
+                // 表头
+                const thead = document.getElementById('table-data-thead');
+                thead.innerHTML = '<tr>' + d.columns.map(c => {
+                    const tags = [];
+                    if (c.pk) tags.push('PK');
+                    if (c.notnull) tags.push('NOT NULL');
+                    const sub = tags.length ? ` <span class="text-stone-300 font-sans ml-1">${tags.join(' ')}</span>` : '';
+                    return `<th><span class="font-mono">${escapeHtml(c.name)}</span><span class="block text-[10px] text-stone-300 font-sans normal-case tracking-normal mt-0.5">${escapeHtml(c.type || '')}</span></th>`;
+                }).join('') + '</tr>';
 
-                // 优化数据行排版 (截断展示)
+                // 表体
                 const tbody = document.getElementById('table-data-tbody');
                 if (!d.rows || d.rows.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="${d.columns.length}" class="text-center text-stone-400 py-10 font-serif italic text-sm">表是空的</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="${d.columns.length}" class="text-center text-stone-400 py-10 font-serif italic">表是空的</td></tr>`;
                 } else {
-                    tbody.innerHTML = d.rows.map(r => '<tr class="hover:bg-stone-50 transition-colors">' + d.columns.map(c => {
-                        const v = r[c.name];
-                        let display;
-                        if (v === null || v === undefined) {
-                            display = '<span class="text-stone-300 italic">NULL</span>';
-                        } else if (typeof v === 'string' && v.length > 40) {
-                            display = `<div class="max-w-[200px] truncate text-stone-700" title="${escapeHtml(v)}">${escapeHtml(v)}</div>`;
-                        } else if (typeof v === 'object') {
-                            const s = JSON.stringify(v);
-                            display = `<div class="max-w-[200px] truncate font-mono text-[11px] text-stone-500" title="${escapeHtml(s)}">${escapeHtml(s)}</div>`;
-                        } else {
-                            display = `<span class="text-stone-700">${escapeHtml(String(v))}</span>`;
-                        }
-                        return `<td class="px-4 py-3 text-sm">${display}</td>`;
-                    }).join('') + '</tr>').join('');
+                    tbody.innerHTML = d.rows.map(r => {
+                        return '<tr>' + d.columns.map(c => {
+                            const v = r[c.name];
+                            let display;
+                            if (v === null || v === undefined) {
+                                display = '<span class="text-stone-300 font-sans italic">NULL</span>';
+                            } else if (typeof v === 'string' && v.length > 80) {
+                                display = `<span class="cell-ellipsis inline-block align-middle" title="${escapeHtml(v)}">${escapeHtml(v.slice(0, 80))}<span class="text-stone-300">…</span></span>`;
+                            } else if (typeof v === 'object') {
+                                const s = JSON.stringify(v);
+                                const cut = s.length > 80 ? s.slice(0, 80) + '…' : s;
+                                display = `<span class="cell-ellipsis inline-block align-middle font-mono text-[11px]" title="${escapeHtml(s)}">${escapeHtml(cut)}</span>`;
+                            } else {
+                                display = escapeHtml(String(v));
+                            }
+                            return `<td>${display}</td>`;
+                        }).join('') + '</tr>';
+                    }).join('');
                 }
 
                 document.getElementById('table-data-total').textContent = d.total;
@@ -352,47 +447,252 @@
                 document.getElementById('table-data-pages').textContent = d.totalPages;
                 document.getElementById('td-prev').disabled = d.page <= 1;
                 document.getElementById('td-next').disabled = d.page >= d.totalPages;
-            } catch (e) { alert('请求失败，请检查网络'); }
+            } catch (e) {
+                alert('请求失败，请检查网络');
+            }
         }
 
         function changeTablePage(delta) {
             const np = tableDataState.page + delta;
-            if (np >= 1 && np <= tableDataState.totalPages) { tableDataState.page = np; fetchTableData(); }
+            if (np < 1 || np > tableDataState.totalPages) return;
+            tableDataState.page = np;
+            fetchTableData();
         }
-        function closeTableData() { document.getElementById('table-data-panel').classList.add('hidden'); }
 
-        // ============== SQL 导出 / 导入 (省略无改动细节) ==============
-        async function exportSql() { /* 原逻辑不变 */ }
-        function importSql() { /* 原逻辑不变 */ }
-        function splitSqlIntoStatements(text) { /* 原逻辑不变 */ }
-        async function submitImport(stmts, chunks) { /* 原逻辑不变 */ }
-        // 拖拽逻辑保持不变...
+        function closeTableData() {
+            document.getElementById('table-data-panel').classList.add('hidden');
+        }
 
-        // ============== KV 缓存 (修正 Fetch 路径) ==============
-        const kvState = { keys: [], cursor: null, loaded: false, parseJson: false, currentKey: null };
+        // ============== SQL 导出 / 导入 ==============
+        async function exportSql() {
+            const btn = document.getElementById('export-btn');
+            const status = document.getElementById('export-status');
+            btn.disabled = true;
+            btn.classList.add('opacity-60', 'cursor-wait');
+            setStatus(status, '正在生成 SQL 文件…', 'ok');
+            try {
+                const res = await fetch('/api/sql/export', { headers: authHeaders() });
+                if (!res.ok) {
+                    let msg = '导出失败';
+                    try { const r = await res.json(); msg = r.error || msg; } catch (_) {}
+                    setStatus(status, msg, 'error');
+                    return;
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                // 优先取响应头里的 filename
+                let filename = 'blog-db.sql';
+                const cd = res.headers.get('Content-Disposition') || '';
+                const m = cd.match(/filename="?([^"]+)"?/);
+                if (m) filename = m[1];
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 500);
+                setStatus(status, '已下载 · 大小 ' + formatBytes(blob.size), 'ok');
+            } catch (e) {
+                setStatus(status, '请求失败，请检查网络', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-60', 'cursor-wait');
+            }
+        }
+
+        // ============== SQL 导入（前端分批切片） ==============
+        const IMPORT_CHUNK_SIZE = 50;
+
+        // 判断一个语句片段是否"全是注释 / 空行"（多行注释行允许穿插空白）
+        function isCommentOnly(stmt) {
+            const lines = stmt.split('\n');
+            return lines.every(line => line.trim() === '' || line.trim().startsWith('--'));
+        }
+
+        // 把一段 SQL 文本按 ";\n" 切割成单条语句数组（自动补回末尾分号）
+        function splitSqlIntoStatements(text) {
+            const normalized = text.endsWith('\n') ? text : text + '\n';
+            return normalized
+                .split(/;\n/)
+                .map(s => s.trim())
+                .filter(s => s && !isCommentOnly(s))
+                .map(s => s + ';');
+        }
+
+        // 数组按 size 切批
+        function chunkArray(arr, size) {
+            const chunks = [];
+            for (let i = 0; i < arr.length; i += size) {
+                chunks.push(arr.slice(i, i + size));
+            }
+            return chunks;
+        }
+
+        function importSql() {
+            const text = document.getElementById('sql-text').value;
+            if (!text.trim()) {
+                alert('请先选择 .sql 文件或在文本框中粘贴 SQL 内容');
+                return;
+            }
+
+            // 1) 前端先把 SQL 切分成语句数组
+            const stmts = splitSqlIntoStatements(text);
+            if (stmts.length === 0) {
+                alert('未解析到任何 SQL 语句（可能全是注释或空行）');
+                return;
+            }
+
+            // 2) 每 50 条切一个 Chunk
+            const chunks = chunkArray(stmts, IMPORT_CHUNK_SIZE);
+
+            const confirmed = confirm(
+                '确认导入以下 SQL？\n\n' +
+                '· 共解析到 ' + stmts.length + ' 条语句\n' +
+                '· 将分 ' + chunks.length + ' 批依次执行（每批最多 ' + IMPORT_CHUNK_SIZE + ' 条）\n' +
+                '· 单批 50 条在数据库内是一个事务，但跨批次相互独立\n' +
+                '· 若中途网络中断 / 浏览器关闭，已执行的批次无法回滚，可能留下脏数据\n' +
+                '· 任意一批失败将终止后续批次\n' +
+                '· 系统将在最后一批执行后自动清理全站缓存\n\n' +
+                '是否继续？'
+            );
+            if (!confirmed) return;
+            submitImport(stmts, chunks);
+        }
+
+        async function submitImport(stmts, chunks) {
+            const btn = document.getElementById('import-btn');
+            const status = document.getElementById('import-status');
+            btn.disabled = true;
+            btn.classList.add('opacity-60', 'cursor-wait');
+
+            let failed = false;
+
+            // 3) for...of 循环 + await fetch 顺序推送每个 Chunk
+            for (const [idx, chunk] of chunks.entries()) {
+                setStatus(status, '正在导入：第 ' + (idx + 1) + '/' + chunks.length + ' 批...', 'ok');
+                try {
+                    const res = await fetch('/api/sql/import', {
+                        method: 'POST',
+                        headers: Object.assign(authHeaders(), { 'Content-Type': 'application/json' }),
+                        body: JSON.stringify({
+                            sqlArray: chunk,
+                            isLastChunk: idx === chunks.length - 1
+                        })
+                    });
+                    const result = await res.json();
+                    if (!result.success) {
+                        setStatus(status, '第 ' + (idx + 1) + '/' + chunks.length + ' 批失败: ' + (result.error || '未知错误'), 'error');
+                        failed = true;
+                        break;
+                    }
+                } catch (e) {
+                    setStatus(status, '第 ' + (idx + 1) + '/' + chunks.length + ' 批请求失败：网络异常', 'error');
+                    failed = true;
+                    break;
+                }
+            }
+
+            // 4) 全部成功后：最后一次请求已经触发后端清理全站缓存，这里收尾
+            if (!failed) {
+                setStatus(status,
+                    '全部 ' + chunks.length + ' 批导入完成（共 ' + stmts.length + ' 条语句），全站缓存已自动清理',
+                    'ok'
+                );
+                document.getElementById('sql-text').value = '';
+                clearFile();
+                if (typeof loadTables === 'function') loadTables();
+            }
+
+            btn.disabled = false;
+            btn.classList.remove('opacity-60', 'cursor-wait');
+        }
+
+        // ============== 文件拖放 ==============
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('sql-file');
+        const fileInfo = document.getElementById('file-info');
+
+        dropzone.addEventListener('click', () => fileInput.click());
+        ['dragenter', 'dragover'].forEach(ev => {
+            dropzone.addEventListener(ev, e => {
+                e.preventDefault(); e.stopPropagation();
+                dropzone.classList.add('drag-over');
+            });
+        });
+        ['dragleave', 'drop'].forEach(ev => {
+            dropzone.addEventListener(ev, e => {
+                e.preventDefault(); e.stopPropagation();
+                dropzone.classList.remove('drag-over');
+            });
+        });
+        dropzone.addEventListener('drop', e => {
+            const f = e.dataTransfer.files && e.dataTransfer.files[0];
+            if (f) handleFile(f);
+        });
+        fileInput.addEventListener('change', e => {
+            const f = e.target.files && e.target.files[0];
+            if (f) handleFile(f);
+        });
+
+        function clearFile() {
+            fileInput.value = '';
+            fileInfo.classList.add('hidden');
+            fileInfo.textContent = '';
+        }
+
+        function handleFile(file) {
+            if (file.size > 10 * 1024 * 1024) {
+                alert('文件超过 10MB 上限');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = ev => {
+                document.getElementById('sql-text').value = ev.target.result;
+                fileInfo.textContent = `已载入: ${file.name} · ${formatBytes(file.size)}`;
+                fileInfo.classList.remove('hidden');
+            };
+            reader.onerror = () => alert('读取文件失败');
+            reader.readAsText(file, 'utf-8');
+        }
+
+        // ============== KV 缓存 ==============
+        const kvState = {
+            keys: [],
+            cursor: null,
+            loaded: false,
+            parseJson: false,
+            currentKey: null
+        };
 
         async function loadKvList(reset) {
-            if (reset) { kvState.keys = []; kvState.cursor = null; }
+            if (reset) {
+                kvState.keys = [];
+                kvState.cursor = null;
+            }
             const prefix = document.getElementById('kv-prefix').value.trim();
-            const params = new URLSearchParams({ limit: '100' });
+            const params = new URLSearchParams();
             if (prefix) params.set('prefix', prefix);
             if (kvState.cursor) params.set('cursor', kvState.cursor);
+            params.set('limit', '100');
 
             document.getElementById('kv-loading').classList.remove('hidden');
             document.getElementById('kv-list').classList.add('hidden');
             document.getElementById('kv-empty').classList.add('hidden');
 
             try {
-                // 【修复核心 1】改为 /api/sql/kv-list
-                const res = await fetch('/api/sql/kv-list?' + params.toString(), { headers: authHeaders() });
+                const res = await fetch('/api/sql/kv/list?' + params.toString(), { headers: authHeaders() });
                 const result = await res.json();
                 document.getElementById('kv-loading').classList.add('hidden');
-                
-                if (!result.success) { alert('加载失败: ' + (result.error || '未知错误')); return; }
-                
-                kvState.keys = kvState.keys.concat(result.data.keys || []);
+                if (!result.success) {
+                    alert('加载失败: ' + (result.error || '未知错误'));
+                    return;
+                }
+                const newKeys = result.data.keys || [];
+                kvState.keys = kvState.keys.concat(newKeys);
                 kvState.cursor = result.data.cursor;
                 kvState.loaded = true;
+
                 renderKvList();
             } catch (e) {
                 document.getElementById('kv-loading').classList.add('hidden');
@@ -402,42 +702,60 @@
 
         function renderKvList() {
             const listEl = document.getElementById('kv-list');
+            const emptyEl = document.getElementById('kv-empty');
+            const moreBtn = document.getElementById('kv-more-btn');
+            const moreHint = document.getElementById('kv-more-hint');
+
             document.getElementById('kv-shown').textContent = kvState.keys.length;
 
             if (kvState.keys.length === 0) {
-                document.getElementById('kv-empty').classList.remove('hidden');
+                emptyEl.classList.remove('hidden');
                 listEl.classList.add('hidden');
-                document.getElementById('kv-more-btn').classList.add('hidden');
+                moreBtn.classList.add('hidden');
+                moreHint.classList.add('hidden');
                 return;
             }
 
-            // 同样优化了 KV 列表的 Flex 布局
             listEl.innerHTML = kvState.keys.map((k, i) => {
-                const exp = k.expiration ? `<span class="text-amber-500 ml-3 text-[10px] hidden sm:inline-block">exp ${new Date(k.expiration * 1000).toISOString().slice(0, 16).replace('T', ' ')}</span>` : '';
+                const exp = k.expiration
+                    ? `<span class="text-amber-500 ml-2 text-[10px]">exp ${new Date(k.expiration * 1000).toISOString().slice(0, 16).replace('T', ' ')}</span>`
+                    : '';
                 return `
-                    <div class="px-5 md:px-6 py-3.5 flex flex-row items-center justify-between cursor-pointer hover:bg-stone-50 transition-colors" data-idx="${i}">
-                        <div class="flex flex-row items-center gap-3 min-w-0 flex-1">
-                            <span class="shrink-0 text-[11px] text-stone-400 tabular-nums w-6">#${i + 1}</span>
-                            <p class="font-mono text-[14px] text-stone-800 truncate">${escapeHtml(k.name)}</p>
-                            ${exp}
+                    <div class="table-row px-5 md:px-6 py-3.5 flex items-center gap-3 cursor-pointer" data-idx="${i}">
+                        <span class="shrink-0 text-[10px] text-stone-400 tabular w-8 text-right">#${i + 1}</span>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-mono text-sm text-stone-800 truncate">${escapeHtml(k.name)}</p>
                         </div>
-                        <svg class="w-4 h-4 text-stone-300 shrink-0 ml-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                        ${exp}
+                        <svg class="w-3.5 h-3.5 text-stone-300 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
                     </div>
                 `;
             }).join('');
 
             listEl.classList.remove('hidden');
-            listEl.querySelectorAll('[data-idx]').forEach(row => row.addEventListener('click', () => openKvValue(kvState.keys[parseInt(row.dataset.idx)].name)));
-            
-            document.getElementById('kv-more-btn').classList.toggle('hidden', !kvState.cursor);
-            document.getElementById('kv-more-hint').classList.toggle('hidden', !kvState.cursor);
+            listEl.querySelectorAll('[data-idx]').forEach(row => {
+                row.addEventListener('click', () => openKvValue(kvState.keys[parseInt(row.dataset.idx)].name));
+            });
+
+            if (kvState.cursor) {
+                moreBtn.classList.remove('hidden');
+                moreHint.classList.remove('hidden');
+            } else {
+                moreBtn.classList.add('hidden');
+                moreHint.classList.add('hidden');
+            }
         }
 
         async function openKvValue(name) {
-            kvState.currentKey = name; kvState.parseJson = false;
+            kvState.currentKey = name;
+            kvState.parseJson = false;
             document.getElementById('kv-toggle-parse').textContent = '尝试 JSON';
             document.getElementById('kv-value-key').textContent = name;
             document.getElementById('kv-value-body').textContent = '加载中…';
+            document.getElementById('kv-value-meta').textContent = '—';
             document.getElementById('kv-value-panel').classList.remove('hidden');
             await fetchKvValue();
             document.getElementById('kv-value-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -447,27 +765,45 @@
             if (!kvState.currentKey) return;
             try {
                 const params = new URLSearchParams({ key: kvState.currentKey, type: kvState.parseJson ? 'json' : 'text' });
-                // 【修复核心 2】改为 /api/sql/kv-get
-                const res = await fetch('/api/sql/kv-get?' + params.toString(), { headers: authHeaders() });
+                const res = await fetch('/api/sql/kv/get?' + params.toString(), { headers: authHeaders() });
                 const result = await res.json();
-                
-                if (!result.success) { document.getElementById('kv-value-body').textContent = '加载失败: ' + (result.error || ''); return; }
-                
+                if (!result.success) {
+                    document.getElementById('kv-value-body').textContent = '加载失败: ' + (result.error || '');
+                    return;
+                }
                 const d = result.data;
                 const body = document.getElementById('kv-value-body');
-                if (!d.exists) { body.textContent = '（键不存在或值为 null）'; return; }
-                
+                const meta = document.getElementById('kv-value-meta');
+
+                if (!d.exists) {
+                    body.textContent = '（键不存在或值为 null）';
+                    meta.textContent = 'NULL';
+                    return;
+                }
+
                 if (kvState.parseJson && d.parsed !== null) {
                     body.textContent = JSON.stringify(d.parsed, null, 2);
+                } else if (kvState.parseJson && d.parseError) {
+                    body.textContent = d.value;
                 } else {
                     body.textContent = d.value;
                 }
-                document.getElementById('kv-value-meta').textContent = formatBytes(d.size) + (d.truncated ? ' · 已截断' : '');
-            } catch (e) { document.getElementById('kv-value-body').textContent = '请求失败'; }
+
+                meta.textContent = formatBytes(d.size) + (d.truncated ? ' · 已截断' : '');
+            } catch (e) {
+                document.getElementById('kv-value-body').textContent = '请求失败';
+            }
         }
 
-        function toggleKvParse() { kvState.parseJson = !kvState.parseJson; document.getElementById('kv-toggle-parse').textContent = kvState.parseJson ? '原始文本' : '尝试 JSON'; fetchKvValue(); }
-        function closeKvValue() { document.getElementById('kv-value-panel').classList.add('hidden'); }
+        function toggleKvParse() {
+            kvState.parseJson = !kvState.parseJson;
+            document.getElementById('kv-toggle-parse').textContent = kvState.parseJson ? '原始文本' : '尝试 JSON';
+            fetchKvValue();
+        }
+
+        function closeKvValue() {
+            document.getElementById('kv-value-panel').classList.add('hidden');
+        }
 
         // ============== 入口 ==============
         document.addEventListener('DOMContentLoaded', loadTables);
