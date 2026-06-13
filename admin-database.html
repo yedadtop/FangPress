@@ -300,7 +300,9 @@
                                 不会删除任何现有数据。如果记录已存在（主键 / 唯一约束冲突），将
                                 <span class="font-semibold text-emerald-700">保留</span> 原值、跳过新值；仅插入新增内容。
                                 同时会跳过 <code class="font-mono text-[11px] bg-stone-100 px-1 py-0.5 rounded">DROP TABLE</code> 与
-                                <code class="font-mono text-[11px] bg-stone-100 px-1 py-0.5 rounded">CREATE INDEX</code> 语句以避免冲突。
+                                <code class="font-mono text-[11px] bg-stone-100 px-1 py-0.5 rounded">CREATE INDEX</code> 语句，并把
+                                <code class="font-mono text-[11px] bg-stone-100 px-1 py-0.5 rounded">CREATE TABLE</code> 改写为
+                                <code class="font-mono text-[11px] bg-stone-100 px-1 py-0.5 rounded">CREATE TABLE IF NOT EXISTS</code>，以避免冲突。
                             </p>
                         </div>
                     </div>
@@ -612,9 +614,9 @@
             const statusEl = document.getElementById('import-status');
             btn.disabled = true;
             try {
-                const { executed } = await submitImport(stmts, mode);
-                const tag = mode === 'incremental' ? '（增量模式）' : '（覆盖模式）';
-                setStatus(statusEl, `✓ ${tag} 已成功执行 ${executed} 条语句，全站缓存已清理`, 'info');
+                const result = await submitImport(stmts, mode);
+                const tag = mode === 'incremental' ? '增量模式' : '覆盖模式';
+                setStatus(statusEl, `✓ ${tag}：已成功执行 ${result.executed} 条语句，全站缓存已清理`, 'info');
             } catch (e) {
                 setStatus(statusEl, '✗ ' + (e.message || e), 'error');
             } finally {

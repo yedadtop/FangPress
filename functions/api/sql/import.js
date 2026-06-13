@@ -42,6 +42,8 @@ function filterD1Incompatible(sqlArray) {
 // 增量模式下需要跳过的语句：开头（去掉前置注释）是 DROP TABLE / CREATE [UNIQUE] INDEX
 const DROP_TABLE_STMT   = /^(?:\s*--[^\n]*\n|\s*\/\*[\s\S]*?\*\/\s*)*DROP\s+TABLE(?:\s+IF\s+EXISTS)?\s+(?:"[^"]+"|`[^`]+`|\[[^\]]+\]|\w+)(?:\s*\.("?[^"]+"?))?\s*;?\s*$/i;
 const CREATE_INDEX_STMT = /^(?:\s*--[^\n]*\n|\s*\/\*[\s\S]*?\*\/\s*)*CREATE\s+(?:UNIQUE\s+)?INDEX\s+/i;
+// CREATE TABLE 后面不是 IF NOT EXISTS 的（用否定预查避免误伤已经带 IF NOT EXISTS 的语句）
+const CREATE_TABLE_NEEDS_GUARD_RE = /^(?:\s*--[^\n]*\n|\s*\/\*[\s\S]*?\*\/\s*)*CREATE\s+TABLE(\s+)(?!IF\s+NOT\s+EXISTS)/i;
 // 把 INSERT 后面紧跟的 INTO 改写成 INSERT OR IGNORE INTO。
 // 用 \bINSERT\s+INTO\b 可以避开 INSERT OR IGNORE INTO / INSERT OR REPLACE INTO。
 const INSERT_INTO_RE = /\bINSERT\s+INTO\b/;
@@ -50,6 +52,7 @@ function transformForIncremental(sqlArray) {
   const result = [];
   let droppedTables = 0;
   let droppedIndexes = 0;
+  let guardedTables = 0;
   let transformedInserts = 0;
 
   for (let i = 0; i < sqlArray.length; i++) {
@@ -57,7 +60,11 @@ function transformForIncremental(sqlArray) {
     if (DROP_TABLE_STMT.test(stmt))   { droppedTables++;   continue; }
     if (CREATE_INDEX_STMT.test(stmt)) { droppedIndexes++;  continue; }
 
-    if (INSERT_INTO_RE.test(stmt)) {
+    if (CREATE_TABLE_NEEDS_GUARD_RE.test(stmt)) {
+      // CREATE TABLE → CREATE TABLE IF NOT EXISTS：避免与已存在表冲突
+      result.push(stmt.replace(CREATE_TABLE_NEEDS_GUARD_RE, 'CREATE TABLE IF NOT EXISTS$1'));
+      guardedTables++;
+    } else if (INSERT_INTO_RE.test(stmt)) {
       result.push(stmt.replace(INSERT_INTO_RE, 'INSERT OR IGNORE INTO'));
       transformedInserts++;
     } else {
@@ -69,6 +76,7 @@ function transformForIncremental(sqlArray) {
     sqlArray: result,
     droppedTables,
     droppedIndexes,
+    guardedTables,
     transformedInserts
   };
 }
@@ -159,11 +167,11 @@ export async function onRequestPost(context) {
 
     // ========== 2) 按模式改写 / 过滤 ==========
     let toExecute = compatibleSql;
-    let modeStats = { droppedTables: 0, droppedIndexes: 0, transformedInserts: 0 };
+    let modeStats = { droppedTables: 0, droppedIndexes: 0, guardedTables: 0, transformedInserts: 0 };
     if (mode === "incremental") {
       const t = transformForIncremental(compatibleSql);
       toExecute = t.sqlArray;
-      modeStats = { droppedTables: t.droppedTables, droppedIndexes: t.droppedIndexes, transformedInserts: t.transformedInserts };
+      modeStats = { droppedTables: t.droppedTables, droppedIndexes: t.droppedIndexes, guardedTables: t.guardedTables, transformedInserts: t.transformedInserts };
       if (toExecute.length === 0) {
         return new Response(JSON.stringify({
           success: true,
@@ -197,6 +205,7 @@ export async function onRequestPost(context) {
       const parts = [];
       if (modeStats.droppedTables)   parts.push(`跳过 ${modeStats.droppedTables} 条 DROP TABLE`);
       if (modeStats.droppedIndexes)  parts.push(`跳过 ${modeStats.droppedIndexes} 条 CREATE INDEX`);
+      if (modeStats.guardedTables)   parts.push(`为 ${modeStats.guardedTables} 条 CREATE TABLE 加 IF NOT EXISTS`);
       if (modeStats.transformedInserts) parts.push(`改写 ${modeStats.transformedInserts} 条 INSERT 为 INSERT OR IGNORE`);
       const tail = skipped ? `（另有 ${skipped} 条 D1 不支持的事务/PRAGMA 已跳过）` : '';
       const cache = isLastChunk ? '，全站缓存已清理' : '';
