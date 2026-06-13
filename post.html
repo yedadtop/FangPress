@@ -49,6 +49,9 @@
         .prose-reader h3 { font-size: 1.2em;  margin: 1.8rem 0 0.8rem; }
         .prose-reader h4 { font-size: 1.05em; margin: 1.5rem 0 0.5rem; }
         .prose-reader p { margin-top: 0; margin-bottom: var(--reader-paragraph-spacing); }
+        @media (max-width: 767px) {
+            .prose-reader p { text-align: justify; text-justify: inter-ideograph; }
+        }
         .prose-reader a { color: #44403c; border-bottom: 1px solid #d6d3d1; transition: border-color 0.2s, color 0.2s; }
         .prose-reader a:hover { color: #0c0a09; border-bottom-color: #0c0a09; }
         .prose-reader strong { color: #000000; font-weight: var(--reader-title-weight); }

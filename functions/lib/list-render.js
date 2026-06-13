@@ -73,7 +73,7 @@ export function renderPostItem(post, i, showViews) {
     // 文章渲染：标题 + 摘要 + 阅读量 + 时间
     const title = escapeHtml(post.title || '未命名');
     const excerpt = post.excerpt
-        ? `<p class="mt-2.5 font-serif text-stone-500 text-[0.95rem] leading-relaxed">${escapeHtml(post.excerpt)}</p>`
+        ? `<p class="mt-2.5 font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">${escapeHtml(post.excerpt)}</p>`
         : '';
     const viewsHtml = showViews ? renderViewsIcon(post.views) : '';
     return `
