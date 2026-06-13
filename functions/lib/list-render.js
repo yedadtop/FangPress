@@ -51,26 +51,33 @@ export function renderPostItem(post, i, showViews) {
     const slug = post.slug || '';
     const type = post.type || 'post';
 
-    // 推文渲染(混合列表场景,如首页 mix 模式):左侧竖线、无标题、直接展示内容片段、时间附「推文」小标
+    // 推文渲染(混合列表场景,如首页 mix 模式):
+    //  - 日期位置与文章一致(顶部右侧、同一 flex 行)
+    //  - 不显示「推文」小标
+    //  - 唯一可见差异:左侧竖线 + 左侧内边距
     if (type === 'tweet') {
-        const body = post.excerpt
-            ? `<p class="mt-1.5 font-serif text-stone-700 text-base leading-relaxed">${escapeHtml(post.excerpt)}</p>`
+        const excerpt = post.excerpt
+            ? `<p class="mt-2.5 font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">${escapeHtml(post.excerpt)}</p>`
+            : '';
+        const dateStr = formatDate(post.created_at);
+        const meta = dateStr
+            ? `<div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5 md:ml-auto">
+                 <time class="font-sans">${dateStr}</time>
+               </div>`
             : '';
         return `
-            <article class="fade-up py-5 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
+            <article class="fade-up py-7 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
                 <a href="/post/${encodeURIComponent(slug)}" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">
-                    ${body}
-                    <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1.5 font-sans">
-                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-xs text-stone-500 bg-stone-200/60 font-medium tracking-wider">推文</span>
-                        <span>·</span>
-                        <time>${formatDate(post.created_at)}</time>
+                    <div class="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-6">
+                        ${meta}
                     </div>
+                    ${excerpt}
                 </a>
             </article>
         `;
     }
 
-    // 文章渲染：标题 + 摘要 + 阅读量 + 时间
+    // 文章渲染：标题 + 日期(右侧同行) + 摘要
     const title = escapeHtml(post.title || '未命名');
     const excerpt = post.excerpt
         ? `<p class="mt-2.5 font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">${escapeHtml(post.excerpt)}</p>`
