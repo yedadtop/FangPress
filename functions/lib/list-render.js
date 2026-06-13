@@ -52,25 +52,27 @@ export function renderPostItem(post, i, showViews) {
     const type = post.type || 'post';
 
     // 推文渲染(混合列表场景,如首页 mix 模式):
-    //  - 正文与日期同行:正文 flex-1 占左,日期 md:ml-auto + shrink-0 推到最右,items-baseline 基线对齐
-    //  - 正文自然换行后覆盖到日期下方,确保「日期下面有字」
-    //  - 不显示「推文」小标
-    //  - 唯一可见差异:左侧竖线 + 左侧内边距
+    //  - 采用 float 布局：日期靠右浮动，正文环绕，确保文字自然换行并包裹在日期下方
     if (type === 'tweet') {
-        const excerpt = post.excerpt
-            ? `<p class="md:flex-1 font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">${escapeHtml(post.excerpt)}</p>`
-            : '';
         const dateStr = formatDate(post.created_at);
+        
+        // 日期标签：设置为 float-right，加左边距让文字不紧贴，顶部微调对齐首行
         const meta = dateStr
-            ? `<time class="md:ml-auto md:shrink-0 text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">${dateStr}</time>`
+            ? `<time class="float-right ml-4 mt-1 text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">${dateStr}</time>`
             : '';
+
+        // 正文容器：将 meta 直接塞入内部，使用 div 替换 p
+        const excerpt = post.excerpt
+            ? `<div class="font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">
+                 ${meta}
+                 ${escapeHtml(post.excerpt)}
+               </div>`
+            : meta;
+
         return `
             <article class="fade-up py-7 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
                 <a href="/post/${encodeURIComponent(slug)}" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">
-                    <div class="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-6">
-                        ${excerpt}
-                        ${meta}
-                    </div>
+                    ${excerpt}
                 </a>
             </article>
         `;
@@ -102,24 +104,32 @@ export function renderPostItem(post, i, showViews) {
 
 /**
  * 推文专用渲染器(用于 /tweets 页面)
- *  - 展示完整正文(优先 post.content,缺失时回退 excerpt)
- *  - 不显示「推文」分类小标
- *  - 保留左侧竖线 + 时间戳的极简观感
+ * - 展示完整正文(优先 post.content,缺失时回退 excerpt)
+ * - 同样应用了 float-right 布局，保持推文展现形式的全局统一
  */
 export function renderTweetItem(post, i) {
     if (!post) return '';
     const slug = post.slug || '';
     const raw = (post.content != null && post.content !== '') ? post.content : (post.excerpt || '');
-    const body = raw
-        ? `<p class="mt-1.5 font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(raw)}</p>`
+    const dateStr = formatDate(post.created_at);
+    
+    // 日期标签：浮动至右侧
+    const meta = dateStr
+        ? `<time class="float-right ml-4 mt-1.5 text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">${dateStr}</time>`
         : '';
+
+    // 将 meta 嵌套进正文块最前方
+    const body = raw
+        ? `<div class="mt-1.5 font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words">
+             ${meta}
+             ${escapeHtml(raw)}
+           </div>`
+        : meta;
+
     return `
         <article class="fade-up py-5 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
             <a href="/post/${encodeURIComponent(slug)}" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">
                 ${body}
-                <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1.5 font-sans">
-                    <time>${formatDate(post.created_at)}</time>
-                </div>
             </a>
         </article>
     `;
