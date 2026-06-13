@@ -165,8 +165,6 @@
 - 缓存：`Cache-Control: no-store`（保存后立即生效）
 - DB 中不存在的 key 不会出现在 `data` 中
 
----
-
 ### 1.5 `GET /api/navs` — 读取 header 导航
 成功响应 200：
 ```json
@@ -189,7 +187,25 @@
 - 缓存键：`site:navs:list:active`
 - 缓存：`Cache-Control: public, max-age=10, s-maxage=60`
 - 加 `?admin=1` 需带 Bearer Token，返回全量（含禁用项）
-- **SSR 边缘函数**（`index.js` / `posts.js` / `tweets.js` / `post/[slug].js`）使用 `getActiveNavs(env, context)`，按 KV 优先 → D1 降级并 `context.waitUntil` 异步回填 → 硬编码「文章/推文」三层兜底，**绝不会渲染空导航**
+
+### 1.6 共享缓存策略说明（`lib/nav-render.js`）
+
+所有读 KV 的代码都统一走两个 helper，三层兜底保证「KV miss 一定查 D1，并异步回填」：
+
+| Helper | 缓存键 | 用途 | 兜底值 |
+|---|---|---|---|
+| `getActiveNavs(env, context)` | `site:navs:list:active` | SSR 公开页头部导航 | 硬编码「文章 / 推文」 |
+| `getSettings(env, context)`   | `site:settings:data`   | SSR 公开页 + 公开 /api/list 摘要长度 | `{}` |
+
+**调用链**：
+1. `env.KV.get(key)` —— 命中且 JSON 合法 → 直接返回
+2. 命中失败 / 损坏 → `env.DB` 查 D1 → `context.waitUntil(env.KV.put(...))` 异步回填
+3. D1 异常 → 硬编码兜底（绝不返回 `null` / `[]` / `{}`）
+
+**调用方**（必传 `context`，否则会同步 `await put`）：
+- SSR `functions/index.js` / `posts.js` / `tweets.js` / `post/[slug].js`
+- API `functions/api/list.js`（仅 `excerpt_length`）
+- API `functions/api/navs.js` GET（直接走自己的 `rebuildAndCacheNavs`）
 
 ---
 

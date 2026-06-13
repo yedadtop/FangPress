@@ -8,9 +8,8 @@
 
 import { makeExcerpt } from './api/helpers.js';
 import { renderPostItem, formatDate, safeParseKV } from './lib/list-render.js';
-import { renderHeaderNav, renderMobileMenu, getActiveNavs } from './lib/nav-render.js';
+import { renderHeaderNav, renderMobileMenu, getActiveNavs, getSettings } from './lib/nav-render.js';
 const KV_LIST_KEY_PREFIX = "site:posts:list:page:";
-const KV_SETTINGS_KEY = "site:settings:data";
 const PAGE_SIZE = 10; // 每页 10 篇；D1 查询时取 PAGE_SIZE+1 用于探测是否有下一页
 
 // ============== Helpers 已抽取到 lib/list-render.js ==============
@@ -35,16 +34,14 @@ export async function onRequestGet(context) {
     }
 
     // 2. 并行拉取当前页列表 + 设置 + 导航（KV 不可用时不阻塞，try 容错）
-    const [listRaw, settingsRaw, navs] = await Promise.all([
+    const [listRaw, settings, navs] = await Promise.all([
         env.KV.get(currentKvKey).catch(() => null),
-        env.KV.get(KV_SETTINGS_KEY).catch(() => null),
+        getSettings(env, context),
         getActiveNavs(env, context)
     ]);
 
     const listObj = safeParseKV(listRaw);
-    const settingsObj = safeParseKV(settingsRaw);
     let posts = (listObj && listObj.success && Array.isArray(listObj.data)) ? listObj.data : [];
-    const settings = (settingsObj && settingsObj.data) ? settingsObj.data : {};
 
     // ⚡ 默认主页：根据 home_mode 把根路径重定向到 /posts 或 /tweets
     // 缺省/非法值回落到 mix（保持原有行为）

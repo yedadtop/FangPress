@@ -5,9 +5,7 @@
 // 依赖：marked（边缘 Markdown→HTML）。请确保 package.json 含 "marked" 依赖。
 
 import { marked } from '../lib/marked.esm.js';
-import { renderHeaderNav, renderMobileMenu, getActiveNavs } from '../lib/nav-render.js';
-
-const KV_SETTINGS_KEY = 'site:settings:data';
+import { renderHeaderNav, renderMobileMenu, getActiveNavs, getSettings } from '../lib/nav-render.js';
 
 // ============== HTML 工具 ==============
 
@@ -186,9 +184,9 @@ async function fetchPost(env, slug, context) {
     };
 }
 
-async function fetchSettings(env) {
-    const obj = safeParse(await env.KV.get(KV_SETTINGS_KEY).catch(() => null));
-    return (obj && obj.data) ? obj.data : {};
+async function fetchSettings(env, context) {
+    // 复用 nav-render.js 的 getSettings，自动走 KV → D1 → 回填链路
+    return await getSettings(env, context);
 }
 
 // ============== 降级页 ==============
@@ -212,7 +210,7 @@ async function renderFallbackPage(env, request, url, type, context) {
         return new Response('Not Found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
-    const settings404 = await fetchSettings(env);
+    const settings404 = await fetchSettings(env, context);
     const siteTitle404 = (settings404 && settings404.site_title) ? settings404.site_title : 'Blog';
     const navs404 = await getActiveNavs(env, context);
     const headerNavHtml404 = renderHeaderNav(navs404);
@@ -265,7 +263,7 @@ export async function onRequestGet(context) {
     } catch (err) {
         return new Response('Internal Server Error: Missing Template', { status: 500 });
     }
-    const settings = await fetchSettings(env);
+    const settings = await fetchSettings(env, context);
     const navs = await getActiveNavs(env, context);
     const headerNavHtml = renderHeaderNav(navs);
     const mobileNavHtml = renderMobileMenu(navs);

@@ -4,10 +4,9 @@
 
 import { makeExcerpt } from './api/helpers.js';
 import { renderPostItem, safeParseKV, escapeHtml } from './lib/list-render.js';
-import { renderHeaderNav, renderMobileMenu, getActiveNavs } from './lib/nav-render.js';
+import { renderHeaderNav, renderMobileMenu, getActiveNavs, getSettings } from './lib/nav-render.js';
 
 const KV_LIST_KEY_PREFIX = "site:posts:list:type:post:page:";
-const KV_SETTINGS_KEY = "site:settings:data";
 const PAGE_SIZE = 10;
 
 // 注入一个 posts.html 里没有的特殊属性：当前 tab
@@ -27,16 +26,14 @@ export async function onRequestGet(context) {
         return new Response('Failed to load template', { status: 500 });
     }
 
-    const [listRaw, settingsRaw, navs] = await Promise.all([
+    const [listRaw, settings, navs] = await Promise.all([
         env.KV.get(currentKvKey).catch(() => null),
-        env.KV.get(KV_SETTINGS_KEY).catch(() => null),
+        getSettings(env, context),
         getActiveNavs(env, context)
     ]);
 
     const listObj = safeParseKV(listRaw);
-    const settingsObj = safeParseKV(settingsRaw);
     let posts = (listObj && listObj.success && Array.isArray(listObj.data)) ? listObj.data : [];
-    const settings = (settingsObj && settingsObj.data) ? settingsObj.data : {};
 
     let hasNextPage = (listObj && listObj.has_more === true) ? true : false;
 

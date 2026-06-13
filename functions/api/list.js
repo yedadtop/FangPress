@@ -1,10 +1,10 @@
 // functions/api/list.js
 import { makeExcerpt } from "./helpers.js";
+import { getSettings } from "../lib/nav-render.js";
 
 const KV_LIST_KEY_PREFIX = "site:posts:list:type:";
 const KV_LIST_KEY_PREFIX_LEGACY = "site:posts:list:page:";
 const KV_CAT_KEY_PREFIX = "site:posts:list:cat:";
-const KV_SETTINGS_KEY = "site:settings:data";
 const PAGE_SIZE = 10;
 
 export async function onRequestGet(context) {
@@ -60,28 +60,13 @@ export async function onRequestGet(context) {
       }
     }
 
-    // --- 处理摘要长度设置 ---
+    // --- 处理摘要长度设置：复用 getSettings 自动走 KV → D1 → 回填 ---
+    const settings = await getSettings(env, context);
     let excerptLength = 200;
-    try {
-      const settingsCache = await env.KV.get(KV_SETTINGS_KEY);
-      let resolved = false;
-      if (settingsCache) {
-        try {
-          const parsed = JSON.parse(settingsCache);
-          const v = parsed && parsed.data && parsed.data.excerpt_length;
-          if (v != null) {
-            const n = parseInt(String(v).trim(), 10);
-            if (Number.isInteger(n)) { excerptLength = n; resolved = true; }
-          }
-        } catch (_) {}
-      }
-      if (!resolved) {
-        const row = await env.DB.prepare("SELECT value FROM site_settings WHERE key = 'excerpt_length'").first();
-        if (row && row.value != null) {
-          excerptLength = parseInt(String(row.value).trim(), 10);
-        }
-      }
-    } catch (_) {}
+    if (settings && settings.excerpt_length != null) {
+      const n = parseInt(String(settings.excerpt_length).trim(), 10);
+      if (Number.isInteger(n)) excerptLength = n;
+    }
 
     // --- 动态构建查询语句 ---
     let stmt;

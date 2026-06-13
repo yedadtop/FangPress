@@ -1,10 +1,11 @@
 // functions/lib/nav-render.js
-// 头部导航渲染共享模块：桌面端 nav + 移动端菜单 共用
+// 头部导航 + 站点设置 渲染共享模块：桌面端 nav + 移动端菜单 + 站点设置 D1 兜底 共用
 // 数据契约：site_navs 行的标准化形态 { id, label, href, tab_key, open_in_new_tab, is_active, sort_order }
 
 import { escapeHtml } from './list-render.js';
 
 const KV_NAVS_KEY = 'site:navs:list:active';
+const KV_SETTINGS_KEY = 'site:settings:data';
 
 // 硬编码的兜底默认值，用于 KV 命中失败且 D1 也拿不到时（极端兜底，绝不返回空）
 const FALLBACK_NAVS = [
@@ -79,6 +80,46 @@ export async function getActiveNavs(env, context) {
 
     // 3) 终极兜底：硬编码默认值，绝不返回空
     return FALLBACK_NAVS;
+}
+
+// SSR / API 共用：读取站点设置。KV 优先 → D1 兜底并异步回填 → 空对象兜底
+//   - context 可选；传入后会用 context.waitUntil 回填 KV（不阻塞响应）
+//   - 返回值始终是普通对象（可能为 {}，但绝不会抛错）
+export async function getSettings(env, context) {
+    // 1) 先读 KV
+    const raw = await env.KV.get(KV_SETTINGS_KEY).catch(() => null);
+    if (raw) {
+        try {
+            const obj = JSON.parse(raw);
+            if (obj && obj.data && typeof obj.data === 'object') {
+                return obj.data;
+            }
+        } catch (_) { /* 损坏就继续走 D1 */ }
+    }
+
+    // 2) KV 缺失/损坏：D1 兜底
+    try {
+        const { results } = await env.DB.prepare(
+            `SELECT key, value FROM site_settings`
+        ).all();
+        const data = {};
+        (results || []).forEach(row => { data[row.key] = row.value; });
+
+        // 回填 KV（不阻塞响应）
+        const payload = JSON.stringify({ success: true, data });
+        const put = env.KV.put(KV_SETTINGS_KEY, payload).catch(err => console.error('[settings] KV 回填失败:', err));
+        if (context && typeof context.waitUntil === 'function') {
+            context.waitUntil(put);
+        } else {
+            await put;
+        }
+        return data;
+    } catch (err) {
+        console.error('[settings] D1 降级失败:', err);
+    }
+
+    // 3) 终极兜底
+    return {};
 }
 
 // 渲染桌面端 <nav> 内的 <a> 列表
