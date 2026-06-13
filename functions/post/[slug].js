@@ -211,8 +211,13 @@ async function renderFallbackPage(env, request, url, type) {
         return new Response('Not Found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
+    const settings404 = await fetchSettings(env);
+    const siteTitle404 = (settings404 && settings404.site_title) ? settings404.site_title : 'Blog';
+
     const rewriter = new HTMLRewriter()
         .on('title', { element: el => el.setInnerContent('404 - 文章不存在') })
+        // ⚡ 头部 logo 同步为站点主标题
+        .on('#ssr-header-title', { element: el => el.setInnerContent(escapeHtml(siteTitle404)) })
         // ⚡️ 修复点：保留 Tailwind 排版类名
         .on(`#${fallback.id}`, { element: el => el.setAttribute('class', fallback.cls) })
         .on('#ssr-post-article', { element: el => el.setAttribute('class', 'hidden') })
@@ -265,6 +270,8 @@ export async function onRequestGet(context) {
     const safeDesc      = escapeHtml(makeExcerpt(post.content || '', 160));
     const dateStr       = isTweet ? formatDateTime(post.created_at) : formatDate(post.created_at);
     const showViews     = !isTweet && String(settings.show_views) === '1';
+    // ⚡ 头部 logo 始终显示站点主标题（不受文章标题影响）
+    const headerTitle   = escapeHtml(siteTitle);
 
     let contentHtml = '';
     try {
@@ -282,6 +289,8 @@ export async function onRequestGet(context) {
         .on('meta[name="description"]',       { element: el => el.setAttribute('content', safeDesc) })
         .on('meta[property="og:title"]',      { element: el => el.setAttribute('content', safeTitle) })
         .on('meta[property="og:description"]',{ element: el => el.setAttribute('content', safeDesc) })
+        // ⚡ 头部 logo 同步为站点主标题
+        .on('#ssr-header-title',              { element: el => el.setInnerContent(headerTitle) })
         .on('#ssr-post-time',     { element: el => el.setInnerContent(dateStr) })
         .on('#ssr-post-content',  { element: el => el.setInnerContent(contentHtml, { html: true }) })
         .on('#ssr-post-article',  { element: el => el.setAttribute('class', 'mt-12') })

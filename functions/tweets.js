@@ -3,7 +3,7 @@
 // 数据契约：env.KV.get('site:posts:list:type:tweet:page:<n>')
 
 import { makeExcerpt } from './api/helpers.js';
-import { renderPostItem, safeParseKV } from './lib/list-render.js';
+import { renderPostItem, safeParseKV, escapeHtml } from './lib/list-render.js';
 
 const KV_LIST_KEY_PREFIX = "site:posts:list:type:tweet:page:";
 const KV_SETTINGS_KEY = "site:settings:data";
@@ -83,6 +83,8 @@ export async function onRequestGet(context) {
 
     if (siteTitle) {
         rewriter.on('title', { element: el => el.setInnerContent(pageTitle) });
+        // ⚡ 头部 logo 同步为站点主标题
+        rewriter.on('#ssr-header-title', { element: el => el.setInnerContent(escapeHtml(siteTitle)) });
     }
     rewriter.on('body', {
         element: el => el.setAttribute('data-active-tab', PAGE_TAB)
