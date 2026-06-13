@@ -218,20 +218,25 @@
             return y + ' · ' + m + ' · ' + dd;
         }
 
+        // ⚠️ 修复后的渲染项生成器
         function renderItem(p) {
             var slug = encodeURIComponent(p.slug || '');
             var raw  = (p.content != null && p.content !== '') ? p.content : (p.excerpt || '');
-            var body = raw
-                ? '<p class="mt-1.5 font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words">' + escapeHTML(raw) + '</p>'
-                : '';
             var d = formatDate(p.created_at);
-            var timeHTML = d ? '<time>' + escapeHTML(d) + '</time>' : '';
+            
+            // 采用 float-right 并单行拼接
+            var metaHTML = d
+                ? '<time class="float-right ml-4 mt-1.5 text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">' + escapeHTML(d) + '</time>'
+                : '';
+                
+            // 单行拼接文本与日期，防止 whitespace-pre-wrap 引入空白
+            var body = raw
+                ? '<div class="font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words text-justify" style="text-justify: inter-ideograph;">' + metaHTML + escapeHTML(raw) + '</div>'
+                : metaHTML;
+                
             return '<article class="fade-up py-5 group" data-ssr-item>' +
                 '<a href="/post/' + slug + '" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">' +
                     body +
-                    '<div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1.5 font-sans">' +
-                        timeHTML +
-                    '</div>' +
                 '</a>' +
             '</article>';
         }

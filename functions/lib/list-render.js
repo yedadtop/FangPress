@@ -52,7 +52,6 @@ export function renderPostItem(post, i, showViews) {
     const type = post.type || 'post';
 
     // 推文渲染(混合列表场景,如首页 mix 模式):
-    //  - 采用 float 布局：日期靠右浮动，正文环绕，确保文字自然换行并包裹在日期下方
     if (type === 'tweet') {
         const dateStr = formatDate(post.created_at);
         
@@ -61,12 +60,9 @@ export function renderPostItem(post, i, showViews) {
             ? `<time class="float-right ml-4 mt-1 text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">${dateStr}</time>`
             : '';
 
-        // 正文容器：将 meta 直接塞入内部，使用 div 替换 p
+        // ⚠️ 正文容器：将 meta 直接塞入内部，严格写在一行以消除 DOM 缩进和换行幽灵节点
         const excerpt = post.excerpt
-            ? `<div class="font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">
-                 ${meta}
-                 ${escapeHtml(post.excerpt)}
-               </div>`
+            ? `<div class="font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left whitespace-pre-wrap break-words" style="text-justify: inter-ideograph;">${meta}${escapeHtml(post.excerpt)}</div>`
             : meta;
 
         return `
@@ -104,26 +100,21 @@ export function renderPostItem(post, i, showViews) {
 
 /**
  * 推文专用渲染器(用于 /tweets 页面)
- * - 展示完整正文(优先 post.content,缺失时回退 excerpt)
- * - 同样应用了 float-right 布局，保持推文展现形式的全局统一
  */
 export function renderTweetItem(post, i) {
     if (!post) return '';
     const slug = post.slug || '';
     const raw = (post.content != null && post.content !== '') ? post.content : (post.excerpt || '');
     const dateStr = formatDate(post.created_at);
-    
-    // 日期标签：浮动至右侧
+
+    // 日期：改为 float-right
     const meta = dateStr
         ? `<time class="float-right ml-4 mt-1.5 text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">${dateStr}</time>`
         : '';
 
-    // 将 meta 嵌套进正文块最前方
+    // ⚠️ 正文：始终从新行开始左对齐，并与 meta 拼接在一行内防止预格式化空白
     const body = raw
-        ? `<div class="mt-1.5 font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words">
-             ${meta}
-             ${escapeHtml(raw)}
-           </div>`
+        ? `<div class="font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words text-justify" style="text-justify: inter-ideograph;">${meta}${escapeHtml(raw)}</div>`
         : meta;
 
     return `
