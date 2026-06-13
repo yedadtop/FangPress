@@ -1,7 +1,7 @@
 // functions/api/update.js
 const POST_CACHE_TTL = 604800;
 
-import { nowInShanghai } from "../../lib/time.js";
+import { nowInShanghai } from "../lib/time.js";
 
 export async function onRequestPost(context) {
   const { request, env } = context;

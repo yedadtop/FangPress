@@ -6,7 +6,7 @@
 
 const BATCH_SIZE = 100;
 
-import { nowInShanghai } from "../../lib/time.js";
+import { nowInShanghai } from "../lib/time.js";
 
 function sqlEscape(v) {
   if (v === null || v === undefined) return "NULL";

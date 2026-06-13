@@ -2,7 +2,7 @@
 const ALLOWED_KEYS = new Set(["site_title", "site_subtitle", "show_views", "excerpt_length"]);
 const KV_SETTINGS_KEY = "site:settings:data";
 
-import { nowInShanghai } from "../../lib/time.js";
+import { nowInShanghai } from "../lib/time.js";
 
 export async function onRequestGet(context) {
   // ... 保持原有代码不变 ...
