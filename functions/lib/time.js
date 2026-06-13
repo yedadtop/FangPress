@@ -1,15 +1,26 @@
 // functions/lib/time.js
-// 上海时区时间工具（UTC+8）
-// 设计目标：仅影响新数据，历史 UTC 时间戳原样不动
+// 强锁定东八区（上海时区）时间工具
 
 /**
- * 返回当前时间，格式为 ISO 8601 + 上海时区偏移
- * 例：new Date("2026-06-13T05:42:21.276Z") → "2026-06-13T13:42:21.276+08:00"
- *
- * 实现思路：取 now + 8h，调用 toISOString() 得到形如 "...Z" 的串，
- *          再把末尾的 Z 替换为 "+08:00"。表达的是"同一瞬间"，
- *          只是把表示时区的 Z 换成了 +08:00。
+ * 返回当前东八区标准时间字符串
+ * 格式：2026-06-13T16:44:21.276+08:00
+ * 无论边缘节点处于哪个国家，或者请求源自哪个时区的访客，结果均不受影响
  */
 export function nowInShanghai() {
-  return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().replace("Z", "+08:00");
+  const now = new Date();
+
+  // 使用 V8 原生国际化能力，强行提取目标时区的时间分量
+  const formatter = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false
+  });
+
+  const parts = formatter.formatToParts(now);
+  const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+  const ms = String(now.getMilliseconds()).padStart(3, '0');
+
+  // 拼装出对 SQLite 检索极其友好的标准时区字面量
+  return `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}:${map.second}.${ms}+08:00`;
 }

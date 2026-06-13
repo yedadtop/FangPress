@@ -21,12 +21,28 @@ function escapeHtml(str) {
 }
 
 function formatDate(ts) {
+    if (!ts) return '';
     const d = new Date(ts);
     if (isNaN(d)) return '';
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y} · ${m} · ${day}`;
+
+    try {
+        // 无论 Cloudflare Worker 节点的物理物理时区是什么（默认被锁定在 UTC），
+        // 渲染成 HTML 时，一律强制转换为东八区的年月日排版
+        const formatter = new Intl.DateTimeFormat('zh-CN', {
+            timeZone: 'Asia/Shanghai',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+
+        const parts = formatter.formatToParts(d);
+        const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+
+        return `${map.year} · ${map.month} · ${map.day}`;
+    } catch (_) {
+        // 容错降级
+        return '';
+    }
 }
 
 function stripMarkdown(md) {
