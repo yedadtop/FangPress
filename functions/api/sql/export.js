@@ -49,11 +49,11 @@ export async function onRequestGet(context) {
   let indexes = [];
   try {
     const tRes = await env.DB.prepare(
-      "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+      "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name"
     ).all();
     tables = tRes.results || [];
     const iRes = await env.DB.prepare(
-      "SELECT name, sql FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%' AND sql IS NOT NULL ORDER BY name"
+      "SELECT name, sql FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE '_cf_%' AND sql IS NOT NULL ORDER BY name"
     ).all();
     indexes = iRes.results || [];
   } catch (err) {
