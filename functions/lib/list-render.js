@@ -52,26 +52,24 @@ export function renderPostItem(post, i, showViews) {
     const type = post.type || 'post';
 
     // 推文渲染(混合列表场景,如首页 mix 模式):
-    //  - 日期位置与文章一致(顶部右侧、同一 flex 行)
+    //  - 日期与正文同一行(右栏),用 md:ml-auto 推到容器最右
     //  - 不显示「推文」小标
     //  - 唯一可见差异:左侧竖线 + 左侧内边距
     if (type === 'tweet') {
         const excerpt = post.excerpt
-            ? `<p class="mt-2.5 font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">${escapeHtml(post.excerpt)}</p>`
+            ? `<p class="md:flex-1 font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">${escapeHtml(post.excerpt)}</p>`
             : '';
         const dateStr = formatDate(post.created_at);
         const meta = dateStr
-            ? `<div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5 md:ml-auto">
-                 <time class="font-sans">${dateStr}</time>
-               </div>`
+            ? `<time class="md:ml-auto md:shrink-0 text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">${dateStr}</time>`
             : '';
         return `
             <article class="fade-up py-7 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
                 <a href="/post/${encodeURIComponent(slug)}" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">
                     <div class="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-6">
+                        ${excerpt}
                         ${meta}
                     </div>
-                    ${excerpt}
                 </a>
             </article>
         `;
