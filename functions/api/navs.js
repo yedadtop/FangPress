@@ -37,7 +37,13 @@ async function rebuildAndCacheNavs(env) {
          ORDER BY sort_order ASC, id ASC`
     ).all();
     const list = (results || []).map(normalizeNavRow);
-    await env.KV.put(KV_NAVS_KEY, JSON.stringify({ success: true, data: list }));
+    // ⚡ 只有非空结果才回填 KV，避免把空数组写进缓存后下次必须再次打 D1
+    if (list.length > 0) {
+        await env.KV.put(KV_NAVS_KEY, JSON.stringify({ success: true, data: list }));
+    } else {
+        // 显式删除可能存在的脏缓存，让下次 miss 时走 D1
+        try { await env.KV.delete(KV_NAVS_KEY); } catch (_) {}
+    }
     return list;
 }
 

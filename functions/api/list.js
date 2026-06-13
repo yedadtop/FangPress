@@ -49,7 +49,7 @@ export async function onRequestGet(context) {
   try {
     // 只有前台请求才尝试读取缓存
     if (currentKvKey) {
-      const cachedList = await env.KV.get(currentKvKey);
+      const cachedList = await env.KV.get(currentKvKey).catch(() => null);
       if (cachedList) {
         return new Response(cachedList, {
           headers: {

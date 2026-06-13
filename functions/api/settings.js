@@ -9,7 +9,7 @@ export async function onRequestGet(context) {
   // ... 保持原有代码不变 ...
   const { env } = context;
   try {
-    const cachedSettings = await env.KV.get(KV_SETTINGS_KEY);
+    const cachedSettings = await env.KV.get(KV_SETTINGS_KEY).catch(() => null);
     if (cachedSettings) {
       return new Response(cachedSettings, {
         headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=10, s-maxage=60" }
