@@ -292,9 +292,13 @@
                     }
                     // 重新渲染一次让复选框 + 行底色同步（仅在当前视图内）
                     renderPosts();
+                    // 全选/反选是一次性动作，需要主动刷新批量条
+                    syncBatchBar();
                 });
             }
             syncSelectAllState();
+            // 渲染时也兜底刷一次批量条，避免过滤/搜索切换后条子状态错位
+            syncBatchBar();
         }
 
         function syncSelectAllState() {
