@@ -1,0 +1,95 @@
+// functions/lib/list-render.js
+// 列表渲染共享模块：主页 / posts 列表 / tweets 列表 共用
+
+export function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+export function formatDate(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (isNaN(d)) return '';
+    try {
+        const formatter = new Intl.DateTimeFormat('zh-CN', {
+            timeZone: 'Asia/Shanghai',
+            year: 'numeric', month: '2-digit', day: '2-digit'
+        });
+        const parts = formatter.formatToParts(d);
+        const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+        return `${map.year} · ${map.month} · ${map.day}`;
+    } catch (_) {
+        return '';
+    }
+}
+
+export function renderViewsIcon(views) {
+    return `
+        <span class="flex items-center gap-1 font-sans">
+            <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            ${views || 0}
+        </span>
+        <span>·</span>
+    `;
+}
+
+export function safeParseKV(raw) {
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch (_) { return null; }
+}
+
+export function renderPostItem(post, i, showViews) {
+    if (!post) return '';
+    const slug = post.slug || '';
+    const type = post.type || 'post';
+
+    // 推文渲染：左侧竖线、无标题、直接展示内容片段、时间附「推文」小标
+    if (type === 'tweet') {
+        const body = post.excerpt
+            ? `<p class="mt-1.5 font-serif text-stone-700 text-base leading-relaxed">${escapeHtml(post.excerpt)}</p>`
+            : '';
+        return `
+            <article class="fade-up py-5 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
+                <a href="/post/${encodeURIComponent(slug)}" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">
+                    ${body}
+                    <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1.5 font-sans">
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-xs text-stone-500 bg-stone-200/60 font-medium tracking-wider">推文</span>
+                        <span>·</span>
+                        <time>${formatDate(post.created_at)}</time>
+                    </div>
+                </a>
+            </article>
+        `;
+    }
+
+    // 文章渲染：标题 + 摘要 + 阅读量 + 时间
+    const title = escapeHtml(post.title || '未命名');
+    const excerpt = post.excerpt
+        ? `<p class="mt-2.5 font-serif text-stone-500 text-[0.95rem] leading-relaxed">${escapeHtml(post.excerpt)}</p>`
+        : '';
+    const viewsHtml = showViews ? renderViewsIcon(post.views) : '';
+    return `
+        <article class="fade-up py-7 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
+            <a href="/post/${encodeURIComponent(slug)}" class="block">
+                <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-2 md:gap-6">
+                    <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
+                        <span class="link-underline pb-0.5">${title}</span>
+                    </h2>
+                    <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5">
+                        ${viewsHtml}
+                        <time class="font-sans">${formatDate(post.created_at)}</time>
+                    </div>
+                </div>
+                ${excerpt}
+            </a>
+        </article>
+    `;
+}

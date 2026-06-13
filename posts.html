@@ -4,25 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
-    <title data-ssr="site-title"></title>
+    <title data-ssr="site-title">文章</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         :root {
             /* === 基于调试面板锁定的核心视觉变量 === */
-            --reader-bg: hsl(40, 23%, 97%);           /* 纸张背景明度 97% */
-            --reader-text: hsl(24, 10%, 0%);          /* 墨质字色暗度 0% (纯黑) */
-            --reader-size: 1.2rem;                    /* 正文字号 1.2rem */
-            --reader-line-height: 1.85;               /* 呼吸行高 1.85 */
-            --reader-width: 44rem;                    /* 容器黄金行宽 44rem */
-            --reader-paragraph-spacing: 1.40em;       /* 段落底部间距 */
-            --reader-letter-spacing: 0.02em;          /* 字间距微调 */
-            --reader-title-weight: 700;               /* 标题加粗字重 */
+            --reader-bg: hsl(40, 23%, 97%);
+            --reader-text: hsl(24, 10%, 0%);
+            --reader-size: 1.2rem;
+            --reader-line-height: 1.85;
+            --reader-width: 44rem;
+            --reader-paragraph-spacing: 1.40em;
+            --reader-letter-spacing: 0.02em;
+            --reader-title-weight: 700;
 
-            /* 字体栈 */
             --font-serif-stack: "Noto Serif SC", "Source Han Serif CN", "SimSun", "Georgia", serif;
             --font-sans-stack: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
 
-            /* 字体映射：标题与正文均采用优雅衬线体 */
             --reader-title-font: var(--font-serif-stack);
             --reader-body-font: var(--font-serif-stack);
         }
@@ -32,22 +30,18 @@
         .font-serif { font-family: var(--reader-title-font); }
         .font-sans { font-family: var(--font-sans-stack); }
 
-        /* === 扁平化自定义滚动条 === */
         html { scrollbar-width: thin; scrollbar-color: hsl(40, 10%, 80%) var(--reader-bg); }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: var(--reader-bg); }
         ::-webkit-scrollbar-thumb { background: hsl(40, 10%, 82%); border-radius: 0; }
         ::-webkit-scrollbar-thumb:hover { background: hsl(40, 10%, 70%); }
 
-        /* 优雅的下划线动画 */
         .link-underline { background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1px; background-repeat: no-repeat; background-position: 0 100%; transition: background-size 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
         .group:hover .link-underline, .link-underline:hover { background-size: 100% 1px; }
 
-        /* 列表/组件入场动画 */
         @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .fade-up { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
-        /* 遮罩层渐显动画 */
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .fade-in { animation: fadeIn 0.4s ease-out both; }
 
@@ -55,7 +49,7 @@
         .tab-link[data-active="true"] { color: #0c0a09; }
     </style>
 </head>
-<body class="min-h-screen selection:bg-stone-200" data-active-tab="home">
+<body class="min-h-screen selection:bg-stone-200" data-active-tab="posts">
 
     <header id="site-header" class="fixed top-0 inset-x-0 w-full z-50">
         <div class="absolute inset-0 bg-[hsla(40,23%,97%,0.85)] backdrop-blur-md border-b border-stone-200/40"></div>
@@ -81,7 +75,7 @@
 
     <div id="search-overlay" class="fixed inset-0 z-[60] hidden">
         <div id="search-backdrop" class="absolute inset-0 bg-stone-500/[0.35] backdrop-blur-[3px] fade-in"></div>
-        
+
         <div class="relative max-w-[44rem] mx-auto px-6 pt-24 md:pt-28 fade-up">
             <div class="bg-[hsla(40,23%,97%,0.9)] border border-stone-200/60 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden backdrop-blur-[13px]">
                 <div class="flex items-center px-5">
@@ -115,9 +109,9 @@
         <div id="status-error" class="hidden py-16 text-stone-400 text-sm tracking-wider">
             <span class="font-serif italic">数据获取失败</span> · 请刷新重试
         </div>
-        
+
         <main id="ssr-post-list" data-ssr="post-list" class="hidden divide-y divide-stone-200/70"></main>
-        
+
         <nav id="ssr-pagination" class="hidden flex justify-between items-center mt-12 pt-8 border-t border-stone-200/70 font-serif text-sm">
             <a id="ssr-prev-page" href="" class="hidden text-stone-500 hover:text-stone-900 transition-colors">← 上一页</a>
             <a id="ssr-next-page" href="" class="hidden text-stone-500 hover:text-stone-900 transition-colors ml-auto">下一页 →</a>
@@ -130,6 +124,14 @@
 
     <script>
     (function () {
+        // ⚡ 顶部 tab 高亮：基于 body[data-active-tab]
+        var active = document.body.getAttribute('data-active-tab');
+        if (active) {
+            document.querySelectorAll('.tab-link').forEach(function (el) {
+                if (el.getAttribute('data-tab') === active) el.setAttribute('data-active', 'true');
+            });
+        }
+
         var toggle   = document.getElementById('search-toggle');
         var overlay  = document.getElementById('search-overlay');
         var closeBtn = document.getElementById('search-close');
@@ -205,11 +207,9 @@
 
         function cancelPending() {
             if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
-            currentToken++; // 令进行中的请求作废，避免竞态覆盖
+            currentToken++;
         }
 
-        // 解析日期输入：支持 YYYY[sep]M[sep]D、YYYY-MM-DD、YYYY.M.D、2026-2-06 等
-        // 任意非数字字符视为分隔符；返回规范化的 YYYY-MM-DD，无效返回 null
         function parseDateInput(raw) {
             var m = String(raw).match(/^(\d{4})[^\d]+(\d{1,2})[^\d]+(\d{1,2})$/);
             if (!m) return null;
@@ -217,7 +217,6 @@
             var mo = parseInt(m[2], 10);
             var d  = parseInt(m[3], 10);
             if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
-            // 用 Date 反查，拦截 2026-02-30、2026-13-01 等非法日期
             var test = new Date(Date.UTC(y, mo - 1, d));
             if (test.getUTCFullYear() !== y ||
                 test.getUTCMonth()    !== mo - 1 ||
@@ -282,7 +281,6 @@
             input.addEventListener('input', function () {
                 var keyword = input.value.trim();
                 if (!keyword) { cancelPending(); clearResults(); return; }
-                // 优先按日期搜索；解析失败则回退到关键词搜索
                 var dateStr = parseDateInput(keyword);
                 if (dateStr) {
                     runDateSearch(dateStr);
@@ -291,21 +289,6 @@
                 }
             });
         }
-    })();
-
-    (function () {
-        // ⚡ 顶部 tab 高亮：基于 body[data-active-tab]
-        var active = document.body.getAttribute('data-active-tab');
-        if (active) {
-            document.querySelectorAll('.tab-link').forEach(function (el) {
-                if (el.getAttribute('data-tab') === active) el.setAttribute('data-active', 'true');
-            });
-        }
-
-        var el = document.getElementById('ssr-header-title');
-        if (!el) return;
-        var raw = (document.title || '').split('·')[0].split('|')[0].trim();
-        if (raw) el.textContent = raw;
     })();
     </script>
 </body>

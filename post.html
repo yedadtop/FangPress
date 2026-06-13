@@ -67,17 +67,36 @@
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .fade-in { animation: fadeIn 0.4s ease-out both; }
+
+        .tab-link[data-active="true"] { color: #0c0a09; }
     </style>
 </head>
 <body class="min-h-screen selection:bg-stone-200">
 
-    <div class="max-w-[49rem] mx-auto px-6 pt-6 md:pt-8 pb-20">
+    <header id="site-header" class="fixed top-0 inset-x-0 w-full z-50">
+        <div class="absolute inset-0 bg-[hsla(40,23%,97%,0.85)] backdrop-blur-md border-b border-stone-200/40"></div>
+        <div class="relative max-w-screen-xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <a href="/" class="group inline-flex items-center" aria-label="返回首页">
+                    <span class="font-serif text-base md:text-lg text-stone-900 tracking-tight link-underline" style="font-weight: var(--reader-title-weight);">博客</span>
+                </a>
+                <nav class="hidden md:flex items-center gap-5 text-sm font-sans">
+                    <a href="/" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="home">主页</a>
+                    <a href="/posts" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="posts">文章</a>
+                    <a href="/tweets" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="tweets">推文</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-[49rem] mx-auto px-6 pt-24 md:pt-28 pb-20">
 
         <article id="ssr-post-article" data-ssr="post-article" class="hidden">
-            <header class="mb-10 pb-8 border-b border-stone-200/70">
+            <header id="ssr-post-header" class="mb-10 pb-8 border-b border-stone-200/70">
                 <h1 id="ssr-post-title" data-ssr="post-title" style="font-family: var(--reader-title-font); font-weight: var(--reader-title-weight);" class="text-3xl md:text-[2.5rem] tracking-tight leading-tight text-stone-900">
                 </h1>
-                <div class="flex items-center gap-4 mt-5 text-xs text-stone-400 tracking-widest uppercase font-sans">
+                <div class="flex items-center gap-3 mt-5 text-xs text-stone-400 tracking-widest uppercase font-sans">
+                    <span id="ssr-post-type-badge" data-ssr="post-type-badge" class="hidden"></span>
                     <span id="ssr-post-category" data-ssr="post-category" class="font-semibold text-stone-500 bg-stone-200/60 px-1.5 py-0.5 rounded-xs"></span>
                     <span id="ssr-post-category-sep" data-ssr="post-category-sep">·</span>
                     <span id="ssr-post-views-group" data-ssr="post-views-group" class="contents">

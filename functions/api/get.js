@@ -50,10 +50,12 @@ export async function onRequestGet(context) {
         }
 
         const newViews = (Number(c.views) || 0) + 1;
+        const cachedType = c.type || 'post';
         const post = {
-          title: c.title,
+          title: c.title || null,
           content: c.content,
           category: c.category ?? null,
+          type: cachedType,
           created_at: c.created_at,
           // 内存补偿 +1,真实写入交给 waitUntil 异步完成
           views: newViews
@@ -87,7 +89,7 @@ export async function onRequestGet(context) {
 
     // 2) KV miss 或旧格式 → D1 一次性拿全部字段(原本 2 条 SELECT 合并为 1 条)
     const dbPost = await env.DB.prepare(
-      "SELECT id, status, views, title, content, category, created_at FROM posts WHERE slug = ?"
+      "SELECT id, status, views, title, content, category, type, created_at FROM posts WHERE slug = ?"
     ).bind(normalizedSlug).first();
 
     if (!dbPost) {
@@ -106,10 +108,12 @@ export async function onRequestGet(context) {
 
     const category = (!dbPost.category || dbPost.category.trim() === '') ? null : dbPost.category;
     const newViews = (Number(dbPost.views) || 0) + 1;
+    const postType = dbPost.type || 'post';
     const post = {
-      title: dbPost.title,
+      title: dbPost.title || null,
       content: dbPost.content,
       category,
+      type: postType,
       created_at: dbPost.created_at,
       views: newViews
     };
@@ -120,10 +124,10 @@ export async function onRequestGet(context) {
           const res = await env.DB.prepare("UPDATE posts SET views = views + 1 WHERE id = ? RETURNING views")
             .bind(dbPost.id).first();
           const trueViews = res ? res.views : newViews;
-          
+
           const cachePayload = {
-            id: dbPost.id, status: dbPost.status, title: dbPost.title,
-            content: dbPost.content, category, created_at: dbPost.created_at,
+            id: dbPost.id, status: dbPost.status, title: dbPost.title || null,
+            content: dbPost.content, category, type: postType, created_at: dbPost.created_at,
             views: trueViews
           };
           await env.KV.put(kvKey, JSON.stringify(cachePayload), { expirationTtl: 604800 });

@@ -262,20 +262,24 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">文章标题</label>
+                        <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">
+                            文章标题 <span class="text-stone-300 normal-case tracking-normal">（推文可留空）</span>
+                        </label>
                         <input type="text" id="post-title"
                                class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-base font-serif focus:outline-none focus:border-stone-500"
-                               placeholder="一个能抓住眼球的标题" required>
+                               placeholder="一个能抓住眼球的标题（推文留空即可）">
                     </div>
                     <div>
-                        <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">唯一路径 (Slug)</label>
+                        <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">
+                            唯一路径 (Slug) <span class="text-stone-300 normal-case tracking-normal">（推文可留空自动生成）</span>
+                        </label>
                         <input type="text" id="post-slug"
                                class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500"
-                               placeholder="例如 d1-blog-guide" required>
+                               placeholder="例如 d1-blog-guide（推文留空）">
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="relative" id="category-container">
                         <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">分类</label>
                         <div class="relative">
@@ -287,9 +291,19 @@
                             </div>
                         </div>
 
-                        <div id="custom-category-list" 
+                        <div id="custom-category-list"
                             class="hidden absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-stone-200 rounded-md shadow-lg z-50 py-1 transition-all">
                         </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">内容类型</label>
+                        <select id="post-type"
+                            class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500 cursor-pointer">
+                            <option value="auto">自动识别（标题留空 → 推文）</option>
+                            <option value="post">文章</option>
+                            <option value="tweet">推文</option>
+                        </select>
                     </div>
 
                     <div>
@@ -370,7 +384,7 @@
                                 <span>Markdown</span>
                             </div>
                             <textarea id="post-content" class="editor-textarea"
-                                      placeholder="### 标题&#10;&#10;开始写下你的思考..." required></textarea>
+                                      placeholder="### 标题&#10;&#10;开始写下你的思考...&#10;&#10;（推文：留空文章标题，直接写正文即可）"></textarea>
                         </div>
 
                         <div class="preview-pane">
@@ -488,6 +502,8 @@
         const params = new URLSearchParams(window.location.search);
         const editId = params.get('id');
         const isEdit = !!editId;
+        // ⚡ 推文快捷入口：?tweet=1 自动设为「推文」+ 清空标题/分类提示
+        const tweetModeFromUrl = params.get('tweet') === '1';
 
         let isFullscreen = false;
         let syncTimer = null;
@@ -736,6 +752,12 @@
                 document.getElementById('post-title').value = post.title || '';
                 document.getElementById('post-slug').value = post.slug || '';
                 document.getElementById('post-category').value = post.category || '';
+                // ⚡ 回填 type；编辑时锁定下拉（避免误改）
+                const typeSelect = document.getElementById('post-type');
+                if (typeSelect) {
+                    typeSelect.value = post.type || 'post';
+                    typeSelect.disabled = true;
+                }
 
                 // ⚡ 核心修复：添加动态时间戳 _t=，彻底摧毁浏览器的 Disk Cache 缓存，确保回显绝对实时的正文
                 // 同时带 Bearer Token —— 后台编辑可能被打开的是草稿（status='draft'），
@@ -817,14 +839,33 @@
             const slug = document.getElementById('post-slug').value.trim();
             const category = document.getElementById('post-category').value.trim();
             const content = document.getElementById('post-content').value.trim();
+            const typeSelect = document.getElementById('post-type');
+            const typeChoice = typeSelect ? typeSelect.value : 'auto';
             const token = getToken();
 
-            if (!title || !slug || !content) {
-                showStatus('标题、路径、正文 都不能为空', 'error');
+            if (!content) {
+                showStatus('正文不能为空', 'error');
                 return;
             }
             if (!token) {
                 window.top.location.href = 'admin.html';
+                return;
+            }
+
+            // ⚡ 决定最终 type：auto 模式下根据标题留空判断；显式选择则尊重用户意图
+            let resolvedType = 'post';
+            if (isEdit) {
+                // 编辑时 type 由后端旧记录决定（前端不传）
+                resolvedType = null;
+            } else if (typeChoice === 'post' || typeChoice === 'tweet') {
+                resolvedType = typeChoice;
+            } else {
+                resolvedType = title ? 'post' : 'tweet';
+            }
+
+            // ⚡ 文章必须有 slug；推文 slug 可空（后端自动生成）
+            if (resolvedType === 'post' && !slug) {
+                showStatus('文章必须填写 slug', 'error');
                 return;
             }
 
@@ -835,7 +876,7 @@
             const url = isEdit ? '/api/update' : '/api/push';
             const body = isEdit
                 ? { id: Number(id), title, slug, category, content }
-                : { title, slug, category, content };
+                : { title, slug, category, content, type: resolvedType };
 
             try {
                 const res = await fetch(url, {
@@ -849,7 +890,7 @@
                 const result = await res.json();
 
                 if (result.success) {
-                    showStatus(isEdit ? '已保存' : '已发布', 'ok');
+                    showStatus(isEdit ? '已保存' : (resolvedType === 'tweet' ? '已发布为推文' : '已发布'), 'ok');
                     setTimeout(() => {
                         window.top.document.getElementById('admin-frame').src = 'admin-posts.html';
                     }, 700);
@@ -980,6 +1021,11 @@
             if (isEdit) {
                 loadPostForEdit(editId);
             } else {
+                if (tweetModeFromUrl) {
+                    // ⚡ 推文快捷入口：默认锁定为推文类型
+                    const typeSelect = document.getElementById('post-type');
+                    if (typeSelect) typeSelect.value = 'tweet';
+                }
                 loadCategorySuggestions();
                 updatePreview();
             }

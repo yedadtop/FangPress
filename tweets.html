@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <title data-ssr="site-title">推文</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        :root {
+            --reader-bg: hsl(40, 23%, 97%);
+            --reader-text: hsl(24, 10%, 0%);
+            --reader-size: 1.2rem;
+            --reader-line-height: 1.85;
+            --reader-width: 44rem;
+            --reader-paragraph-spacing: 1.40em;
+            --reader-letter-spacing: 0.02em;
+            --reader-title-weight: 700;
+
+            --font-serif-stack: "Noto Serif SC", "Source Han Serif CN", "SimSun", "Georgia", serif;
+            --font-sans-stack: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+
+            --reader-title-font: var(--font-serif-stack);
+            --reader-body-font: var(--font-serif-stack);
+        }
+
+        body { font-family: var(--reader-body-font); background-color: var(--reader-bg); color: var(--reader-text); letter-spacing: var(--reader-letter-spacing); }
+
+        .font-serif { font-family: var(--reader-title-font); }
+        .font-sans { font-family: var(--font-sans-stack); }
+
+        html { scrollbar-width: thin; scrollbar-color: hsl(40, 10%, 80%) var(--reader-bg); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--reader-bg); }
+        ::-webkit-scrollbar-thumb { background: hsl(40, 10%, 82%); border-radius: 0; }
+        ::-webkit-scrollbar-thumb:hover { background: hsl(40, 10%, 70%); }
+
+        .link-underline { background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1px; background-repeat: no-repeat; background-position: 0 100%; transition: background-size 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+        .group:hover .link-underline, .link-underline:hover { background-size: 100% 1px; }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-up { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation: fadeIn 0.4s ease-out both; }
+
+        .tab-link[data-active="true"] { color: #0c0a09; }
+    </style>
+</head>
+<body class="min-h-screen selection:bg-stone-200" data-active-tab="tweets">
+
+    <header id="site-header" class="fixed top-0 inset-x-0 w-full z-50">
+        <div class="absolute inset-0 bg-[hsla(40,23%,97%,0.85)] backdrop-blur-md border-b border-stone-200/40"></div>
+        <div class="relative max-w-screen-xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <a href="/" class="group inline-flex items-center" aria-label="返回首页">
+                    <span id="ssr-header-title" class="font-serif text-base md:text-lg text-stone-900 tracking-tight link-underline" style="font-weight: var(--reader-title-weight);">博客</span>
+                </a>
+                <nav class="hidden md:flex items-center gap-5 text-sm font-sans">
+                    <a href="/" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="home">主页</a>
+                    <a href="/posts" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="posts">文章</a>
+                    <a href="/tweets" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="tweets">推文</a>
+                </nav>
+            </div>
+            <button id="search-toggle" type="button" aria-label="搜索" class="p-2 -mr-2 text-stone-600 hover:text-stone-900 transition-colors duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.3-4.3"></path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <div id="search-overlay" class="fixed inset-0 z-[60] hidden">
+        <div id="search-backdrop" class="absolute inset-0 bg-stone-500/[0.35] backdrop-blur-[3px] fade-in"></div>
+
+        <div class="relative max-w-[44rem] mx-auto px-6 pt-24 md:pt-28 fade-up">
+            <div class="bg-[hsla(40,23%,97%,0.9)] border border-stone-200/60 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden backdrop-blur-[13px]">
+                <div class="flex items-center px-5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-stone-400 shrink-0" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.3-4.3"></path>
+                    </svg>
+                    <input id="search-input" type="text" placeholder="搜索文章…" class="flex-1 bg-transparent border-0 focus:outline-none focus:ring-0 py-5 px-4 text-stone-800 placeholder-stone-400 font-sans">
+                    <button id="search-close" type="button" aria-label="关闭" class="p-1.5 text-stone-400 hover:text-stone-700 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M18 6 6 18"></path>
+                            <path d="m6 6 12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="search-results" class="hidden max-h-[60vh] overflow-y-auto border-t border-stone-200/60 divide-y divide-stone-200/60 font-sans"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-[44rem] mx-auto px-6 pt-20 md:pt-28 pb-20 md:pb-28">
+        <div id="status-loading" class="hidden py-20 text-center fade-in">
+            <div class="inline-block w-12 h-px bg-stone-300 mb-6"></div>
+            <p class="font-serif text-stone-500 text-base italic tracking-widest">加载中...</p>
+        </div>
+
+        <div id="status-empty" class="hidden py-20 text-center">
+            <div class="inline-block w-12 h-px bg-stone-300 mb-6"></div>
+            <p class="font-serif text-stone-500 text-base italic">这里还很安静</p>
+        </div>
+        <div id="status-error" class="hidden py-16 text-stone-400 text-sm tracking-wider">
+            <span class="font-serif italic">数据获取失败</span> · 请刷新重试
+        </div>
+
+        <main id="ssr-post-list" data-ssr="post-list" class="hidden divide-y divide-stone-200/70"></main>
+
+        <nav id="ssr-pagination" class="hidden flex justify-between items-center mt-12 pt-8 border-t border-stone-200/70 font-serif text-sm">
+            <a id="ssr-prev-page" href="" class="hidden text-stone-500 hover:text-stone-900 transition-colors">← 上一页</a>
+            <a id="ssr-next-page" href="" class="hidden text-stone-500 hover:text-stone-900 transition-colors ml-auto">下一页 →</a>
+        </nav>
+    </div>
+
+    <footer class="max-w-[44rem] mx-auto px-6 pb-12 text-center text-stone-400 text-xs tracking-widest uppercase">
+        — End of Stream —
+    </footer>
+
+    <script>
+    (function () {
+        var active = document.body.getAttribute('data-active-tab');
+        if (active) {
+            document.querySelectorAll('.tab-link').forEach(function (el) {
+                if (el.getAttribute('data-tab') === active) el.setAttribute('data-active', 'true');
+            });
+        }
+    })();
+    </script>
+</body>
+</html>

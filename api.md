@@ -42,6 +42,13 @@
 - 前端按 `if (post.category)` 真值判断是否展示分类
 - 管理后台（`admin-posts.html` / `admin-edit.html`）继续用 `|| '未分类'` 兜底渲染
 
+### 0.5 内容类型 `type`（文章 vs 推文）⚡ 新增
+- DB 中 `posts.type` 取值：`'post'`（文章）/ `'tweet'`（推文），默认 `'post'`
+- 推文允许 `title` 为 `NULL`（无标题）
+- 推文 `slug` 缺失时后端按 `t-<时间戳>-<随机>` 自动生成，保证 UNIQUE 不冲突
+- **编辑时不允许 post ↔ tweet 互转**（slug 格式不同，转型会带来迁移成本）
+- 公开读接口 / 缓存 payload / KV list 键全部携带 `type` 字段
+
 ---
 
 ## 1. 公开端点（无需鉴权）
@@ -79,6 +86,8 @@
 | 参数 | 必填 | 说明 |
 |---|---|---|
 | `category` | 否 | 按分类过滤（注意：值为 `null` 的"无分类"文章不命中任何过滤项） |
+| `type` | 否 | `post` / `tweet`；不传则全量返回（管理后台 / 主页混合视图） |
+| `page` | 否 | 整数 ≥ 1；与 `type` 配合时按 `PAGE_SIZE=10` 分页 |
 
 成功响应 200：
 ```json
@@ -90,14 +99,23 @@
       "title": "...",
       "slug": "...",
       "category": "技术",   // 或 null
+      "type": "post",        // ⚡ post / tweet
       "views": 42,
+      "status": "published", // 仅全量请求时返回
       "created_at": "2026-06-11T08:00:00.000Z",
       "excerpt": "前 N 字纯文本摘要，N 由 site_settings.excerpt_length 决定（0 时为空串）"
     }
-  ]
+  ],
+  "has_more": true   // 仅分页请求时返回
 }
 ```
-- 上限：`LIMIT 100`，按 `created_at DESC`
+- 上限：分页请求 `PAGE_SIZE+1 = 11`（探测下一页）；非分页 `LIMIT 100`；管理后台无 LIMIT
+- 缓存键：
+  - `site:posts:list:page:<n>`（全量分页，兼容旧版）
+  - `site:posts:list:type:<post|tweet>:page:<n>`（按 type 分页）
+  - `site:posts:list:type:<post|tweet>:cat:<cat>`（type + 分类）
+  - `site:posts:list:cat:<cat>`（全量 + 分类）
+  - **管理后台**（无 category / page / type）**绕过 KV**，永远直查 D1
 - 缓存：`Cache-Control: no-store`（写后立即生效）
 - 摘要：服务端在边缘函数里现场计算，使用时根据 `excerpt_length` 设置做 markdown 剥离 + 词边界截断
 
@@ -114,9 +132,10 @@
 {
   "success": true,
   "data": {
-    "title": "...",
+    "title": "...",        // 推文可能为 null
     "content": "（原始 markdown）",
     "category": "技术",   // 或 null
+    "type": "post",        // ⚡ post / tweet
     "views": 43,           // 已 +1
     "created_at": "..."
   }
@@ -177,38 +196,50 @@
 
 ---
 
-### 2.2 `POST /api/push` — 新建文章
+### 2.2 `POST /api/push` — 新建文章 / 推文
 请求体：
 ```json
 {
-  "title":    "必填",
-  "slug":     "必填，会被 toLowerCase()",
+  "title":    "文章必填；推文可留空",
+  "slug":     "文章必填；推文可留空自动生成 t-<stamp>-<rand>",
   "content":  "必填，markdown",
-  "category": "可选，默认 '未分类'"
+  "category": "可选，默认 '未分类'",
+  "type":     "post / tweet，可省略。省略时由 title 留空自动判断（推文）"
 }
 ```
+- `type` 非法值兜底为 `post`
+- 文章必须有 `title`；推文 `title` 为 `null` 入库
+- 推文自动生成的 `slug` 形如 `t-lvo8a3-b4c5`（36 进制时间戳 + 4 位随机）
+- 写后清空所有 `site:posts:list:type:*` 前缀的 KV 列表缓存，以及 `site:posts:list:page:*` 旧键
+
 成功响应 200：`{ "success": true, "message": "Post saved to D1 successfully" }`
 错误：
-- `400 { success:false, error:"Title, slug and content are required" }`
+- `400 { success:false, error:"正文不能为空" }`
+- `400 { success:false, error:"文章必须填写标题" }`
 - `400 { success:false, error:"The slug already exists" }`（slug 唯一约束冲突）
 - `500 { success:false, error:err.message }`
 
 ---
 
-### 2.3 `POST /api/update` — 更新文章
+### 2.3 `POST /api/update` — 更新文章 / 推文
 请求体：
 ```json
 {
   "id":       1,           // 必填
-  "title":    "...",
+  "title":    "...",       // 文章必填；推文可空
   "slug":     "...",
   "content":  "...",
-  "category": "..."
+  "category": "...",
+  "status":   "published / draft（默认 published）"
 }
 ```
+- 编辑时 `type` 字段**会被忽略**（后端强制保持原 type，避免互转）
+- 文章 `title` 不能清空（清空将返回 400）
+- 草稿（`status='draft'`）**不**回填 `post:content:*` 缓存
+
 成功响应 200：`{ "success": true, "message": "文章已更新" }`
 错误：
-- `400` 缺字段 / slug 被占
+- `400` 缺字段 / slug 被占 / 编辑时改 type
 - `404 { success:false, error:"未找到该文章，可能已被删除" }`（基于 `meta.changes === 0`）
 
 ---
@@ -280,14 +311,24 @@ TOKEN=$(curl -s -X POST https://YOUR-DOMAIN/api/auth/login \
 
 # 2) 公开读
 curl -s https://YOUR-DOMAIN/api/list
+curl -s "https://YOUR-DOMAIN/api/list?type=post"
+curl -s "https://YOUR-DOMAIN/api/list?type=tweet"
+curl -s "https://YOUR-DOMAIN/api/list?type=post&page=2"
 curl -s "https://YOUR-DOMAIN/api/get?slug=d1-blog-guide"
 
 # 3) 写接口（支持两种鉴权方式）
 # 3.1) 使用登录 token
+# 3.1.1) 发文章
 curl -s -X POST https://YOUR-DOMAIN/api/push \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"title":"测试","slug":"test-1","content":"# hi","category":"技术"}'
+  -d '{"title":"测试","slug":"test-1","content":"# hi","category":"技术","type":"post"}'
+
+# 3.1.2) 发推文（title 和 slug 都可省略，type 可省略让后端自动判断）
+curl -s -X POST https://YOUR-DOMAIN/api/push \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"content":"今天天气不错，随手记一笔。","type":"tweet"}'
 
 # 3.2) 使用 API_TOKEN
 curl -s -X POST https://YOUR-DOMAIN/api/push \
@@ -328,8 +369,16 @@ curl -s -X POST https://YOUR-DOMAIN/api/user/update \
 -- 用户
 users(id, username UNIQUE, password_hash, nickname, avatar, created_at)
 
--- 文章
-posts(id, title, slug UNIQUE, content, category, views, status, author_id, created_at, updated_at)
+-- 文章（含 type 区分 post/tweet）
+posts(
+  id, title,         -- title 推文可空
+  slug UNIQUE,
+  content,
+  excerpt,
+  category,
+  type,              -- ⚡ 'post' | 'tweet'，默认 'post'
+  views, status, author_id, created_at, updated_at
+)
 
 -- 站点设置（key-value）
 site_settings(key PK, value, updated_at)
@@ -347,9 +396,11 @@ site_settings(key PK, value, updated_at)
 | 摘要 = 服务端现场算 | 摘要按当前 `excerpt_length` 实时截取 | `/api/list` 关掉缓存（`no-store`）以保证设置变更立即生效 |
 | `category = null` 归一化 | 公开读接口把 `''` / `'未分类'` 都映射成 `null` | 前端只判真值；管理后台仍显示 `未分类` 以便筛未分类文章 |
 | 浏览量 +1 异步 | `context.waitUntil` 不阻塞响应 | 极端情况 +1 失败不影响主请求 |
+| `type` 字段分流 | post / tweet 共享同一张表 + 同一详情路由 | 缓存键 / 查询参数 / SSR 模板按 type 分流，互转不开放 |
+| 推文 slug 自动生成 | `t-<timestamp36>-<rand4>` | 用户无需关心 slug 即可发推；互转成本不可接受，故锁定 type |
 
 ---
 
-> 文档版本：2026-06-11
-> 新增：API_TOKEN 鉴权支持（Cloudflare KV）
+> 文档版本：2026-06-13
+> 新增：推文（`type='tweet'`）支持、`/posts` 与 `/tweets` 独立列表页、API list 支持 `type` / `page` 参数
 > 维护者：随源码演进同步更新

@@ -1,8 +1,6 @@
 // functions/api/update.js
 const POST_CACHE_TTL = 604800;
 
-import { nowInShanghai } from "../lib/time.js";
-
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -17,11 +15,11 @@ export async function onRequestPost(context) {
   }
 
   try {
-    // ⚡ 引入 status 变量解析
-    const { id, title, slug, content, category, status } = await request.json();
+    // ⚡ 引入 status 变量解析；type 仅在「保留原 type」时使用（避免互转带来的 slug 灾难）
+    const { id, title, slug, content, category, status, type } = await request.json();
 
-    if (!id || !title || !slug || !content) {
-      return new Response(JSON.stringify({ success: false, error: "id / 标题 / 路径 / 正文不能为空" }), { status: 400 });
+    if (!id || !slug || !content) {
+      return new Response(JSON.stringify({ success: false, error: "id / 路径 / 正文不能为空" }), { status: 400 });
     }
 
     const newSlug = slug.trim().toLowerCase();
@@ -29,9 +27,24 @@ export async function onRequestPost(context) {
     // 规范化状态值，默认发布
     const targetStatus = (status && status.trim() === 'draft') ? 'draft' : 'published';
 
-    const oldPost = await env.DB.prepare("SELECT slug, category, created_at FROM posts WHERE id = ?").bind(id).first();
-    // 新数据使用上海时区（+08:00），历史数据保留原 UTC 不动
-    const now = nowInShanghai();
+    // ⚡ 拉取旧记录以便做 type 一致性兜底（保持原 type，不允许编辑时改 type）
+    const oldPost = await env.DB.prepare("SELECT slug, type, created_at FROM posts WHERE id = ?").bind(id).first();
+    if (!oldPost) {
+      return new Response(JSON.stringify({ success: false, error: "未找到该文章，可能已被删除" }), { status: 404 });
+    }
+
+    // ⚡ 推文允许 title 为空；文章必须有 title
+    const trimmedTitle = title ? String(title).trim() : '';
+    if (oldPost.type === 'post' && !trimmedTitle) {
+      return new Response(JSON.stringify({ success: false, error: "文章必须填写标题" }), { status: 400 });
+    }
+
+    // ⚡ 客户端若显式传 type 且与数据库原 type 不一致 → 拒绝（避免互转）
+    if (type && String(type).trim() !== '' && String(type).trim() !== oldPost.type) {
+      return new Response(JSON.stringify({ success: false, error: "不支持在编辑时修改内容类型" }), { status: 400 });
+    }
+
+    const now = new Date().toISOString();
 
     // 💡 进阶:用 RETURNING 一次性拿到 id/status/views/created_at,让 get.js 关键路径完全脱离 D1
     const updated = await env.DB
@@ -39,9 +52,9 @@ export async function onRequestPost(context) {
         `UPDATE posts
          SET title = ?, slug = ?, content = ?, category = ?, status = ?, updated_at = ?
          WHERE id = ?
-         RETURNING id, status, views, created_at`
+         RETURNING id, status, views, created_at, type`
       )
-      .bind(title.trim(), newSlug, content.trim(), targetCategory, targetStatus, now, id)
+      .bind(trimmedTitle || null, newSlug, content.trim(), targetCategory, targetStatus, now, id)
       .first();
 
     if (!updated) {
@@ -54,7 +67,17 @@ export async function onRequestPost(context) {
     }
     try { await env.KV.delete(`post:content:${newSlug}`); } catch (_) {}
 
-    // ⚡ 批量清除所有分页的首页列表缓存，防止漏网之鱼导致错位
+    // ⚡ 批量清除所有 type 维度的列表缓存
+    try {
+      let isComplete = false, cursor = undefined;
+      while (!isComplete) {
+        const listKeys = await env.KV.list({ prefix: "site:posts:list:type:", cursor });
+        for (const k of listKeys.keys) await env.KV.delete(k.name);
+        isComplete = listKeys.list_complete; cursor = listKeys.cursor;
+      }
+    } catch (_) {}
+
+    // 兼容清理：旧版不带 type 前缀的缓存键
     try {
       let isComplete = false, cursor = undefined;
       while (!isComplete) {
@@ -62,15 +85,11 @@ export async function onRequestPost(context) {
         for (const k of listKeys.keys) await env.KV.delete(k.name);
         isComplete = listKeys.list_complete; cursor = listKeys.cursor;
       }
-    } catch (_) {}
-
-    // 清理分类缓存
-    try {
-      let isComplete = false, cursor = undefined;
-      while (!isComplete) {
-        const kvKeys = await env.KV.list({ prefix: "site:posts:list:cat:", cursor });
-        for (const k of kvKeys.keys) await env.KV.delete(k.name);
-        isComplete = kvKeys.list_complete; cursor = kvKeys.cursor;
+      let c2 = undefined, done2 = false;
+      while (!done2) {
+        const listKeys = await env.KV.list({ prefix: "site:posts:list:cat:", cursor: c2 });
+        for (const k of listKeys.keys) await env.KV.delete(k.name);
+        done2 = listKeys.list_complete; c2 = listKeys.cursor;
       }
     } catch (_) {}
 
@@ -81,9 +100,10 @@ export async function onRequestPost(context) {
         id: updated.id,
         status: updated.status,
         views: updated.views,
-        title: title.trim(),
+        title: trimmedTitle || null,
         content: content.trim(),
         category: targetCategory,
+        type: updated.type || oldPost.type,
         created_at: updated.created_at
       };
       try {

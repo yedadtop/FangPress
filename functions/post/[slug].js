@@ -45,6 +45,24 @@ function formatDate(ts) {
     }
 }
 
+function formatDateTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (isNaN(d)) return '';
+    try {
+        const formatter = new Intl.DateTimeFormat('zh-CN', {
+            timeZone: 'Asia/Shanghai',
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hour12: false
+        });
+        const parts = formatter.formatToParts(d);
+        const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+        return `${map.year} · ${map.month} · ${map.day} ${map.hour}:${map.minute}`;
+    } catch (_) {
+        return '';
+    }
+}
+
 function stripMarkdown(md) {
     if (!md) return '';
     return String(md)
@@ -104,6 +122,7 @@ async function fetchPost(env, slug, context) {
         if (cached.status !== 'published') return { ok: false, status: 404 };
 
         const newViews = (Number(cached.views) || 0) + 1; // 仅用于前台立刻显示的乐观数值
+        const postType = cached.type || 'post';
 
         // ⚡ 修复 3：解决高并发竞态条件。让数据库加1，并直接返回真实权威值再塞回 KV
         context.waitUntil((async () => {
@@ -121,8 +140,8 @@ async function fetchPost(env, slug, context) {
         return {
             ok: true,
             post: {
-                id: cached.id, title: cached.title, content: cached.content,
-                category: cached.category ?? null, created_at: cached.created_at,
+                id: cached.id, title: cached.title || null, content: cached.content,
+                category: cached.category ?? null, type: postType, created_at: cached.created_at,
                 views: newViews // 返回给访客依然无延迟
             }
         };
@@ -131,7 +150,7 @@ async function fetchPost(env, slug, context) {
     // 2) D1 降级
     let dbPost;
     try {
-        dbPost = await env.DB.prepare('SELECT id, status, views, title, content, category, created_at FROM posts WHERE slug = ?').bind(normalized).first();
+        dbPost = await env.DB.prepare('SELECT id, status, views, title, content, category, type, created_at FROM posts WHERE slug = ?').bind(normalized).first();
     } catch (err) {
         return { ok: false, status: 500, error: err.message };
     }
@@ -140,6 +159,7 @@ async function fetchPost(env, slug, context) {
 
     const category = (!dbPost.category || String(dbPost.category).trim() === '') ? null : dbPost.category;
     const newViews = (Number(dbPost.views) || 0) + 1;
+    const postType = dbPost.type || 'post';
 
     // ⚡ 同样处理降级分支
     context.waitUntil((async () => {
@@ -147,8 +167,8 @@ async function fetchPost(env, slug, context) {
             const res = await env.DB.prepare('UPDATE posts SET views = views + 1 WHERE id = ? RETURNING views').bind(dbPost.id).first();
             const trueDbViews = res ? res.views : newViews;
             await env.KV.put(kvKey, JSON.stringify({
-                id: dbPost.id, status: dbPost.status, title: dbPost.title,
-                content: dbPost.content, category, created_at: dbPost.created_at,
+                id: dbPost.id, status: dbPost.status, title: dbPost.title || null,
+                content: dbPost.content, category, type: postType, created_at: dbPost.created_at,
                 views: trueDbViews // 使用 D1 真实反馈值
             }), { expirationTtl: 604800 });
         } catch (err) {
@@ -159,8 +179,8 @@ async function fetchPost(env, slug, context) {
     return {
         ok: true,
         post: {
-            id: dbPost.id, title: dbPost.title, content: dbPost.content,
-            category, created_at: dbPost.created_at, views: newViews
+            id: dbPost.id, title: dbPost.title || null, content: dbPost.content,
+            category, type: postType, created_at: dbPost.created_at, views: newViews
         }
     };
 }
@@ -237,11 +257,14 @@ export async function onRequestGet(context) {
 
     // 4) 准备渲染数据
     const siteTitle     = settings.site_title || 'Blog';
-    const safeTitle     = escapeHtml(post.title || '未命名');
-    const fullTitle     = `${post.title || '未命名'} · ${siteTitle}`;
+    const postType      = post.type || 'post';
+    const isTweet       = postType === 'tweet';
+    const rawTitle      = isTweet ? siteTitle : (post.title || '未命名');
+    const safeTitle     = escapeHtml(rawTitle);
+    const fullTitle     = `${rawTitle} · ${siteTitle}`;
     const safeDesc      = escapeHtml(makeExcerpt(post.content || '', 160));
-    const dateStr       = formatDate(post.created_at);
-    const showViews     = String(settings.show_views) === '1';
+    const dateStr       = isTweet ? formatDateTime(post.created_at) : formatDate(post.created_at);
+    const showViews     = !isTweet && String(settings.show_views) === '1';
 
     let contentHtml = '';
     try {
@@ -259,12 +282,33 @@ export async function onRequestGet(context) {
         .on('meta[name="description"]',       { element: el => el.setAttribute('content', safeDesc) })
         .on('meta[property="og:title"]',      { element: el => el.setAttribute('content', safeTitle) })
         .on('meta[property="og:description"]',{ element: el => el.setAttribute('content', safeDesc) })
-        .on('#ssr-post-title',    { element: el => el.setInnerContent(safeTitle) })
         .on('#ssr-post-time',     { element: el => el.setInnerContent(dateStr) })
         .on('#ssr-post-content',  { element: el => el.setInnerContent(contentHtml, { html: true }) })
         .on('#ssr-post-article',  { element: el => el.setAttribute('class', 'mt-12') })
         // ⚡️ 修复点：不要只清空内容，直接把骨架完全隐藏
         .on('#post-skeleton',     { element: el => el.setAttribute('class', 'hidden') });
+
+    if (isTweet) {
+        // 推文：整个 header（标题、分类、阅读量）全部隐藏；容器缩窄
+        rewriter.on('#ssr-post-title', { element: el => el.setInnerContent('') });
+        rewriter.on('#ssr-post-header', { element: el => el.setAttribute('class', 'hidden') });
+        rewriter.on('#ssr-post-type-badge', {
+            element: el => {
+                el.setInnerContent('推文');
+                el.setAttribute('class', 'inline-flex items-center px-2 py-0.5 rounded-xs text-stone-500 bg-stone-200/60 text-[10px] tracking-widest uppercase font-sans');
+            }
+        });
+        rewriter.on('#ssr-post-time', {
+            element: el => el.setAttribute('class', 'text-stone-400 text-xs tracking-wider font-sans tabular-nums')
+        });
+        rewriter.on('#ssr-post-article', {
+            element: el => el.setAttribute('class', 'mt-2 max-w-[36rem] mx-auto')
+        });
+        rewriter.on('meta[property="og:type"]', { element: el => el.setAttribute('content', 'article') });
+    } else {
+        rewriter.on('#ssr-post-title', { element: el => el.setInnerContent(safeTitle) });
+        rewriter.on('#ssr-post-type-badge', { element: el => el.setAttribute('class', 'hidden') });
+    }
 
     // 分类
     if (post.category) {
@@ -274,7 +318,7 @@ export async function onRequestGet(context) {
         rewriter.on('#ssr-post-category-sep', { element: el => el.setAttribute('class', 'hidden') });
     }
 
-    // 阅读量
+    // 阅读量（推文不显示）
     if (showViews) {
         rewriter.on('#ssr-post-views', {
             element: el => el.setInnerContent(renderViewsInner(post.views), { html: true })

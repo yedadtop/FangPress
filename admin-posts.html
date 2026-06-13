@@ -28,13 +28,22 @@
                 <h1 class="font-serif text-3xl md:text-[2rem] font-medium text-stone-900 mt-2">文章管理</h1>
                 <p class="text-sm text-stone-500 mt-2">共 <span id="total-count" class="font-semibold text-stone-700">0</span> 篇 · 当前显示 <span id="visible-count" class="font-semibold text-stone-700">0</span> 篇</p>
             </div>
-            <a href="admin-edit.html" target="admin-frame"
-               class="self-start md:self-auto inline-flex items-center gap-1.5 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-sm rounded-md transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                撰写新文
-            </a>
+            <div class="flex items-center gap-2 self-start md:self-auto">
+                <a href="admin-edit.html?tweet=1" target="admin-frame"
+                   class="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-stone-50 text-stone-700 text-sm border border-stone-200 rounded-md transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                    </svg>
+                    发推文
+                </a>
+                <a href="admin-edit.html" target="admin-frame"
+                   class="inline-flex items-center gap-1.5 px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-sm rounded-md transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    撰写新文
+                </a>
+            </div>
         </header>
 
         <div class="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -47,6 +56,11 @@
             </div>
             <select id="filter-category" class="px-3 py-2 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500 cursor-pointer">
                 <option value="">全部分类</option>
+            </select>
+            <select id="filter-type" class="px-3 py-2 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500 cursor-pointer">
+                <option value="">全部类型</option>
+                <option value="post">文章</option>
+                <option value="tweet">推文</option>
             </select>
         </div>
 
@@ -131,9 +145,11 @@
         function renderPosts() {
             const search = document.getElementById('search').value.trim().toLowerCase();
             const cat = document.getElementById('filter-category').value;
+            const typeFilter = document.getElementById('filter-type').value;
 
             let posts = allPosts;
             if (cat) posts = posts.filter(p => (p.category || '未分类') === cat);
+            if (typeFilter) posts = posts.filter(p => (p.type || 'post') === typeFilter);
             if (search) {
                 posts = posts.filter(p =>
                     (p.title || '').toLowerCase().includes(search) ||
@@ -164,14 +180,25 @@
             emptyEl.classList.add('hidden');
             listEl.classList.remove('hidden');
 
-            listEl.innerHTML = posts.map(p => `
+            listEl.innerHTML = posts.map(p => {
+                const postType = p.type || 'post';
+                const isTweet = postType === 'tweet';
+                const typeBadge = isTweet
+                    ? '<span class="shrink-0 text-[10px] uppercase tracking-wider font-semibold text-stone-600 border border-stone-300 px-1.5 py-0.5 rounded-sm bg-stone-200/40">推文</span>'
+                    : '<span class="shrink-0 text-[10px] uppercase tracking-wider font-semibold text-stone-500 border border-stone-200 px-1.5 py-0.5 rounded-sm bg-stone-100/50">文章</span>';
+                // 推文无标题时显示 slug 摘要
+                const titleDisplay = isTweet && !p.title
+                    ? `<span class="text-stone-400 italic font-serif">${escapeHtml((p.excerpt || p.slug || '').slice(0, 60))}${(p.excerpt || '').length > 60 ? '…' : ''}</span>`
+                    : escapeHtml(p.title || '（无标题）');
+                return `
                 <div class="post-row px-5 md:px-6 py-5 flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 mb-1.5">
+                            ${typeBadge}
                             <span class="shrink-0 text-[10px] uppercase tracking-wider font-semibold text-stone-500 border border-stone-200 px-1.5 py-0.5 rounded-sm bg-stone-100/50">
                                 ${escapeHtml(p.category || '未分类')}
                             </span>
-                            <h3 class="font-serif text-base text-stone-900 truncate">${escapeHtml(p.title)}</h3>
+                            <h3 class="font-serif text-base text-stone-900 truncate">${titleDisplay}</h3>
                         </div>
                         <p class="text-[11px] text-stone-400 font-mono tracking-wide">
                             /${escapeHtml(p.slug)}
@@ -182,7 +209,7 @@
                         </p>
                     </div>
                     <div class="flex items-center gap-1 shrink-0 md:opacity-70 md:hover:opacity-100 transition-opacity">
-                        <a href="/post.html?slug=${encodeURIComponent(p.slug)}" target="_blank"
+                        <a href="/post/${encodeURIComponent(p.slug)}" target="_blank"
                            class="action-btn px-2.5 py-1.5 text-xs text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded">
                             查看
                         </a>
@@ -190,13 +217,14 @@
                            class="action-btn px-2.5 py-1.5 text-xs text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded">
                             编辑
                         </a>
-                        <button data-id="${p.id}" data-title="${escapeHtml(p.title)}"
+                        <button data-id="${p.id}" data-title="${escapeHtml(p.title || p.slug || '该项')}"
                                 class="action-btn px-2.5 py-1.5 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer delete-btn">
                             删除
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             // 绑定删除
             listEl.querySelectorAll('.delete-btn').forEach(btn => {
@@ -233,6 +261,7 @@
 
         document.getElementById('search').addEventListener('input', renderPosts);
         document.getElementById('filter-category').addEventListener('change', renderPosts);
+        document.getElementById('filter-type').addEventListener('change', renderPosts);
 
         document.addEventListener('DOMContentLoaded', loadPosts);
     </script>
