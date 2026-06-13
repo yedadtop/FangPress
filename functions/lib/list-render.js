@@ -52,25 +52,25 @@ export function renderPostItem(post, i, showViews) {
     const type = post.type || 'post';
 
     // 推文渲染(混合列表场景,如首页 mix 模式):
-    //  - 日期独占顶行(桌面端右对齐),与文章「标题 + 日期」行位置一致
-    //  - 日期的正下方放正文,确保「日期下面有字」
+    //  - 正文与日期同行:正文 flex-1 占左,日期 md:ml-auto + shrink-0 推到最右,items-baseline 基线对齐
+    //  - 正文自然换行后覆盖到日期下方,确保「日期下面有字」
     //  - 不显示「推文」小标
     //  - 唯一可见差异:左侧竖线 + 左侧内边距
     if (type === 'tweet') {
-        const dateStr = formatDate(post.created_at);
-        const metaRow = dateStr
-            ? `<div class="flex items-center md:justify-end text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5 font-sans">
-                 <time>${dateStr}</time>
-               </div>`
-            : '';
         const excerpt = post.excerpt
-            ? `<p class="mt-2.5 font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">${escapeHtml(post.excerpt)}</p>`
+            ? `<p class="md:flex-1 font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">${escapeHtml(post.excerpt)}</p>`
+            : '';
+        const dateStr = formatDate(post.created_at);
+        const meta = dateStr
+            ? `<time class="md:ml-auto md:shrink-0 text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">${dateStr}</time>`
             : '';
         return `
             <article class="fade-up py-7 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
                 <a href="/post/${encodeURIComponent(slug)}" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">
-                    ${metaRow}
-                    ${excerpt}
+                    <div class="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-6">
+                        ${excerpt}
+                        ${meta}
+                    </div>
                 </a>
             </article>
         `;
