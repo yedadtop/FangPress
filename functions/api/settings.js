@@ -1,5 +1,6 @@
 // functions/api/settings.js
-const ALLOWED_KEYS = new Set(["site_title", "site_subtitle", "show_views", "excerpt_length"]);
+const ALLOWED_KEYS = new Set(["site_title", "site_subtitle", "show_views", "excerpt_length", "home_mode"]);
+const ALLOWED_HOME_MODES = new Set(["mix", "posts", "tweets"]);
 const KV_SETTINGS_KEY = "site:settings:data";
 
 import { nowInShanghai } from "../lib/time.js";
@@ -65,6 +66,8 @@ export async function onRequestPost(context) {
         const n = parseInt(strValue, 10);
         if (!Number.isInteger(n) || n < 0 || n > 1000) continue;
         strValue = String(n);
+      } else if (key === "home_mode") {
+        if (!ALLOWED_HOME_MODES.has(strValue)) continue;
       }
       await upsert.bind(key, strValue, now).run();
       touched++;

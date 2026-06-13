@@ -43,6 +43,20 @@ export async function onRequestGet(context) {
     let posts = (listObj && listObj.success && Array.isArray(listObj.data)) ? listObj.data : [];
     const settings = (settingsObj && settingsObj.data) ? settingsObj.data : {};
 
+    // ⚡ 默认主页：根据 home_mode 把根路径重定向到 /posts 或 /tweets
+    // 缺省/非法值回落到 mix（保持原有行为）
+    const homeMode = String(settings.home_mode || 'mix');
+    if (homeMode === 'posts' || homeMode === 'tweets') {
+        const target = homeMode === 'posts' ? '/posts' : '/tweets';
+        return new Response(null, {
+            status: 302,
+            headers: {
+                'Location': target,
+                'Cache-Control': 'no-store'
+            }
+        });
+    }
+
     // ⚡ 修复 1：如果命中缓存，从 KV 缓存对象中读取真正的下一页状态
     let hasNextPage = (listObj && listObj.has_more === true) ? true : false;
 

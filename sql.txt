@@ -53,4 +53,5 @@ INSERT INTO site_settings (key, value, updated_at) VALUES
     ('site_title',     'Quinn''s Space',                                        '2026-06-12T05:00:00.000Z'),
     ('site_subtitle',  '基于 Cloudflare Pages & D1 关系型数据库的纯文字内容流',    '2026-06-12T05:00:00.000Z'),
     ('show_views',     '1',                                                     '2026-06-12T05:00:00.000Z'),
-    ('excerpt_length', '200',                                                   '2026-06-12T05:00:00.000Z');
+    ('excerpt_length', '200',                                                   '2026-06-12T05:00:00.000Z'),
+    ('home_mode',      'mix',                                                   '2026-06-12T05:00:00.000Z');
