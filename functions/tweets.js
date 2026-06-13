@@ -25,6 +25,11 @@ export async function onRequestGet(context) {
         return new Response('Failed to load template', { status: 500 });
     }
 
+    // ⚡ 修复 26：模板 404 时不要继续走 SSR
+    if (templateResp.status === 404) {
+        return new Response(null, { status: 404 });
+    }
+
     const [listRaw, settings, navs] = await Promise.all([
         env.KV.get(currentKvKey).catch(() => null),
         getSettings(env, context),

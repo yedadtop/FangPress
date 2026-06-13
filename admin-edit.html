@@ -260,8 +260,8 @@
             <form id="post-form" class="space-y-6">
                 <input type="hidden" id="post-id">
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="title-slug-row">
+                    <div id="title-field">
                         <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">
                             文章标题 <span class="text-stone-300 normal-case tracking-normal">（推文可留空）</span>
                         </label>
@@ -269,7 +269,7 @@
                                class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-base font-serif focus:outline-none focus:border-stone-500"
                                placeholder="一个能抓住眼球的标题（推文留空即可）">
                     </div>
-                    <div>
+                    <div id="slug-field">
                         <label class="block text-[10px] uppercase tracking-widest text-stone-400 mb-1.5">
                             唯一路径 (Slug) <span class="text-stone-300 normal-case tracking-normal">（推文可留空自动生成）</span>
                         </label>
@@ -1025,7 +1025,18 @@
                 loadPostForEdit(editId);
             } else {
                 if (tweetModeFromUrl) {
-                    // ⚡ 推文快捷入口：清空标题占位让徽标显示「推文」，其余不动
+                    // ⚡ 推文快捷入口（来自 admin-posts.html 的「发推文」按钮）：
+                    //   1) 隐藏整个标题输入区，因为推文不需要标题
+                    //   2) 把 Slug 区拉成整行宽度（视觉补偿）
+                    //   3) 页面标题/eyebrow 切换为推文语境
+                    //   4) 徽标显示「推文」
+                    const titleField = document.getElementById('title-field');
+                    const slugField = document.getElementById('slug-field');
+                    if (titleField) titleField.classList.add('hidden');
+                    if (slugField) slugField.classList.add('md:col-span-2');
+                    document.getElementById('page-eyebrow').textContent = 'New Tweet';
+                    document.getElementById('page-title').textContent = '撰写推文';
+                    document.getElementById('page-subtitle').textContent = '分享一段即时想法，路径会自动生成';
                     const titleEl = document.getElementById('post-title');
                     if (titleEl) {
                         titleEl.value = '';

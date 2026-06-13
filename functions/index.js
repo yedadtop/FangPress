@@ -33,6 +33,13 @@ export async function onRequestGet(context) {
         return new Response('Failed to load template', { status: 500 });
     }
 
+    // ⚡ 修复 26：若静态资源本身就是 404（例如被路由到这里的 /a、/foo 等未知路径），
+    //   必须直接让 Cloudflare 的 404 兜底接管（指向 public/404.html），不要继续走 SSR，
+    //   否则会出现"只有 header 没有 body"的空页面
+    if (templateResp.status === 404) {
+        return new Response(null, { status: 404 });
+    }
+
     // 2. 并行拉取当前页列表 + 设置 + 导航（KV 不可用时不阻塞，try 容错）
     const [listRaw, settings, navs] = await Promise.all([
         env.KV.get(currentKvKey).catch(() => null),
