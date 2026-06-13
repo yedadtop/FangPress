@@ -116,12 +116,26 @@
                             </div>
                         `;
                     } else {
-                        recentEl.innerHTML = recent.map(p => `
+                        recentEl.innerHTML = recent.map(p => {
+                            // 推文无标题时用 excerpt/slug 截断作为兜底（与 admin-posts.html 保持一致）
+                            const isTweet = (p.type || 'post') === 'tweet';
+                            const fallbackText = (p.excerpt || p.slug || '').slice(0, 60) + ((p.excerpt || '').length > 60 ? '…' : '');
+                            const titleDisplay = isTweet && !p.title
+                                ? `<span class="text-stone-400 italic font-serif">${escapeHtml(fallbackText)}</span>`
+                                : escapeHtml(p.title || '（无标题）');
+                            // 推文加一个小徽标，避免与文章混淆
+                            const typeBadge = isTweet
+                                ? '<span class="shrink-0 text-[10px] uppercase tracking-wider font-semibold text-stone-600 border border-stone-300 px-1.5 py-0.5 rounded-sm bg-stone-200/40">推文</span>'
+                                : '';
+                            return `
                             <a href="admin-edit.html?id=${p.id}" target="admin-frame"
                                class="block px-6 py-4 hover:bg-stone-50/60 transition-colors group">
                                 <div class="flex items-baseline justify-between gap-4">
                                     <div class="min-w-0 flex-1">
-                                        <h3 class="font-serif text-base text-stone-900 group-hover:text-stone-600 transition-colors truncate">${escapeHtml(p.title)}</h3>
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            ${typeBadge}
+                                            <h3 class="font-serif text-base text-stone-900 group-hover:text-stone-600 transition-colors truncate">${titleDisplay}</h3>
+                                        </div>
                                         <p class="text-[11px] text-stone-400 mt-1 tracking-wide">
                                             <span class="uppercase">${escapeHtml(p.category || '未分类')}</span>
                                             <span class="mx-1.5">·</span>
@@ -133,7 +147,8 @@
                                     <span class="text-xs text-stone-400 shrink-0">编辑 →</span>
                                 </div>
                             </a>
-                        `).join('');
+                        `;
+                        }).join('');
                     }
 
                     document.getElementById('content').classList.remove('hidden');
