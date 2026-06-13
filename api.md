@@ -189,6 +189,7 @@
 - 缓存键：`site:navs:list:active`
 - 缓存：`Cache-Control: public, max-age=10, s-maxage=60`
 - 加 `?admin=1` 需带 Bearer Token，返回全量（含禁用项）
+- **SSR 边缘函数**（`index.js` / `posts.js` / `tweets.js` / `post/[slug].js`）使用 `getActiveNavs(env, context)`，按 KV 优先 → D1 降级并 `context.waitUntil` 异步回填 → 硬编码「文章/推文」三层兜底，**绝不会渲染空导航**
 
 ---
 

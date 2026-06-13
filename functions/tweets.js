@@ -4,11 +4,10 @@
 
 import { makeExcerpt } from './api/helpers.js';
 import { renderPostItem, safeParseKV, escapeHtml } from './lib/list-render.js';
-import { renderHeaderNav, renderMobileMenu } from './lib/nav-render.js';
+import { renderHeaderNav, renderMobileMenu, getActiveNavs } from './lib/nav-render.js';
 
 const KV_LIST_KEY_PREFIX = "site:posts:list:type:tweet:page:";
 const KV_SETTINGS_KEY = "site:settings:data";
-const KV_NAVS_KEY = "site:navs:list:active";
 const PAGE_SIZE = 10;
 
 const PAGE_TAB = 'tweets';
@@ -27,18 +26,16 @@ export async function onRequestGet(context) {
         return new Response('Failed to load template', { status: 500 });
     }
 
-    const [listRaw, settingsRaw, navsRaw] = await Promise.all([
+    const [listRaw, settingsRaw, navs] = await Promise.all([
         env.KV.get(currentKvKey).catch(() => null),
         env.KV.get(KV_SETTINGS_KEY).catch(() => null),
-        env.KV.get(KV_NAVS_KEY).catch(() => null)
+        getActiveNavs(env, context)
     ]);
 
     const listObj = safeParseKV(listRaw);
     const settingsObj = safeParseKV(settingsRaw);
     let posts = (listObj && listObj.success && Array.isArray(listObj.data)) ? listObj.data : [];
     const settings = (settingsObj && settingsObj.data) ? settingsObj.data : {};
-    const navsObj = safeParseKV(navsRaw);
-    const navs = (navsObj && navsObj.success && Array.isArray(navsObj.data)) ? navsObj.data : [];
 
     let hasNextPage = (listObj && listObj.has_more === true) ? true : false;
 

@@ -122,7 +122,6 @@
 
     <!-- ============== 弹窗 ============== -->
     <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-stone-900/40 modal-backdrop" onclick="closeModal()"></div>
         <div class="relative w-full max-w-md bg-white rounded-2xl border border-stone-200/60 shadow-xl modal-panel">
             <div class="px-6 py-5 border-b border-stone-200/60 flex items-center justify-between">
                 <h3 id="modal-title" class="font-serif text-lg font-medium text-stone-900">新增导航</h3>
@@ -253,8 +252,10 @@
                 const isExt = /^https?:\/\//i.test(n.href || '');
                 return `
                 <div class="nav-row px-5 md:px-6 py-4 flex items-start gap-3" draggable="true" data-id="${n.id}" data-idx="${i}">
-                    <svg class="drag-handle w-4 h-4 mt-1 text-stone-300 shrink-0" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5h.008v.008H8.25V4.5zm0 7.5h.008v.008H8.25V12zm0 7.5h.008v.008H8.25v-.008zm7.5-15h.008v.008h-.008V4.5zm0 7.5h.008v.008h-.008V12zm0 7.5h.008v.008h-.008v-.008z" />
+                    <svg class="drag-handle w-4 h-4 mt-1 text-stone-400 shrink-0" viewBox="0 0 12 18" fill="currentColor" aria-hidden="true">
+                        <circle cx="2"  cy="2"  r="1.2"/><circle cx="10" cy="2"  r="1.2"/>
+                        <circle cx="2"  cy="9"  r="1.2"/><circle cx="10" cy="9"  r="1.2"/>
+                        <circle cx="2"  cy="16" r="1.2"/><circle cx="10" cy="16" r="1.2"/>
                     </svg>
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 flex-wrap">

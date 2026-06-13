@@ -5,10 +5,9 @@
 // 依赖：marked（边缘 Markdown→HTML）。请确保 package.json 含 "marked" 依赖。
 
 import { marked } from '../lib/marked.esm.js';
-import { renderHeaderNav, renderMobileMenu } from '../lib/nav-render.js';
+import { renderHeaderNav, renderMobileMenu, getActiveNavs } from '../lib/nav-render.js';
 
 const KV_SETTINGS_KEY = 'site:settings:data';
-const KV_NAVS_KEY = 'site:navs:list:active';
 
 // ============== HTML 工具 ==============
 
@@ -192,17 +191,12 @@ async function fetchSettings(env) {
     return (obj && obj.data) ? obj.data : {};
 }
 
-async function fetchNavs(env) {
-    const obj = safeParse(await env.KV.get(KV_NAVS_KEY).catch(() => null));
-    return (obj && obj.success && Array.isArray(obj.data)) ? obj.data : [];
-}
-
 // ============== 降级页 ==============
 
 /**
  * 用同一个 post.html 模板渲染 404/错误态，避免裸 404 文本
  */
-async function renderFallbackPage(env, request, url, type) {
+async function renderFallbackPage(env, request, url, type, context) {
     const statusMap = {
         'bad-slug':  { id: 'status-bad-slug', cls: 'py-24 text-center' },
         'not-found': { id: 'status-not-found', cls: 'py-24 text-center' },
@@ -220,7 +214,7 @@ async function renderFallbackPage(env, request, url, type) {
 
     const settings404 = await fetchSettings(env);
     const siteTitle404 = (settings404 && settings404.site_title) ? settings404.site_title : 'Blog';
-    const navs404 = await fetchNavs(env);
+    const navs404 = await getActiveNavs(env, context);
     const headerNavHtml404 = renderHeaderNav(navs404);
     const mobileNavHtml404 = renderMobileMenu(navs404);
 
@@ -251,15 +245,15 @@ export async function onRequestGet(context) {
 
     // 1) slug 缺失
     if (!slug || !slug.trim()) {
-        return renderFallbackPage(env, request, url, 'bad-slug');
+        return renderFallbackPage(env, request, url, 'bad-slug', context);
     }
 
     // 2) 拉取文章（KV → D1）
     const result = await fetchPost(env, slug, context);
     if (!result.ok) {
-        if (result.status === 404) return renderFallbackPage(env, request, url, 'not-found');
-        if (result.status === 400) return renderFallbackPage(env, request, url, 'bad-slug');
-        return renderFallbackPage(env, request, url, 'error');
+        if (result.status === 404) return renderFallbackPage(env, request, url, 'not-found', context);
+        if (result.status === 400) return renderFallbackPage(env, request, url, 'bad-slug', context);
+        return renderFallbackPage(env, request, url, 'error', context);
     }
     const post = result.post;
 
@@ -272,7 +266,7 @@ export async function onRequestGet(context) {
         return new Response('Internal Server Error: Missing Template', { status: 500 });
     }
     const settings = await fetchSettings(env);
-    const navs = await fetchNavs(env);
+    const navs = await getActiveNavs(env, context);
     const headerNavHtml = renderHeaderNav(navs);
     const mobileNavHtml = renderMobileMenu(navs);
 
