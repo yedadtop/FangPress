@@ -948,18 +948,11 @@
                 }
             });
 
-            contentEl.addEventListener('input', () => {
-                if (isFullscreen) {
-                    document.getElementById('post-content-fs').value = contentEl.value;
-                    updateWordCount();
-                } else {
-                    updateWordCount();
-                }
-            });
-
+            // ⚡ 修复 18+19：删除无意义分支与重复赋值。同步逻辑只在「全屏↔非全屏切换」时由 enter/exit 处理。
+            contentEl.addEventListener('input', updateWordCount);
             contentElFs.addEventListener('input', () => {
                 if (isFullscreen) {
-                    document.getElementById('post-content').value = contentElFs.value;
+                    contentEl.value = contentElFs.value;
                     updateWordCount();
                 }
             });
@@ -969,11 +962,9 @@
                 if (e.ctrlKey || e.metaKey) {
                     if (e.key === 'b') {
                         e.preventDefault();
-                        isFullscreen = false;
                         insertFormat('**', '**');
                     } else if (e.key === 'i') {
                         e.preventDefault();
-                        isFullscreen = false;
                         insertFormat('*', '*');
                     }
                 }
@@ -1007,7 +998,10 @@
                 if (!data || typeof data !== 'object') return;
 
                 if (typeof data.title === 'string') {
-                    document.getElementById('post-title').value = data.title;
+                    const titleEl = document.getElementById('post-title');
+                    titleEl.value = data.title;
+                    // ⚡ 修复 8：JSON 导入后刷新类型徽标（自动 slug 已被 slugEl.dataset.touched=1 锁定）
+                    if (typeof updateTypeBadge === 'function') updateTypeBadge(data.title);
                 }
                 if (typeof data.slug === 'string') {
                     const slugEl = document.getElementById('post-slug');
@@ -1024,6 +1018,7 @@
                     fsEl.value = data.content;
                     updateWordCount();
                 }
+                if (typeof updatePreview === 'function') updatePreview();
             });
 
             if (isEdit) {

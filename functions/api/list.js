@@ -38,8 +38,11 @@ export async function onRequestGet(context) {
     currentKvKey = `${KV_LIST_KEY_PREFIX}${normalizedType}:cat:${formattedCategory}`;
   } else if (normalizedType && isPaginated) {
     currentKvKey = `${KV_LIST_KEY_PREFIX}${normalizedType}:page:${page}`;
+  } else if (formattedCategory && isPaginated) {
+    // ⚡ 修复 1：分类 + 分页的独立缓存键（带 type 的情况在上面已处理）
+    currentKvKey = `${KV_CAT_KEY_PREFIX}${formattedCategory}:page:${page}`;
   } else if (!normalizedType && isPaginated) {
-    // 不带 type 的分页（兼容历史调用）
+    // 不带 type 不带 category 的分页（兼容历史调用）
     currentKvKey = `${KV_LIST_KEY_PREFIX_LEGACY}${page}`;
   } else if (!normalizedType && formattedCategory) {
     currentKvKey = `${KV_CAT_KEY_PREFIX}${formattedCategory}`;
@@ -77,6 +80,16 @@ export async function onRequestGet(context) {
          WHERE LOWER(category) = ? AND type = ? AND status = 'published'
          ORDER BY created_at DESC LIMIT 100`
       ).bind(formattedCategory, normalizedType);
+    } else if (formattedCategory && isPaginated) {
+      // ⚡ 修复 1：分类 + 分页的独立分支，真正分页而不是全量 LIMIT 100
+      const offset = (page - 1) * PAGE_SIZE;
+      stmt = env.DB.prepare(
+        `SELECT id, title, slug, content, category, type, views, created_at
+         FROM posts
+         WHERE LOWER(category) = ? AND status = 'published'
+         ORDER BY created_at DESC
+         LIMIT ${PAGE_SIZE + 1} OFFSET ${offset}`
+      ).bind(formattedCategory);
     } else if (formattedCategory) {
       stmt = env.DB.prepare(
         `SELECT id, title, slug, content, category, type, views, created_at
@@ -125,7 +138,8 @@ export async function onRequestGet(context) {
     let hasMore = false;
     let pageResults = rawResults;
 
-    if (isPaginated && (normalizedType || !formattedCategory)) {
+    // ⚡ 修复 2：分页请求（含分类 + 分页、type + 分页、纯分页）都要探测下一页
+    if (isPaginated) {
       hasMore = rawResults.length > PAGE_SIZE;
       if (hasMore) pageResults = rawResults.slice(0, PAGE_SIZE);
     }
@@ -142,7 +156,8 @@ export async function onRequestGet(context) {
       excerpt: makeExcerpt(p.content || '', excerptLength)
     }));
 
-    const responseData = (isPaginated && (normalizedType || !formattedCategory))
+    // ⚡ 修复 2：所有分页请求都返回 has_more
+    const responseData = isPaginated
       ? { success: true, data, has_more: hasMore }
       : { success: true, data };
 

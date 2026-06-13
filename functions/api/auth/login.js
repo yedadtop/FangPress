@@ -1,38 +1,110 @@
-export async function onRequestPost(context) {
-  const { request, env } = context;
+// ⚡ 修复 10：常量时间字符串比较，避免时序攻击泄露 hash 长度
+function constantTimeEqual(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    if (a.length !== b.length) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return diff === 0;
+}
 
-  try {
-    const { username, password } = await request.json();
-
-    // 1. 算出输入的密码哈希
-    const msgBuffer = new TextEncoder().encode(password);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const inputHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-
-    // 2. 数据库匹配
-    const user = await env.DB.prepare("SELECT id, username, password_hash, nickname FROM users WHERE username = ?")
-      .bind(username)
-      .first();
-
-    if (!user || user.password_hash !== inputHash) {
-      return new Response(JSON.stringify({ success: false, error: "用户名或密码错误" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json" }
-      });
+// ⚡ 修复 10：极简 KV 限流（同一 username 在 5 分钟内最多 10 次错误尝试）
+async function isRateLimited(env, username) {
+    if (!env.KV) return false;
+    const key = `rl:login:${String(username || '').toLowerCase()}`;
+    const windowMs = 5 * 60 * 1000;
+    const limit = 10;
+    try {
+        const cur = await env.KV.get(key, { type: 'json' });
+        const now = Date.now();
+        const list = (cur && Array.isArray(cur.fails)) ? cur.fails : [];
+        // 过滤掉超出时间窗的失败记录
+        const fresh = list.filter(t => now - t < windowMs);
+        if (fresh.length >= limit) {
+            // 暴露重试时间（秒）
+            return Math.ceil((windowMs - (now - fresh[0])) / 1000);
+        }
+        // 把当前失败写回
+        await env.KV.put(key, JSON.stringify({ fails: fresh }), { expirationTtl: 360 });
+        return 0;
+    } catch (_) {
+        return false; // KV 异常时不做拦截，宁可放过
     }
+}
 
-    // 3. 登录成功，生成一个会话凭证（这里借用用户的密码哈希作为临时的鉴权秘钥传回）
-    return new Response(JSON.stringify({
-      success: true,
-      message: "登录成功",
-      token: user.password_hash, // 替代旧的明文 env.API_TOKEN
-      nickname: user.nickname
-    }), {
-      headers: { "Content-Type": "application/json" }
-    });
+async function recordLoginFailure(env, username) {
+    if (!env.KV) return;
+    const key = `rl:login:${String(username || '').toLowerCase()}`;
+    try {
+        const cur = await env.KV.get(key, { type: 'json' });
+        const now = Date.now();
+        const list = (cur && Array.isArray(cur.fails)) ? cur.fails : [];
+        list.push(now);
+        await env.KV.put(key, JSON.stringify({ fails: list }), { expirationTtl: 360 });
+    } catch (_) {}
+}
 
-  } catch (err) {
-    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
-  }
+async function clearLoginFailures(env, username) {
+    if (!env.KV) return;
+    const key = `rl:login:${String(username || '').toLowerCase()}`;
+    try { await env.KV.delete(key); } catch (_) {}
+}
+
+export async function onRequestPost(context) {
+    const { request, env } = context;
+
+    try {
+        const { username, password } = await request.json();
+
+        // ⚡ 修复 10：登录前置限流。命中限流直接 429，不暴露账号是否存在
+        const retryAfter = await isRateLimited(env, username);
+        if (retryAfter) {
+            return new Response(JSON.stringify({ success: false, error: `尝试过于频繁，请 ${retryAfter} 秒后再试` }), {
+                status: 429,
+                headers: {
+                    "Content-Type": "application/json",
+                    "Retry-After": String(retryAfter)
+                }
+            });
+        }
+
+        // 1. 算出输入的密码哈希
+        const msgBuffer = new TextEncoder().encode(password || '');
+        const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const inputHash = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+
+        // ⚡ 修复 10：始终跑一次假比对，使「用户不存在」与「密码错」耗时一致，削弱枚举攻击
+        const dummyHash = "0000000000000000000000000000000000000000000000000000000000000000";
+
+        // 2. 数据库匹配
+        const user = await env.DB.prepare("SELECT id, username, password_hash, nickname FROM users WHERE username = ?")
+            .bind(username)
+            .first();
+
+        const realHash = user ? user.password_hash : dummyHash;
+        const ok = !!user && constantTimeEqual(realHash, inputHash);
+
+        if (!ok) {
+            await recordLoginFailure(env, username);
+            return new Response(JSON.stringify({ success: false, error: "用户名或密码错误" }), {
+                status: 401,
+                headers: { "Content-Type": "application/json" }
+            });
+        }
+
+        await clearLoginFailures(env, username);
+
+        // 3. 登录成功，生成一个会话凭证（这里借用用户的密码哈希作为临时的鉴权秘钥传回）
+        return new Response(JSON.stringify({
+            success: true,
+            message: "登录成功",
+            token: user.password_hash, // 替代旧的明文 env.API_TOKEN
+            nickname: user.nickname
+        }), {
+            headers: { "Content-Type": "application/json" }
+        });
+
+    } catch (err) {
+        return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+    }
 }

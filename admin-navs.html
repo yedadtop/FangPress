@@ -438,6 +438,14 @@
 
         // ========== 拖拽排序 ==========
         let dragSrcId = null;
+        // ⚡ 修复 20：拖拽后本地 sort_order 也要同步成「(i+1)*10」，
+        //   否则列表里仍显示旧 sort_order（与 renderPreview 排序不一致，看着像没生效）
+        function recomputeSortOrder() {
+            for (let i = 0; i < allNavs.length; i++) {
+                allNavs[i].sort_order = (i + 1) * 10;
+            }
+        }
+
         function initDragSort(listEl) {
             listEl.querySelectorAll('.nav-row').forEach(row => {
                 row.addEventListener('dragstart', (e) => {
@@ -474,6 +482,7 @@
                     toIdx = allNavs.findIndex(n => n.id === Number(row.dataset.id));
                     if (!before) toIdx += 1;
                     allNavs.splice(toIdx, 0, moved);
+                    recomputeSortOrder();
                     orderDirty = true;
                     renderList();
                 });

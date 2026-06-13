@@ -77,6 +77,7 @@ export async function onRequestPost(context) {
     // ========== 仅在最后一个批次清理全站缓存 ==========
     if (isLastChunk) {
       try { await clearKvByPrefix(env, "site:posts:list:page:"); } catch (_) {}
+      try { await clearKvByPrefix(env, "site:posts:list:type:"); } catch (_) {}
       try { await clearKvByPrefix(env, "site:posts:list:cat:"); } catch (_) {}
       try { await env.KV.delete("site:settings:data"); } catch (_) {}
       try { await clearKvByPrefix(env, "post:content:"); } catch (_) {}

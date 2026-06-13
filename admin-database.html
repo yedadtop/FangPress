@@ -361,12 +361,214 @@
         }
         function closeTableData() { document.getElementById('table-data-panel').classList.add('hidden'); }
 
-        // ============== SQL 导出 / 导入 (省略无改动细节) ==============
-        async function exportSql() { /* 原逻辑不变 */ }
-        function importSql() { /* 原逻辑不变 */ }
-        function splitSqlIntoStatements(text) { /* 原逻辑不变 */ }
-        async function submitImport(stmts, chunks) { /* 原逻辑不变 */ }
-        // 拖拽逻辑保持不变...
+        // ============== SQL 导出 / 导入 ==============
+        // ⚡ 修复 5：补全之前被注释占位的空函数，与后端 /api/sql/export、/api/sql/import 联动
+
+        // —— 导出 ——
+        async function exportSql() {
+            const btn = document.getElementById('export-btn');
+            const statusEl = document.getElementById('export-status');
+            btn.disabled = true;
+            setStatus(statusEl, '正在生成 SQL…', 'info');
+
+            try {
+                // 走 fetch + blob，因为响应是 streaming 文本，不是 JSON
+                const res = await fetch('/api/sql/export', { headers: authHeaders() });
+                if (!res.ok) {
+                    let err = '导出失败';
+                    try { const j = await res.json(); err = j.error || err; } catch (_) {}
+                    setStatus(statusEl, '✗ ' + err, 'error');
+                    btn.disabled = false;
+                    return;
+                }
+                const blob = await res.blob();
+                // 尝试从响应头拿到后端建议的文件名
+                const dispo = res.headers.get('Content-Disposition') || '';
+                const m = dispo.match(/filename="([^"]+)"/);
+                const filename = m ? m[1] : `blog-db-${Date.now()}.sql`;
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                // 延迟释放 revoke，确保浏览器已开始下载
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+                setStatus(statusEl, '✓ 已下载 ' + filename, 'info');
+            } catch (e) {
+                setStatus(statusEl, '✗ 网络异常：' + (e.message || e), 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // —— SQL 切分：按 ; 拆开（保留空行和注释） ——
+        function splitSqlIntoStatements(text) {
+            const out = [];
+            let buf = '';
+            let inSingle = false, inDouble = false, inLineComment = false, inBlockComment = false;
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i], next = text[i + 1];
+
+                // 行注释 -- ... 一直到行尾
+                if (inLineComment) {
+                    buf += ch;
+                    if (ch === '\n') inLineComment = false;
+                    continue;
+                }
+                // 块注释 /* ... */
+                if (inBlockComment) {
+                    buf += ch;
+                    if (ch === '*' && next === '/') { buf += next; i++; inBlockComment = false; }
+                    continue;
+                }
+                // 单引号字符串（双写单引号转义）
+                if (inSingle) {
+                    buf += ch;
+                    if (ch === "'" && next === "'") { buf += next; i++; }
+                    else if (ch === "'") inSingle = false;
+                    continue;
+                }
+                // 双引号字符串
+                if (inDouble) {
+                    buf += ch;
+                    if (ch === '"') inDouble = false;
+                    continue;
+                }
+
+                if (ch === '-' && next === '-') { inLineComment = true; buf += ch; continue; }
+                if (ch === '/' && next === '*') { inBlockComment = true; buf += ch; continue; }
+                if (ch === "'") { inSingle = true; buf += ch; continue; }
+                if (ch === '"') { inDouble = true; buf += ch; continue; }
+
+                if (ch === ';') {
+                    const trimmed = buf.trim();
+                    if (trimmed) out.push(trimmed);
+                    buf = '';
+                } else {
+                    buf += ch;
+                }
+            }
+            const tail = buf.trim();
+            if (tail) out.push(tail);
+            return out;
+        }
+
+        // —— 把切分出的语句分批提交到后端 /api/sql/import ——
+        async function submitImport(stmts) {
+            const statusEl = document.getElementById('import-status');
+            const BATCH = 200; // 与后端 MAX_BATCH_SIZE 一致
+            const total = stmts.length;
+            let executed = 0;
+
+            for (let start = 0; start < total; start += BATCH) {
+                const chunk = stmts.slice(start, start + BATCH);
+                const isLast = (start + chunk.length) >= total;
+                setStatus(statusEl, `正在导入 ${executed + 1}~${executed + chunk.length} / ${total}…`, 'info');
+
+                const res = await fetch('/api/sql/import', {
+                    method: 'POST',
+                    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sqlArray: chunk, isLastChunk: isLast })
+                });
+                const result = await res.json();
+                if (!result.success) {
+                    throw new Error('第 ' + (executed + 1) + '~' + (executed + chunk.length) + ' 条失败：' + (result.error || '未知错误'));
+                }
+                executed += chunk.length;
+            }
+            return { executed };
+        }
+
+        async function importSql() {
+            const btn = document.getElementById('import-btn');
+            const statusEl = document.getElementById('import-status');
+            const fileInput = document.getElementById('sql-file');
+            const textArea = document.getElementById('sql-text');
+            btn.disabled = true;
+            try {
+                let sqlText = textArea.value || '';
+
+                if (fileInput.files && fileInput.files[0]) {
+                    const f = fileInput.files[0];
+                    if (f.size > 5 * 1024 * 1024) {
+                        setStatus(statusEl, '✗ 文件超过 5MB，请改用粘贴方式', 'error');
+                        return;
+                    }
+                    sqlText = await f.text();
+                }
+
+                if (!sqlText.trim()) {
+                    setStatus(statusEl, '✗ 请先选择 .sql 文件或粘贴 SQL', 'error');
+                    return;
+                }
+
+                const stmts = splitSqlIntoStatements(sqlText);
+                if (stmts.length === 0) {
+                    setStatus(statusEl, '✗ 未解析到任何 SQL 语句', 'error');
+                    return;
+                }
+                if (!confirm(`将执行 ${stmts.length} 条 SQL 语句（可能覆盖现有数据），是否继续？`)) {
+                    return;
+                }
+
+                const { executed } = await submitImport(stmts);
+                setStatus(statusEl, `✓ 已成功执行 ${executed} 条语句，全站缓存已清理`, 'info');
+            } catch (e) {
+                setStatus(statusEl, '✗ ' + (e.message || e), 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // —— 拖拽 / 选择文件时自动写回 textarea ——
+        (function initFileInput() {
+            const fileInput = document.getElementById('sql-file');
+            const dropzone = document.getElementById('dropzone');
+            const textArea = document.getElementById('sql-text');
+            const fileInfo = document.getElementById('file-info');
+
+            function showFileInfo(f) {
+                if (!f) return;
+                fileInfo.textContent = `已选择：${f.name} (${formatBytes(f.size)})`;
+                fileInfo.classList.remove('hidden');
+            }
+
+            fileInput.addEventListener('change', () => {
+                const f = fileInput.files && fileInput.files[0];
+                showFileInfo(f);
+            });
+
+            dropzone.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'INPUT') fileInput.click();
+            });
+
+            ['dragenter', 'dragover'].forEach(ev => {
+                dropzone.addEventListener(ev, (e) => {
+                    e.preventDefault();
+                    dropzone.classList.add('drag-over');
+                });
+            });
+            ['dragleave', 'drop'].forEach(ev => {
+                dropzone.addEventListener(ev, (e) => {
+                    e.preventDefault();
+                    dropzone.classList.remove('drag-over');
+                });
+            });
+            dropzone.addEventListener('drop', (e) => {
+                const f = e.dataTransfer.files && e.dataTransfer.files[0];
+                if (f) {
+                    // 把文件塞回 fileInput 触发同样的解析逻辑
+                    const dt = new DataTransfer();
+                    dt.items.add(f);
+                    fileInput.files = dt.files;
+                    showFileInfo(f);
+                }
+            });
+        })();
 
         // ============== KV 缓存 (修正 Fetch 路径) ==============
         const kvState = { keys: [], cursor: null, loaded: false, parseJson: false, currentKey: null };

@@ -64,7 +64,10 @@ export async function onRequestGet(context) {
     });
   }
 
-  const filename = `blog-db-${new Date().toISOString().replace(/[:.]/g, "-")}.sql`;
+  // ⚡ 修复 23：filename 也要用上海时区，与 head 段里的导出时间保持一致
+  const now = nowInShanghai();
+  const filenameSafe = now.replace(/[:.]/g, "-").replace(/[+\u00A0-\uFFFF]/g, ''); // 去掉 : . +
+  const filename = `blog-db-${filenameSafe}.sql`;
 
   // ========== 构造流式响应 ==========
   const encoder = new TextEncoder();
@@ -72,8 +75,7 @@ export async function onRequestGet(context) {
     async start(controller) {
       try {
         // 1) 文件头 + 事务开始
-        // 与数据库新数据保持一致，导出时间也用上海时区显示
-        const now = nowInShanghai();
+        // ⚡ 修复 23：与外层 filename 用同一个 now 变量，避免出现「filename 一份时间、head 一份时间」的错位
         let head = "";
         head += `-- Quinn's Space 数据库导出\n`;
         head += `-- 导出时间: ${now}\n`;

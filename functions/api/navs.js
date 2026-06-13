@@ -168,15 +168,20 @@ export async function onRequestPost(context) {
                 return new Response(JSON.stringify({ success: false, error: "缺少 order 数组" }), { status: 400 });
             }
             const step = 10; // 留出插入新项的空间
-            const stmt = env.DB.prepare(
-                `UPDATE site_navs SET sort_order = ?, updated_at = ? WHERE id = ?`
-            );
-            // 顺序串行执行（SQLite 在 D1 上支持批 batch，但分步更稳）
+            // ⚡ 修复 15：用 D1 batch() 把整批作为单个事务执行，途中失败会回滚，
+            //   避免「前 5 项已更新、后 3 项失败」导致的 sort_order 错位
+            const batch = [];
             for (let i = 0; i < order.length; i++) {
                 const id = Number(order[i]);
                 if (!Number.isInteger(id) || id <= 0) continue;
-                await stmt.bind((i + 1) * step, now, id).run();
+                batch.push(env.DB.prepare(
+                    `UPDATE site_navs SET sort_order = ?, updated_at = ? WHERE id = ?`
+                ).bind((i + 1) * step, now, id));
             }
+            if (batch.length === 0) {
+                return new Response(JSON.stringify({ success: false, error: "order 数组中没有有效 id" }), { status: 400 });
+            }
+            await env.DB.batch(batch);
         }
         else {
             // ---- create ----

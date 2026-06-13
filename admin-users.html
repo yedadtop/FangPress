@@ -166,7 +166,11 @@
             }
 
             const body = { username, nickname };
-            if (password) body.password = password;
+            if (password) {
+                body.password = password;
+                // ⚡ 修复 11：把后端强制要 passwordConfirm 一并提交
+                body.passwordConfirm = passwordConfirm;
+            }
 
             const btn = document.querySelector('button[onclick="saveUser()"]');
             btn.disabled = true;

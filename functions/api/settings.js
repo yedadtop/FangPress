@@ -85,6 +85,16 @@ export async function onRequestPost(context) {
       }
     } catch (_) {}
 
+    // ⚡ 修复 4：补清 type:* 前缀（与 push.js / update.js / delete.js 对齐）
+    try {
+      let isComplete = false, cursor = undefined;
+      while (!isComplete) {
+        const listKeys = await env.KV.list({ prefix: "site:posts:list:type:", cursor });
+        for (const k of listKeys.keys) await env.KV.delete(k.name);
+        isComplete = listKeys.list_complete; cursor = listKeys.cursor;
+      }
+    } catch (_) {}
+
     try {
       let isComplete = false, cursor = undefined;
       while (!isComplete) {

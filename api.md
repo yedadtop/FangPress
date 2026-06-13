@@ -111,10 +111,11 @@
 ```
 - 上限：分页请求 `PAGE_SIZE+1 = 11`（探测下一页）；非分页 `LIMIT 100`；管理后台无 LIMIT
 - 缓存键：
-  - `site:posts:list:page:<n>`（全量分页，兼容旧版）
-  - `site:posts:list:type:<post|tweet>:page:<n>`（按 type 分页）
+  - `site:posts:list:type:<post|tweet>:page:<n>`（按 type 分页）★ 主流
   - `site:posts:list:type:<post|tweet>:cat:<cat>`（type + 分类）
   - `site:posts:list:cat:<cat>`（全量 + 分类）
+  - `site:posts:list:cat:<cat>:page:<n>`（分类 + 分页）
+  - `site:posts:list:page:<n>`（无 type 无 category 的全量分页，兼容旧版）
   - **管理后台**（无 category / page / type）**绕过 KV**，永远直查 D1
 - 缓存：`Cache-Control: no-store`（写后立即生效）
 - 摘要：服务端在边缘函数里现场计算，使用时根据 `excerpt_length` 设置做 markdown 剥离 + 词边界截断
@@ -145,7 +146,7 @@
 错误：
 - `400 { success:false, error:"Missing slug parameter" }`
 - `404 { success:false, error:"Post not found" }`
-- 缓存：`Cache-Control: public, max-age=2`（轻量缓存，配合后台写入）
+- 缓存：`Cache-Control: public, max-age=5`（轻量缓存，配合后台写入；下版会跟随发布动作降至 2s）
 
 ---
 

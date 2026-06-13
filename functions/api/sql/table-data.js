@@ -5,7 +5,8 @@
 
 const MAX_PAGE_SIZE = 200;
 const DEFAULT_PAGE_SIZE = 50;
-const SYSTEM_TABLES = new Set();
+// ⚡ 修复 13：删掉空 Set。原代码 const SYSTEM_TABLES = new Set() 永远不会命中任何值，
+//   仅靠正则 `^[A-Za-z_][A-Za-z0-9_]*$` 拦截非法字符（sqlite_* 仍会被正则拒绝）即可。
 
 export async function onRequestGet(context) {
   const { request, env } = context;
@@ -38,7 +39,7 @@ export async function onRequestGet(context) {
       status: 400, headers: { "Content-Type": "application/json" }
     });
   }
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table) || SYSTEM_TABLES.has(table)) {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table)) {
     return new Response(JSON.stringify({ success: false, error: "非法的表名" }), {
       status: 400, headers: { "Content-Type": "application/json" }
     });

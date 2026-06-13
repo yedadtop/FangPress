@@ -67,6 +67,19 @@ export async function onRequestPost(context) {
     if (body.password !== undefined && body.password !== null && body.password !== "") {
       const p = String(body.password);
       // 不做任何长度/复杂度限制，由用户自负其责
+
+      // ⚡ 修复 11：后端强制二次确认，curl 直接调用也无法绕过
+      if (body.passwordConfirm === undefined || body.passwordConfirm === null || body.passwordConfirm === "") {
+        return new Response(JSON.stringify({ success: false, error: "改密时必须传 passwordConfirm 字段进行二次确认" }), {
+          status: 400, headers: { "Content-Type": "application/json" }
+        });
+      }
+      if (String(body.passwordConfirm) !== p) {
+        return new Response(JSON.stringify({ success: false, error: "两次输入的密码不一致" }), {
+          status: 400, headers: { "Content-Type": "application/json" }
+        });
+      }
+
       const msgBuffer = new TextEncoder().encode(p);
       const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
       const hashArray = Array.from(new Uint8Array(hashBuffer));

@@ -2,6 +2,12 @@
 
 const SELECT_COLS = `id, title, slug, category, created_at, views`;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const LIKE_ESCAPE_RE = /[\\%_]/g;
+
+// ⚡ 修复 12：转义 LIKE 通配符 % _ \，避免用户输入 `50%` 误命中
+function escapeLike(s) {
+  return String(s).replace(LIKE_ESCAPE_RE, '\\$&');
+}
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -18,19 +24,23 @@ export async function onRequestGet(context) {
 
   // 关键词搜索：模糊匹配 title / content
   if (q && q.trim()) {
-    const keyword = `%${q.trim()}%`;
+    const keyword = `%${escapeLike(q.trim())}%`;
+    // ⚡ 修复 12：使用 ESCAPE 关键字显式声明转义符
+    const likeExpr = `LIKE ? ESCAPE '\\'`;
     try {
       const stmt = env.DB.prepare(
         `SELECT ${SELECT_COLS}
          FROM posts
-         WHERE status = 'published' AND (title LIKE ? OR content LIKE ?)
+         WHERE status = 'published' AND (title ${likeExpr} OR content ${likeExpr})
          ORDER BY created_at DESC
          LIMIT 15`
       ).bind(keyword, keyword);
       const { results } = await stmt.all();
       return jsonResponse({ success: true, data: results || [] });
     } catch (err) {
-      return jsonResponse({ success: false, error: err.message }, 500);
+      // ⚡ 修复 12：脱敏错误信息，避免泄露内部 SQL/表结构
+      console.error('search keyword failed:', err);
+      return jsonResponse({ success: false, error: "搜索失败，请稍后重试" }, 500);
     }
   }
 
@@ -41,14 +51,15 @@ export async function onRequestGet(context) {
       const stmt = env.DB.prepare(
         `SELECT ${SELECT_COLS}
          FROM posts
-         WHERE status = 'published' AND created_at LIKE ?
+         WHERE status = 'published' AND created_at LIKE ? ESCAPE '\\'
          ORDER BY created_at DESC
          LIMIT 15`
       ).bind(datePrefix);
       const { results } = await stmt.all();
       return jsonResponse({ success: true, data: results || [] });
     } catch (err) {
-      return jsonResponse({ success: false, error: err.message }, 500);
+      console.error('search date failed:', err);
+      return jsonResponse({ success: false, error: "搜索失败，请稍后重试" }, 500);
     }
   }
 

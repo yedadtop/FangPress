@@ -6,43 +6,12 @@
 
 import { marked } from '../lib/marked.esm.js';
 import { renderHeaderNav, renderMobileMenu, getActiveNavs, getSettings } from '../lib/nav-render.js';
+import { escapeHtml, formatDate, safeParseKV } from '../lib/list-render.js';
+import { makeExcerpt } from '../api/helpers.js';
 
 // ============== HTML 工具 ==============
-
-function escapeHtml(str) {
-    if (str == null) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-function formatDate(ts) {
-    if (!ts) return '';
-    const d = new Date(ts);
-    if (isNaN(d)) return '';
-
-    try {
-        // 无论 Cloudflare Worker 节点的物理物理时区是什么（默认被锁定在 UTC），
-        // 渲染成 HTML 时，一律强制转换为东八区的年月日排版
-        const formatter = new Intl.DateTimeFormat('zh-CN', {
-            timeZone: 'Asia/Shanghai',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
-
-        const parts = formatter.formatToParts(d);
-        const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
-
-        return `${map.year} · ${map.month} · ${map.day}`;
-    } catch (_) {
-        // 容错降级
-        return '';
-    }
-}
+// ⚡ 修复 14：escapeHtml / formatDate / safeParseKV 已在 lib/list-render.js 导出，
+//   stripMarkdown / makeExcerpt 已在 api/helpers.js 导出，删掉本地重复定义。
 
 function formatDateTime(ts) {
     if (!ts) return '';
@@ -62,45 +31,12 @@ function formatDateTime(ts) {
     }
 }
 
-function stripMarkdown(md) {
-    if (!md) return '';
-    return String(md)
-        .replace(/```[\s\S]*?```/g, '')
-        .replace(/`([^`]+)`/g, '$1')
-        .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-        .replace(/^\s{0,3}#{1,6}\s+/gm, '')
-        .replace(/(\*\*|__)(.+?)\1/g, '$2')
-        .replace(/(\*|_)(.+?)\1/g, '$2')
-        .replace(/^\s*>\s?/gm, '')
-        .replace(/^\s*[-*+]\s+/gm, '')
-        .replace(/^\s*\d+\.\s+/gm, '')
-        .replace(/<[^>]+>/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-}
-
-function makeExcerpt(content, maxLen = 160) {
-    const text = stripMarkdown(content);
-    if (text.length === 0) return '';
-    if (text.length <= maxLen) return text;
-    const slice = text.slice(0, maxLen);
-    const lastSpace = slice.lastIndexOf(' ');
-    const cut = lastSpace > maxLen * 0.6 ? slice.slice(0, lastSpace) : slice;
-    return cut.replace(/[\s,，.。!！?？;；:：]+$/, '') + '…';
-}
-
 function renderViewsInner(views) {
     return `<svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
     <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
 </svg>
 <span>${views || 0} 次阅读</span>`;
-}
-
-function safeParse(raw) {
-    if (!raw) return null;
-    try { return JSON.parse(raw); } catch (_) { return null; }
 }
 
 // ============== 数据层 ==============
@@ -116,7 +52,7 @@ async function fetchPost(env, slug, context) {
     const kvKey = `post:content:${normalized}`;
 
     // 1) KV 命中
-    const cached = safeParse(await env.KV.get(kvKey).catch(() => null));
+    const cached = safeParseKV(await env.KV.get(kvKey).catch(() => null));
     if (cached && cached.id != null && cached.status != null && cached.views != null) {
         if (cached.status !== 'published') return { ok: false, status: 404 };
 
@@ -274,7 +210,8 @@ export async function onRequestGet(context) {
     const isTweet       = postType === 'tweet';
     const rawTitle      = isTweet ? siteTitle : (post.title || '未命名');
     const safeTitle     = escapeHtml(rawTitle);
-    const fullTitle     = `${rawTitle} · ${siteTitle}`;
+    // ⚡ 修复 6：推文不重复显示两次站点主标题
+    const fullTitle     = isTweet ? siteTitle : `${rawTitle} · ${siteTitle}`;
     const safeDesc      = escapeHtml(makeExcerpt(post.content || '', 160));
     const dateStr       = isTweet ? formatDateTime(post.created_at) : formatDate(post.created_at);
     const showViews     = !isTweet && String(settings.show_views) === '1';
@@ -283,8 +220,7 @@ export async function onRequestGet(context) {
 
     let contentHtml = '';
     try {
-        // 如果文件拉取异常，防崩溃兜底
-        if (typeof marked === 'undefined') throw new Error('marked module is missing');
+        // ⚡ 修复 14：删除 typeof === 'undefined' 的死代码——ESM 模块导入时若 marked 缺失会直接抛错，根本走不到这里
         contentHtml = marked.parse(post.content || '');
     } catch (e) {
         console.error('Markdown parse failed:', e);
