@@ -561,7 +561,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.min.js"></script>
     <script>
     // 推文图片灯箱:FancyBox 5(CDN)
-    // SSR 已把 ![alt](url) 还原为 <img class="tweet-img">,这里做 gallery 分组并交给 FancyBox
+    // ⚠️ @fancyapps/ui@5.0.36 没有静态 Fancybox.bind,只能自己写 click 代理
     (function () {
         function gid() { return 'fb-' + Math.random().toString(36).slice(2, 9); }
 
@@ -578,22 +578,26 @@
             });
         }
 
+        function onImgClick(e) {
+            var t = e.target;
+            if (!t || !t.closest) return;
+            var img = t.closest('img[data-fancybox]');
+            if (!img) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (!window.Fancybox || typeof Fancybox.fromSelector !== 'function') return;
+            var gidValue = img.getAttribute('data-fancybox');
+            if (!gidValue) return;
+            Fancybox.fromSelector('img[data-fancybox="' + gidValue + '"]', img);
+        }
+
         function bind() {
             if (!window.Fancybox) return;
             setupGallery();
-            Fancybox.bind('[data-fancybox]');
         }
 
-        // 防御:capture 阶段先 preventDefault,挡掉外层 <a href="/tweet/..."> 的默认跳转
-        document.addEventListener('click', function (e) {
-            var t = e.target;
-            if (!t || !t.closest) return;
-            if (t.closest('img[data-fancybox]')) {
-                e.preventDefault();
-            }
-        }, true);
-
-        // 暴露给上方懒加载 IIFE:appendItems 后回调重新绑定
+        document.addEventListener('click', onImgClick, true);
+        // 暴露给上方懒加载 IIFE:appendItems 后回调重新分组
         window.rebindFancybox = function () { bind(); };
 
         if (document.readyState === 'loading') {

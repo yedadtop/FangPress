@@ -143,7 +143,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.min.js"></script>
     <script>
     // 文章正文图片灯箱:FancyBox 5(CDN)
-    // 文章详情页把整段 .prose-reader 的所有图片归到一个 gallery,可左右滑动
+    // ⚠️ @fancyapps/ui@5.0.36 没有静态 Fancybox.bind,只能自己写 click 代理
     (function () {
         function gid() { return 'fb-' + Math.random().toString(36).slice(2, 9); }
 
@@ -160,22 +160,25 @@
             });
         }
 
+        function onImgClick(e) {
+            var t = e.target;
+            if (!t || !t.closest) return;
+            var img = t.closest('img[data-fancybox]');
+            if (!img) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (!window.Fancybox || typeof Fancybox.fromSelector !== 'function') return;
+            var gidValue = img.getAttribute('data-fancybox');
+            if (!gidValue) return;
+            Fancybox.fromSelector('img[data-fancybox="' + gidValue + '"]', img);
+        }
+
         function bind() {
             if (!window.Fancybox) return;
             setupGallery();
-            Fancybox.bind('[data-fancybox]');
         }
 
-        // 防御:在 capture 阶段先 preventDefault,挡掉外层 <a> 的默认跳转
-        document.addEventListener('click', function (e) {
-            var t = e.target;
-            if (!t || !t.closest) return;
-            if (t.closest('img[data-fancybox]')) {
-                e.preventDefault();
-            }
-        }, true);
-
-        // 暴露给 tweets.html 懒加载后重新绑定
+        document.addEventListener('click', onImgClick, true);
         window.rebindFancybox = function () { bind(); };
 
         if (document.readyState === 'loading') {
