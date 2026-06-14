@@ -110,7 +110,7 @@
       "category": "技术",   // 或 null
       "type": "post",        // post / tweet
       "views": 42,
-      "status": "published", // 仅全量请求（无 category/page/type）时返回
+      "status": "published", // 字段始终存在：admin 查询时是真实值，其他查询因 SQL 已过滤 `status='published'` 而恒为 'published'
       "created_at": "2026-06-11T08:00:00.000Z",
       "excerpt": "前 N 字纯文本摘要，N 由 site_settings.excerpt_length 决定（0 时为空串）",
       "content": "...",      // ⚡ 仅当 type=tweet 时附带（推文列表渲染需要原文）
@@ -123,7 +123,7 @@
   "has_more": true   // 仅分页请求时返回
 }
 ```
-- 上限：分页请求 `PAGE_SIZE+1 = 11`（探测下一页）；单 type 全量 `LIMIT 100`；管理后台（全量无 type/category/page）无 LIMIT
+- 上限：分页请求（含 `?page=` 的任何形态）`PAGE_SIZE+1 = 11`（探测下一页）；非分页的「单 type 全量」/「单 category 全量」/「type+category」统一 `LIMIT 100`；管理后台（全量无 type/category/page）无 LIMIT，且**不过滤草稿**（admin 可看到 status='draft' 的文章）
 - 缓存键：
   - `site:posts:list:type:<post|tweet>:page:<n>`（按 type 分页）★ 主流
   - `site:posts:list:type:<post|tweet>:cat:<cat>`（type + 分类）
@@ -136,6 +136,7 @@
 - 缓存头：
   - KV 命中：`Cache-Control: public, max-age=10, s-maxage=60` ⚡
   - D1 直查（无缓存键的管理后台）：`Cache-Control: no-store`
+- 缓存 TTL：KV 写入时 `expirationTtl: 43200`（12 小时）⚡
 - 摘要：服务端在边缘函数里现场计算，使用时根据 `excerpt_length` 设置做 markdown 剥离 + 词边界截断
 
 ---
@@ -167,7 +168,7 @@
 - 缓存头：已发布 `public, max-age=5`；草稿 `no-store` ⚡
 
 > ⚡ KV 缓存键 `post:content:<normalizedSlug>`，TTL 7 天。
-> ⚡ 草稿保护：非管理员（无 Bearer / token 不匹配 / 仅凭 API_TOKEN）访问 `status='draft'` 文章一律 404，避免草稿 slug 泄露。
+> ⚡ 草稿保护：`isAuthorizedAdmin` 把 **API_TOKEN 与账号密码 token 一视同仁**（都是 admin）；只有「无 Authorization / token 不匹配 / token 不对应任何用户」时访问 `status='draft'` 文章才会 404。
 
 ---
 
@@ -499,7 +500,7 @@
 错误：
 - `400 "未找到上传文件"` 字段缺失
 - `400 "文件大小不能超过 5MB"`
-- `500 "R2_BUCKET 未绑定"` / `err.message`
+- `500 "R2_BUCKET 未绑定"` / `err.message`（`err.message` 为空时回退 `"上传失败"`）
 
 > 鉴权：支持 API_TOKEN 与账号密码登录；上传不依赖 D1 表。
 

@@ -215,7 +215,7 @@ INSERT INTO site_navs (label, href, tab_key, open_in_new_tab, is_active, sort_or
 
 ## 🔌 API 二次开发
 
-FangPress 的后端**完全 API 驱动**：网页 / 后台只是「壳」，所有写操作（发布 / 修改 / 删除文章、上传图片、修改站点设置、改导航、改账户）最终都走 [api.md](./api.md) 里那 11 个 JSON 端点。**任何能发 HTTP 请求的程序都是合法客户端** —— 浏览器、手机 App、CLI、CI 脚本都可以。
+FangPress 的后端**完全 API 驱动**：网页 / 后台只是「壳」，所有写操作（发布 / 修改 / 删除文章、上传图片、修改站点设置、改导航、改账户）最终都走 [api.md](./api.md) 里的 API。**任何能发 HTTP 请求的程序都是合法客户端** —— 浏览器、手机 App、CLI、CI 脚本都可以。
 
 ### 本地 PHP 后台 = API 的一个客户端
 
