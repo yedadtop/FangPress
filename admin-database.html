@@ -86,6 +86,118 @@
         }
         .modal-option:has(input:checked) .modal-radio { border-color: #0c0a09; }
         .modal-option:has(input:checked) .modal-radio-dot { opacity: 1; }
+
+        /* R2 存储卡片网格 */
+        .r2-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.875rem;
+        }
+        .r2-card {
+            background: white;
+            border: 1px solid rgba(231, 229, 228, 0.6);
+            border-radius: 0.875rem;
+            overflow: hidden;
+            transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .r2-card:hover {
+            border-color: rgba(168, 162, 158, 0.5);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .r2-thumb {
+            aspect-ratio: 4 / 3;
+            background: linear-gradient(135deg, #fafaf9 0%, #f5f5f4 100%);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .r2-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform .3s ease;
+        }
+        .r2-card:hover .r2-thumb img { transform: scale(1.05); }
+        .r2-thumb-icon {
+            color: #a8a29e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .r2-thumb-icon svg { width: 2.25rem; height: 2.25rem; stroke-width: 1.3; }
+        .r2-thumb-ext {
+            font-family: var(--font-sans);
+            font-size: 0.625rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: #78716c;
+            text-transform: uppercase;
+        }
+        .r2-card-body { padding: 0.625rem 0.875rem 0.75rem; display: flex; flex-direction: column; gap: 0.375rem; }
+        .r2-card-name {
+            font-size: 0.8125rem;
+            color: #1c1917;
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 1.3;
+        }
+        .r2-card-meta {
+            font-size: 0.6875rem;
+            color: #a8a29e;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.3;
+        }
+        .r2-card-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            margin-top: 0.25rem;
+        }
+        .r2-card-actions button {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            padding: 0.3125rem 0.375rem;
+            font-size: 0.6875rem;
+            color: #78716c;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: all .15s ease;
+            white-space: nowrap;
+        }
+        .r2-card-actions button:hover { background: #fafaf9; color: #0c0a09; }
+        .r2-card-actions button.del:hover {
+            background: #fef2f2;
+            color: #b91c1c;
+        }
+        .r2-card-actions button svg { width: 0.8125rem; height: 0.8125rem; }
+
+        /* R2 详情模态框中的预览 */
+        .r2-preview-wrap {
+            background: #fafaf9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 8rem;
+            padding: 1.5rem;
+        }
+        .r2-preview-wrap img {
+            max-width: 100%;
+            max-height: 50vh;
+            object-fit: contain;
+        }
     </style>
 </head>
 <body class="bg-[#fafaf9] text-stone-800 min-h-screen">
@@ -95,13 +207,14 @@
         <header class="mb-8">
             <p class="text-xs uppercase tracking-widest text-stone-400">Database</p>
             <h1 class="font-serif text-3xl md:text-[2rem] font-medium text-stone-900 mt-2">数据库管理</h1>
-            <p class="text-sm text-stone-500 mt-2">浏览数据表、导入导出 SQL、查看 KV 缓存</p>
+            <p class="text-sm text-stone-500 mt-2">浏览数据表、导入导出 SQL、查看 KV 缓存、管理 R2 存储</p>
         </header>
 
         <div class="border-b border-stone-200 mb-8 flex items-center gap-1 overflow-x-auto">
             <button class="tab active" data-tab="tables">数据表</button>
             <button class="tab" data-tab="sql">SQL 导入 / 导出</button>
             <button class="tab" data-tab="kv">KV 缓存</button>
+            <button class="tab" data-tab="r2">R2 存储</button>
         </div>
 
         <section data-pane="tables" class="space-y-6">
@@ -252,6 +365,44 @@
                 </div>
             </div>
         </section>
+
+        <section data-pane="r2" class="hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div class="relative flex-1">
+                    <input id="r2-search" type="text" placeholder="搜索文件名或 key…"
+                           oninput="debounceR2Search()"
+                           class="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500">
+                </div>
+                <select id="r2-type-filter" onchange="loadR2List(true)"
+                        class="px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm focus:outline-none focus:border-stone-500 cursor-pointer">
+                    <option value="">全部分类</option>
+                    <option value="image">图片</option>
+                    <option value="video">视频</option>
+                    <option value="audio">音频</option>
+                    <option value="document">文档</option>
+                    <option value="archive">压缩包</option>
+                    <option value="other">其他</option>
+                </select>
+                <button onclick="loadR2List(true)" class="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-sm rounded-md transition-colors cursor-pointer">查询</button>
+            </div>
+
+            <div class="flex items-center justify-between text-xs text-stone-500">
+                <p>共 <span id="r2-shown" class="font-semibold text-stone-700 tabular-nums">0</span> 个文件 ·
+                    占用 <span id="r2-size" class="font-semibold text-stone-700 tabular-nums">0 B</span>
+                    <span id="r2-total-hint" class="text-stone-400 ml-1 hidden">· 全部 <span id="r2-total" class="tabular-nums">0</span> 个</span>
+                </p>
+            </div>
+
+            <div id="r2-loading" class="hidden py-12 text-center font-serif italic text-stone-400 text-sm">正在加载…</div>
+            <div id="r2-empty" class="hidden py-16 text-center font-serif italic text-stone-500 text-base">R2 存储里没有匹配的文件</div>
+            <div id="r2-grid" class="hidden r2-grid"></div>
+
+            <div id="r2-pagination" class="hidden bg-white border border-stone-200/60 rounded-2xl px-5 py-3 flex items-center justify-between text-xs text-stone-500">
+                <button id="r2-prev" onclick="changeR2Page(-1)" class="px-3 py-1.5 rounded-md border border-stone-200 bg-white hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors">← 上一页</button>
+                <span>第 <span id="r2-page" class="tabular-nums">1</span> / <span id="r2-pages" class="tabular-nums">1</span> 页 · 每页 24 个</span>
+                <button id="r2-next" onclick="changeR2Page(1)" class="px-3 py-1.5 rounded-md border border-stone-200 bg-white hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors">下一页 →</button>
+            </div>
+        </section>
     </div>
 
     <!-- 导入模式选择模态框 -->
@@ -316,6 +467,71 @@
         </div>
     </div>
 
+    <!-- R2 文件详情模态框 -->
+    <div id="r2-detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+        <div class="modal-backdrop absolute inset-0" onclick="closeR2Detail()"></div>
+        <div class="modal-dialog relative bg-white rounded-2xl border border-stone-200/60 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="px-6 py-5 border-b border-stone-200/60 flex items-center justify-between gap-3 shrink-0">
+                <div class="min-w-0 flex-1">
+                    <p class="text-[10px] uppercase tracking-widest text-stone-400">文件详情</p>
+                    <p id="r2-detail-name" class="font-mono text-sm text-stone-900 mt-0.5 truncate">—</p>
+                </div>
+                <button onclick="closeR2Detail()" class="text-stone-400 hover:text-stone-900 transition-colors cursor-pointer bg-stone-100 hover:bg-stone-200 p-1.5 rounded-md shrink-0" title="关闭">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto">
+                <div id="r2-detail-preview" class="r2-preview-wrap"></div>
+                <div class="px-6 py-5 space-y-2.5">
+                    <div class="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-2.5 text-xs items-center">
+                        <dt class="text-stone-500">文件名</dt>
+                        <dd id="r2-detail-filename" class="font-mono text-stone-900 break-all">—</dd>
+                        <dt class="text-stone-500">Key</dt>
+                        <dd id="r2-detail-key" class="font-mono text-stone-700 break-all">—</dd>
+                        <dt class="text-stone-500">MIME</dt>
+                        <dd id="r2-detail-type" class="text-stone-700">—</dd>
+                        <dt class="text-stone-500">大小</dt>
+                        <dd id="r2-detail-size" class="text-stone-700 tabular-nums">—</dd>
+                        <dt class="text-stone-500">上传时间</dt>
+                        <dd id="r2-detail-date" class="text-stone-700">—</dd>
+                        <dt class="text-stone-500">外链</dt>
+                        <dd class="flex items-center gap-2">
+                            <input id="r2-detail-url" type="text" readonly
+                                   class="flex-1 min-w-0 px-2 py-1 bg-stone-50 border border-stone-200 rounded text-xs font-mono text-stone-700 focus:outline-none focus:border-stone-500"
+                                   onclick="this.select()">
+                            <button onclick="copyR2DetailUrl()" class="px-2.5 py-1 bg-stone-900 hover:bg-stone-800 text-white text-xs rounded transition-colors cursor-pointer shrink-0">复制</button>
+                        </dd>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-stone-200/60 bg-stone-50 flex items-center justify-between gap-2 shrink-0">
+                <a id="r2-detail-open" target="_blank" rel="noopener" class="text-xs text-stone-600 hover:text-stone-900 underline transition-colors">在浏览器中打开 →</a>
+                <div class="flex items-center gap-2">
+                    <button onclick="closeR2Detail()" class="px-4 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-md transition-colors cursor-pointer">关闭</button>
+                    <button id="r2-detail-delete-btn" onclick="confirmDeleteFromDetail()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors cursor-pointer">删除文件</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- R2 删除确认模态框 -->
+    <div id="r2-delete-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+        <div class="modal-backdrop absolute inset-0" onclick="closeR2DeleteModal()"></div>
+        <div class="modal-dialog relative bg-white rounded-2xl border border-stone-200/60 shadow-2xl w-full max-w-sm overflow-hidden">
+            <div class="px-6 py-5">
+                <h3 class="font-serif text-lg font-medium text-stone-900">确认删除</h3>
+                <p class="text-sm text-stone-600 mt-2 leading-relaxed">
+                    即将从 R2 存储中永久删除 <span id="r2-delete-name" class="font-mono text-xs font-semibold text-stone-900 break-all">—</span>。
+                </p>
+                <p class="text-xs text-red-600 mt-2 leading-relaxed">此操作不可恢复，正文中引用此 URL 的图片 / 资源将立即 404。</p>
+            </div>
+            <div class="px-6 py-4 border-t border-stone-200/60 bg-stone-50 flex items-center justify-end gap-2">
+                <button type="button" onclick="closeR2DeleteModal()" class="px-4 py-2 text-sm text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-md transition-colors cursor-pointer">取消</button>
+                <button type="button" id="r2-delete-confirm-btn" onclick="doDeleteR2File()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors cursor-pointer">确认删除</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ============== 通用 ==============
         function getToken() { return localStorage.getItem('admin_token'); }
@@ -347,6 +563,7 @@
                 document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
                 document.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== target));
                 if (target === 'kv' && !kvState.loaded) loadKvList(true);
+                if (target === 'r2' && !r2State.loaded) loadR2List(true);
             });
         });
 
@@ -626,9 +843,10 @@
 
         // ESC 关闭模态框
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !document.getElementById('import-mode-modal').classList.contains('hidden')) {
-                closeImportModeModal();
-            }
+            if (e.key !== 'Escape') return;
+            if (!document.getElementById('r2-detail-modal').classList.contains('hidden')) { closeR2Detail(); return; }
+            if (!document.getElementById('r2-delete-modal').classList.contains('hidden')) { closeR2DeleteModal(); return; }
+            if (!document.getElementById('import-mode-modal').classList.contains('hidden')) { closeImportModeModal(); return; }
         });
 
         async function importSql() {
@@ -816,6 +1034,391 @@
 
         function toggleKvParse() { kvState.parseJson = !kvState.parseJson; document.getElementById('kv-toggle-parse').textContent = kvState.parseJson ? '原始文本' : '尝试 JSON'; fetchKvValue(); }
         function closeKvValue() { document.getElementById('kv-value-panel').classList.add('hidden'); }
+
+        // ============== R2 存储管理 ==============
+        // 完全不依赖 D1 表，后端只透传 env.R2_BUCKET.list() / .delete()。
+        // 约定后端接口（KV 不参与）：
+        //   GET  /api/sql/r2-list?q=
+        //        q 可选，作为 R2.list() 的 prefix（精确到子目录）
+        //        返回 { success, data: { files, totalSize } }
+        //        files[i] 字段：key, size, uploaded (Date),
+        //                       httpMetadata.contentType, url (后端拼 R2_PUBLIC_URL)
+        //   POST /api/sql/r2-delete  body { key }  → { success, deleted }
+
+        const r2State = {
+            allFiles: [],          // 最近一次从后端拉到的全量 R2 对象
+            files: [],             // 当前页可见（前端筛选 / 分页后）
+            page: 1,
+            pageSize: 24,
+            totalPages: 1,
+            total: 0,
+            totalSize: 0,
+            loaded: false,
+            lastSearch: null,      // 上次打的 q，用于决定是否重新拉取
+            currentDetail: null,
+            pendingDelete: null
+        };
+
+        // 把 R2 原生对象归一化成前端卡片统一的字段
+        function normalizeR2File(f) {
+            let createdAt = '';
+            if (f.uploaded) {
+                createdAt = (f.uploaded instanceof Date) ? f.uploaded.toISOString() : String(f.uploaded);
+            }
+            return {
+                key: f.key || '',
+                filename: f.filename || ((f.key || '').split('/').pop() || f.key || ''),
+                content_type: f.content_type || (f.httpMetadata && f.httpMetadata.contentType) || '',
+                size: typeof f.size === 'number' ? f.size : 0,
+                url: f.url || '',
+                created_at: f.created_at || createdAt
+            };
+        }
+
+        const R2_TYPE_LABELS = {
+            image: '图片', video: '视频', audio: '音频',
+            document: '文档', archive: '压缩包', other: '其他'
+        };
+
+        // 各类型的占位图标（参考 Heroicons outline）
+        const R2_TYPE_ICONS = {
+            image: '<path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />',
+            video: '<path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" />',
+            audio: '<path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31.66A2.25 2.25 0 009 15.553z" />',
+            document: '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />',
+            archive: '<path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />',
+            other: '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />'
+        };
+
+        // MIME / 扩展名 → 类型归一化（前端用于挑图标和过滤下拉）
+        function categorizeR2File(contentType, key) {
+            const ct = (contentType || '').toLowerCase();
+            const extMatch = (key || '').toLowerCase().match(/\.([a-z0-9]+)(\?|#|$)/);
+            const ext = extMatch ? extMatch[1] : '';
+            if (ct.startsWith('image/') || ['jpg','jpeg','png','gif','webp','svg','bmp','ico','avif','heic','heif'].includes(ext)) return 'image';
+            if (ct.startsWith('video/') || ['mp4','webm','mov','avi','mkv','flv','wmv','m4v'].includes(ext)) return 'video';
+            if (ct.startsWith('audio/') || ['mp3','wav','ogg','flac','m4a','aac','opus'].includes(ext)) return 'audio';
+            if (['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','md','rtf','odt','csv','json','xml','log'].includes(ext) ||
+                ct.includes('pdf') || ct.includes('word') || ct.includes('sheet') || ct.includes('document') ||
+                ct.includes('text') || ct.includes('json') || ct.includes('xml')) return 'document';
+            if (['zip','rar','7z','tar','gz','bz2','xz','tgz'].includes(ext) || ct.includes('zip') || ct.includes('compressed') || ct.includes('archive')) return 'archive';
+            return 'other';
+        }
+
+        function r2FileExtension(file) {
+            const m = (file.key || '').toLowerCase().match(/\.([a-z0-9]+)(\?|#|$)/);
+            if (m) return m[1].toUpperCase().slice(0, 6);
+            if (file.content_type) return file.content_type.split('/').pop().toUpperCase().slice(0, 6);
+            return 'FILE';
+        }
+
+        function r2DisplayName(file) {
+            return file.filename || (file.key || '').split('/').pop() || file.key || '—';
+        }
+
+        // —— 单卡片 HTML ——
+        function r2CardHTML(file) {
+            const cat = categorizeR2File(file.content_type, file.key);
+            const isImage = cat === 'image' && !!file.url;
+            const filename = r2DisplayName(file);
+            const date = file.created_at ? String(file.created_at).slice(0, 10) : '—';
+            const safeFilename = escapeHtml(filename);
+            const safeKey = escapeHtml(file.key || '');
+            const safeUrl = escapeHtml(file.url || '');
+            const ext = escapeHtml(r2FileExtension(file));
+
+            return `
+                <div class="r2-card group" data-key="${safeKey}">
+                    <div class="r2-thumb">
+                        ${isImage ? `<img src="${safeUrl}" alt="${safeFilename}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none';var n=this.nextElementSibling;if(n)n.style.display='flex';">` : ''}
+                        <div class="r2-thumb-icon" ${isImage ? 'style="display:none;"' : ''}>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">${R2_TYPE_ICONS[cat] || R2_TYPE_ICONS.other}</svg>
+                            <span class="r2-thumb-ext">.${ext}</span>
+                        </div>
+                    </div>
+                    <div class="r2-card-body">
+                        <p class="r2-card-name" title="${safeFilename}">${safeFilename}</p>
+                        <p class="r2-card-meta">${R2_TYPE_LABELS[cat] || '其他'} · ${formatBytes(file.size)} · ${date}</p>
+                        <div class="r2-card-actions">
+                            <button onclick="openR2DetailByKey('${safeKey.replace(/'/g, "\\'")}')" title="查看详情">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                <span class="hidden sm:inline">详情</span>
+                            </button>
+                            <button onclick="copyR2UrlByKey('${safeKey.replace(/'/g, "\\'")}')" title="复制外链">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+                                <span class="hidden sm:inline">外链</span>
+                            </button>
+                            <button class="del" onclick="confirmDeleteR2File('${safeKey.replace(/'/g, "\\'")}')" title="删除">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                                <span class="hidden sm:inline">删除</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        let _r2SearchTimer = null;
+        function debounceR2Search() {
+            if (_r2SearchTimer) clearTimeout(_r2SearchTimer);
+            _r2SearchTimer = setTimeout(() => loadR2List(true), 350);
+        }
+
+        async function loadR2List(reset) {
+            const search = document.getElementById('r2-search').value.trim();
+            const type = document.getElementById('r2-type-filter').value;
+            // 类型过滤 / 分页 / 翻页都走前端缓存，不打后端；
+            // 只有 reset（首次 / 搜索词变 / 手动刷新）才重新拉一次 R2。
+            const needFetch = reset || !r2State.loaded || r2State.lastSearch !== search;
+
+            if (needFetch) {
+                if (reset) r2State.page = 1;
+                r2State.lastSearch = search;
+
+                document.getElementById('r2-loading').classList.remove('hidden');
+                document.getElementById('r2-grid').classList.add('hidden');
+                document.getElementById('r2-empty').classList.add('hidden');
+                document.getElementById('r2-pagination').classList.add('hidden');
+
+                try {
+                    const params = new URLSearchParams();
+                    if (search) params.set('q', search);
+                    const res = await fetch('/api/sql/r2-list' + (params.toString() ? '?' + params.toString() : ''), { headers: authHeaders() });
+                    const result = await res.json();
+                    document.getElementById('r2-loading').classList.add('hidden');
+
+                    if (!result.success) { alert('加载失败: ' + (result.error || '未知错误')); return; }
+
+                    // 后端只透传 R2.list() 的原始结果，前端做归一化
+                    r2State.allFiles = (result.data.files || []).map(f => normalizeR2File(f));
+                    r2State.totalSize = result.data.totalSize || 0;
+                    r2State.loaded = true;
+                } catch (e) {
+                    document.getElementById('r2-loading').classList.add('hidden');
+                    alert('请求失败，请检查网络');
+                    return;
+                }
+            }
+            // type 变量虽然当前没传给后端，但保留以便以后后端支持
+            void type;
+            applyR2Filter();
+        }
+
+        // 前端按类型筛选 + 按时间倒序 + 分页（不重新打后端）
+        function applyR2Filter() {
+            const type = document.getElementById('r2-type-filter').value;
+            let filtered = r2State.allFiles;
+
+            if (type) {
+                filtered = filtered.filter(f => categorizeR2File(f.content_type, f.key) === type);
+            }
+
+            // 新的在上面
+            filtered = filtered.slice().sort((a, b) => {
+                const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+                const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+                return tb - ta;
+            });
+
+            r2State.total = filtered.length;
+            r2State.totalPages = Math.max(1, Math.ceil(filtered.length / r2State.pageSize));
+            if (r2State.page > r2State.totalPages) r2State.page = r2State.totalPages;
+
+            const start = (r2State.page - 1) * r2State.pageSize;
+            r2State.files = filtered.slice(start, start + r2State.pageSize);
+
+            renderR2List();
+        }
+
+        function renderR2List() {
+            document.getElementById('r2-shown').textContent = r2State.files.length;
+            document.getElementById('r2-size').textContent = formatBytes(r2State.totalSize);
+            const totalHintEl = document.getElementById('r2-total-hint');
+            if (r2State.total > r2State.files.length) {
+                document.getElementById('r2-total').textContent = r2State.total;
+                totalHintEl.classList.remove('hidden');
+            } else {
+                totalHintEl.classList.add('hidden');
+            }
+
+            if (r2State.files.length === 0) {
+                document.getElementById('r2-empty').classList.remove('hidden');
+                document.getElementById('r2-grid').classList.add('hidden');
+                document.getElementById('r2-pagination').classList.add('hidden');
+                return;
+            }
+
+            const grid = document.getElementById('r2-grid');
+            grid.innerHTML = r2State.files.map(r2CardHTML).join('');
+            grid.classList.remove('hidden');
+
+            document.getElementById('r2-page').textContent = r2State.page;
+            document.getElementById('r2-pages').textContent = r2State.totalPages;
+            document.getElementById('r2-prev').disabled = r2State.page <= 1;
+            document.getElementById('r2-next').disabled = r2State.page >= r2State.totalPages;
+            document.getElementById('r2-pagination').classList.toggle('hidden', r2State.totalPages <= 1);
+        }
+
+        function changeR2Page(delta) {
+            const np = r2State.page + delta;
+            if (np >= 1 && np <= r2State.totalPages) {
+                r2State.page = np;
+                applyR2Filter();
+                document.getElementById('r2-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function openR2DetailByKey(key) {
+            const file = r2State.files.find(f => f.key === key);
+            if (!file) return;
+            openR2Detail(file);
+        }
+
+        function openR2Detail(file) {
+            r2State.currentDetail = file;
+            const cat = categorizeR2File(file.content_type, file.key);
+            const isImage = cat === 'image' && !!file.url;
+            const filename = r2DisplayName(file);
+            const ext = r2FileExtension(file);
+
+            document.getElementById('r2-detail-name').textContent = filename;
+            document.getElementById('r2-detail-filename').textContent = filename;
+            document.getElementById('r2-detail-key').textContent = file.key || '—';
+            const typeText = file.content_type || '—';
+            document.getElementById('r2-detail-type').textContent = cat ? `${typeText} · ${R2_TYPE_LABELS[cat]}` : typeText;
+            document.getElementById('r2-detail-size').textContent = formatBytes(file.size);
+            document.getElementById('r2-detail-date').textContent = file.created_at || '—';
+            document.getElementById('r2-detail-url').value = file.url || '';
+
+            const openLink = document.getElementById('r2-detail-open');
+            if (file.url) {
+                openLink.href = file.url;
+                openLink.classList.remove('hidden');
+            } else {
+                openLink.href = '#';
+                openLink.classList.add('hidden');
+            }
+
+            const preview = document.getElementById('r2-detail-preview');
+            if (isImage) {
+                preview.innerHTML = `<img src="${escapeHtml(file.url)}" alt="${escapeHtml(filename)}" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;r2-thumb-icon py-12&quot;><svg fill=none stroke=currentColor stroke-width=1.4 viewBox=&quot;0 0 24 24&quot; class=w-16 h-16>${R2_TYPE_ICONS[cat] || R2_TYPE_ICONS.other}</svg><span class=r2-thumb-ext>.${escapeHtml(ext)}</span></div>'">`;
+            } else {
+                preview.innerHTML = `<div class="r2-thumb-icon py-12"><svg fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24" class="w-16 h-16">${R2_TYPE_ICONS[cat] || R2_TYPE_ICONS.other}</svg><span class="r2-thumb-ext mt-3">.${escapeHtml(ext)}</span></div>`;
+            }
+
+            document.getElementById('r2-detail-modal').classList.remove('hidden');
+        }
+
+        function closeR2Detail() {
+            document.getElementById('r2-detail-modal').classList.add('hidden');
+            r2State.currentDetail = null;
+        }
+
+        function copyR2DetailUrl() {
+            const urlInput = document.getElementById('r2-detail-url');
+            const url = urlInput.value;
+            if (!url) { showR2Toast('没有可复制的外链', true); return; }
+            copyR2UrlByValue(url);
+        }
+
+        function copyR2UrlByKey(key) {
+            const file = r2State.files.find(f => f.key === key);
+            if (!file || !file.url) { showR2Toast('没有可复制的外链', true); return; }
+            copyR2UrlByValue(file.url);
+        }
+
+        function copyR2UrlByValue(url) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(
+                    () => showR2Toast('已复制到剪贴板'),
+                    () => fallbackCopyR2Url(url)
+                );
+            } else {
+                fallbackCopyR2Url(url);
+            }
+        }
+
+        function fallbackCopyR2Url(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); showR2Toast('已复制到剪贴板'); }
+            catch (_) { showR2Toast('复制失败，请手动选择', true); }
+            ta.remove();
+        }
+
+        function showR2Toast(msg, isError) {
+            let t = document.getElementById('r2-toast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = 'r2-toast';
+                t.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] text-sm px-4 py-2 rounded-md shadow-lg pointer-events-none transition-opacity duration-200';
+                document.body.appendChild(t);
+            }
+            t.textContent = msg;
+            t.style.opacity = '1';
+            t.style.background = isError ? '#dc2626' : '#0c0a09';
+            t.style.color = 'white';
+            if (t._timer) clearTimeout(t._timer);
+            t._timer = setTimeout(() => { t.style.opacity = '0'; }, 1600);
+        }
+
+        function confirmDeleteR2File(key) {
+            const file = r2State.files.find(f => f.key === key);
+            if (!file) return;
+            r2State.pendingDelete = file;
+            document.getElementById('r2-delete-name').textContent = r2DisplayName(file);
+            document.getElementById('r2-delete-modal').classList.remove('hidden');
+        }
+
+        function confirmDeleteFromDetail() {
+            if (!r2State.currentDetail) return;
+            const key = r2State.currentDetail.key;
+            closeR2Detail();
+            confirmDeleteR2File(key);
+        }
+
+        function closeR2DeleteModal() {
+            document.getElementById('r2-delete-modal').classList.add('hidden');
+            r2State.pendingDelete = null;
+        }
+
+        async function doDeleteR2File() {
+            const file = r2State.pendingDelete;
+            if (!file) return;
+            const btn = document.getElementById('r2-delete-confirm-btn');
+            const orig = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '删除中…';
+            try {
+                const res = await fetch('/api/sql/r2-delete', {
+                    method: 'POST',
+                    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: file.key })
+                });
+                const result = await res.json();
+                if (!result.success) { alert('删除失败: ' + (result.error || '未知错误')); return; }
+                closeR2DeleteModal();
+                showR2Toast('✓ 已删除 ' + r2DisplayName(file));
+
+                // 从前端缓存里把这一项摘掉，再走一遍筛选 / 分页渲染，
+                // 避免再次打后端，也保证翻页 / 类型过滤后已删的不会冒出来。
+                r2State.allFiles = r2State.allFiles.filter(f => f.key !== file.key);
+                r2State.totalSize = Math.max(0, r2State.totalSize - (file.size || 0));
+                // 如果当前页被掏空，回到上一页
+                if (r2State.page > 1 && r2State.files.length === 0) r2State.page -= 1;
+                applyR2Filter();
+            } catch (e) {
+                alert('请求失败: ' + (e.message || e));
+            } finally {
+                btn.disabled = false;
+                btn.textContent = orig;
+            }
+        }
 
         // ============== 入口 ==============
         document.addEventListener('DOMContentLoaded', loadTables);
