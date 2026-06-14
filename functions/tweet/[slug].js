@@ -7,7 +7,7 @@
 // 关键校验：拒绝 type !== 'tweet' 的访问（让用户去 /post/{slug}）
 
 import { getSettings } from '../lib/nav-render.js';
-import { escapeHtml, safeParseKV } from '../lib/list-render.js';
+import { escapeHtml, safeParseKV, renderTweetContent } from '../lib/list-render.js';
 
 // ============== 工具 ==============
 
@@ -216,8 +216,9 @@ export async function onRequestGet(context) {
     const nickname = (author && author.nickname) ? author.nickname : 'Admin';
     const avatar = (author && author.avatar) ? author.avatar : null;
     const dateStr = formatDateTime(post.created_at);
-    const safeContent = escapeHtml(post.content || '');
-    const safeDesc = safeContent.slice(0, 160);
+    // ⚡️ 推文正文先 escapeHtml,再让 renderTweetContent 把 ![alt](url) 还原成 <img class="tweet-img">
+    const safeContent = renderTweetContent(escapeHtml(post.content || ''));
+    const safeDesc = escapeHtml(post.content || '').slice(0, 160);
 
     // 5) HTMLRewriter 注入
     const rewriter = new HTMLRewriter()

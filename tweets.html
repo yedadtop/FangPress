@@ -51,6 +51,72 @@
         .fade-in { animation: fadeIn 0.4s ease-out both; }
 
         .tab-link[data-active="true"] { color: #0c0a09; }
+
+        /* === 推文正文图片:响应式 + 点击查看 === */
+        #ssr-post-list .tweet-img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            max-height: 60vh;
+            margin: 0.625rem 0 0.125rem;
+            border-radius: 0.5rem;
+            cursor: zoom-in;
+            background: rgba(0, 0, 0, 0.04);
+            -webkit-user-drag: none;
+            user-select: none;
+        }
+
+        /* === 图片灯箱 === */
+        #tweet-img-lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.86);
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+            cursor: zoom-out;
+            animation: tweet-img-fade-in 0.18s ease-out;
+        }
+        #tweet-img-lightbox.show { display: flex; }
+        #tweet-img-lightbox > img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 0.5rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            cursor: default;
+            -webkit-user-drag: none;
+            user-select: none;
+        }
+        #tweet-img-lightbox .tweet-img-close {
+            position: absolute;
+            top: 0.875rem;
+            right: 1.25rem;
+            width: 2.25rem;
+            height: 2.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 1.5rem;
+            line-height: 1;
+            font-family: var(--font-sans-stack);
+            cursor: pointer;
+            opacity: 0.75;
+            background: rgba(255, 255, 255, 0.08);
+            border: 0;
+            border-radius: 9999px;
+            transition: opacity 0.2s, background 0.2s;
+        }
+        #tweet-img-lightbox .tweet-img-close:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.18);
+        }
+        @keyframes tweet-img-fade-in { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body class="min-h-screen selection:bg-stone-200" data-active-tab="tweets">
@@ -535,6 +601,54 @@
             });
         }, { rootMargin: '300px 0px' });
         observer.observe(sentinel);
+    })();
+
+    // 推文图片灯箱:点击 .tweet-img 弹出全屏遮罩
+    // SSR 已把 ![alt](url) 还原为 <img class="tweet-img">,这里只做交互
+    (function () {
+        var lb = null, lbImg = null, lbClose = null;
+
+        function ensure() {
+            if (lb) return;
+            lb = document.createElement('div');
+            lb.id = 'tweet-img-lightbox';
+            lb.setAttribute('role', 'dialog');
+            lb.setAttribute('aria-modal', 'true');
+            lb.innerHTML = '<button type="button" class="tweet-img-close" aria-label="关闭">&times;</button><img alt="" />';
+            lbImg = lb.querySelector('img');
+            lbClose = lb.querySelector('.tweet-img-close');
+            document.body.appendChild(lb);
+            lb.addEventListener('click', function (e) { if (e.target === lb) close(); });
+            lbClose.addEventListener('click', close);
+        }
+
+        function open(src, alt) {
+            ensure();
+            lbImg.src = src;
+            lbImg.alt = alt || '';
+            lb.classList.add('show');
+            document.documentElement.style.overflow = 'hidden';
+        }
+
+        function close() {
+            if (!lb) return;
+            lb.classList.remove('show');
+            lbImg.src = '';
+            document.documentElement.style.overflow = '';
+        }
+
+        // 事件代理:首屏 SSR 注入的图 + 懒加载新追加的图都自动生效
+        document.addEventListener('click', function (e) {
+            var t = e.target;
+            if (t && t.tagName === 'IMG' && t.classList && t.classList.contains('tweet-img')) {
+                e.preventDefault();
+                e.stopPropagation();
+                open(t.getAttribute('src') || t.src, t.alt);
+            }
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && lb && lb.classList.contains('show')) close();
+        });
     })();
     </script>
 </body>

@@ -49,6 +49,25 @@ export function safeParseKV(raw) {
     try { return JSON.parse(raw); } catch (_) { return null; }
 }
 
+// 把已经 escapeHtml 过的 HTML 字符串里的 ![alt](url) 还原为 <img class="tweet-img">
+// 设计前提:
+//   1) 调用方先 escapeHtml(raw),再调用本函数;escapeHtml 不会破坏 ![alt](url) 中
+//      的 [, ], (, ), !, :, /, 字母数字等字符,alt 与 url 内的 & < > " ' 已被安全转义
+//   2) 正则限定 url 仅匹配 http(s):// 与 data:image/,杜绝 javascript: 等 XSS scheme
+//   3) url 内的 & 已被转义为 &amp;,写入 src 属性后浏览器会自动还原,语义不变
+//   4) alt 已经 escapeHtml 过,直接拼接即可,无需再转义
+//   5) loading="lazy" 让多图推文只按需加载;onerror 隐藏加载失败的图,避免破图占位
+const TWEET_IMG_RE = /!\[([^\]]*?)\]\((https?:\/\/[^)\s<]+|data:image\/[^)\s<]+)\)/gi;
+
+export function renderTweetContent(escapedHtml) {
+    return String(escapedHtml == null ? '' : escapedHtml).replace(
+        TWEET_IMG_RE,
+        function (m, alt, url) {
+            return '<img class="tweet-img" src="' + url + '" alt="' + alt + '" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'" />';
+        }
+    );
+}
+
 export function renderPostItem(post, i, showViews) {
     if (!post) return '';
     const slug = post.slug || '';
@@ -73,10 +92,11 @@ export function renderPostItem(post, i, showViews) {
             : '';
 
         // 正文容器:桌面端 meta 浮在正文中,移动端 meta 单独放正文下方
+        // ⚡️ 图片 markdown 通过 renderTweetContent 在转义后的 HTML 上还原为 <img>
         const excerpt = post.excerpt
             ? `<div class="font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">
                  ${dateDesktop}
-                 ${escapeHtml(post.excerpt)}
+                 ${renderTweetContent(escapeHtml(post.excerpt))}
                </div>
                ${dateMobile}`
             : `${dateDesktop}${dateMobile}`;
@@ -154,7 +174,7 @@ export function renderTweetItem(post, i) {
                         <span class="text-stone-300 text-xs">·</span>
                         ${timeHTML}
                     </div>
-                    <div class="font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words mt-1">${escapeHtml(raw)}</div>
+                    <div class="font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words mt-1">${renderTweetContent(escapeHtml(raw))}</div>
                 </div>
             </a>
         </article>

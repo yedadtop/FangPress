@@ -6,7 +6,7 @@
 //   env.KV.get('site:navs:list:active')     -> { success:true, data:[{id,label,href,tab_key,open_in_new_tab,is_active,sort_order}, ...] }
 
 
-import { makeExcerpt } from './api/helpers.js';
+import { makeExcerpt, makeExcerptKeepMedia } from './api/helpers.js';
 import { renderPostItem, formatDate, safeParseKV } from './lib/list-render.js';
 import { renderHeaderNav, renderMobileMenu, getActiveNavs, getSettings } from './lib/nav-render.js';
 const KV_LIST_KEY_PREFIX = "site:posts:list:page:";
@@ -95,7 +95,10 @@ export async function onRequestGet(context) {
                     type: p.type || 'post',
                     views: p.views,
                     created_at: p.created_at,
-                    excerpt: makeExcerpt(p.content || '', excerptLength)
+                    // ⚡️ 推文需要保留 ![alt](url) markdown 以便前端还原为 <img>;文章继续走 stripMarkdown
+                    excerpt: p.type === 'tweet'
+                        ? makeExcerptKeepMedia(p.content || '', excerptLength)
+                        : makeExcerpt(p.content || '', excerptLength)
                 }));
 
                 // ⚡ 修复 2：异步回填当前页到 KV 时，必须把 has_more: hasNextPage 存进去
