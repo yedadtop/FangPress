@@ -36,8 +36,12 @@ export async function onRequestGet(context) {
       status: 400, headers: { "Content-Type": "application/json" }
     });
   }
-  if (key.length > 512) {
-    return new Response(JSON.stringify({ success: false, error: "key 长度超限" }), {
+  // ⚡ 修复：key 限制单位是字节，不是 JS 字符串的 UTF-16 code units。
+  // Cloudflare KV 的 key 上限是 512 字节；中文等非 ASCII 字符 1 个 = 2 code units = 3 字节，
+  // 用 .length 判断会把超长 key 放过去，落到 KV.get() 才报错。
+  const keyBytes = new TextEncoder().encode(key).length;
+  if (keyBytes > 512) {
+    return new Response(JSON.stringify({ success: false, error: "key 长度超限（>512 字节）" }), {
       status: 400, headers: { "Content-Type": "application/json" }
     });
   }

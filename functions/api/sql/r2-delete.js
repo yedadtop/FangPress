@@ -49,18 +49,24 @@ export async function onRequestPost(context) {
         });
     }
     // 防御性检查：禁止 ../、绝对路径、控制字符
-    if (key.includes("..") || key.startsWith("/") || /[\x00-\x1f]/.test(key)) {
+    // ⚡ 修复：原来用 key.includes("..") 太宽，会把含 .. 的合法 key（如 v1.0...backup.png）
+    // 一起拒掉。改成按路径段检查，命中真正的路径遍历才报错。
+    if (key.split("/").some(seg => seg === "..") || key.startsWith("/") || /[\x00-\x1f]/.test(key)) {
         return new Response(JSON.stringify({ success: false, error: "非法的 key" }), {
             status: 400, headers: { "Content-Type": "application/json" }
         });
     }
 
     try {
-        // R2.delete() 对不存在的 key 是 no-op（不会报错）
+        // ⚡ 修复：先 head() 探测 key 是否存在，让 deleted 字段如实反映"是否真的删了一条"。
+        // R2.delete() 对不存在的 key 是 no-op（不会报错），但响应里原本永远返回 deleted: 1。
+        const head = await env.R2_BUCKET.head(key);
         await env.R2_BUCKET.delete(key);
-        return new Response(JSON.stringify({ success: true, deleted: 1, key }), {
-            headers: { "Content-Type": "application/json" }
-        });
+        return new Response(JSON.stringify({
+            success: true,
+            deleted: head ? 1 : 0,
+            key
+        }), { headers: { "Content-Type": "application/json" } });
     } catch (err) {
         return new Response(JSON.stringify({ success: false, error: err.message }), {
             status: 500, headers: { "Content-Type": "application/json" }

@@ -152,18 +152,6 @@ export async function onRequestPost(context) {
     // ========== 1) 剥掉 D1 不支持的事务/PRAGMA 语句 ==========
     const compatibleSql = filterD1Incompatible(sqlArray);
     const skipped = sqlArray.length - compatibleSql.length;
-    // 极端情况：本批全是被过滤的事务控制语句，视为无害空批
-    if (compatibleSql.length === 0) {
-      return new Response(JSON.stringify({
-        success: true,
-        message: `本批 ${sqlArray.length} 条全部为 D1 不支持的事务控制语句，已跳过`,
-        executed: 0,
-        skipped,
-        isLastChunk,
-        mode,
-        detail: null
-      }), { headers: { "Content-Type": "application/json" } });
-    }
 
     // ========== 2) 按模式改写 / 过滤 ==========
     let toExecute = compatibleSql;
@@ -172,25 +160,19 @@ export async function onRequestPost(context) {
       const t = transformForIncremental(compatibleSql);
       toExecute = t.sqlArray;
       modeStats = { droppedTables: t.droppedTables, droppedIndexes: t.droppedIndexes, guardedTables: t.guardedTables, transformedInserts: t.transformedInserts };
-      if (toExecute.length === 0) {
-        return new Response(JSON.stringify({
-          success: true,
-          message: `增量模式下本批 ${compatibleSql.length} 条全部被跳过（${t.droppedTables} 条 DROP TABLE + ${t.droppedIndexes} 条 CREATE INDEX）`,
-          executed: 0,
-          skipped,
-          isLastChunk,
-          mode,
-          modeStats,
-          detail: null
-        }), { headers: { "Content-Type": "application/json" } });
-      }
     }
 
     // ========== 3) 用 D1 batch() 把整批作为一个事务执行 ==========
-    const prepared = toExecute.map(s => env.DB.prepare(s));
-    const results = await env.DB.batch(prepared);
+    let results = null;
+    const executed = toExecute.length;
+    if (executed > 0) {
+      const prepared = toExecute.map(s => env.DB.prepare(s));
+      results = await env.DB.batch(prepared);
+    }
 
-    // ========== 4) 仅在最后一个批次清理全站缓存 ==========
+    // ========== 4) 仅在最后一个批次清理全站缓存（无论本批是否执行了语句都要做） ==========
+    // ⚡ 修复：之前两处早返回会绕过这段，导致「最后一个 chunk 恰好全是 BEGIN/COMMIT」时
+    // 前面 chunk 写入的 D1 数据对应的缓存仍是脏的。
     if (isLastChunk) {
       try { await clearKvByPrefix(env, "site:posts:list:page:"); } catch (_) {}
       try { await clearKvByPrefix(env, "site:posts:list:type:"); } catch (_) {}
@@ -199,9 +181,15 @@ export async function onRequestPost(context) {
       try { await clearKvByPrefix(env, "post:content:"); } catch (_) {}
     }
 
-    const executed = toExecute.length;
+    // ========== 5) 构造响应 ==========
     let message;
-    if (mode === "incremental") {
+    if (compatibleSql.length === 0) {
+      // 整批全是 D1 不支持的事务/PRAGMA 控制语句
+      message = `本批 ${sqlArray.length} 条全部为 D1 不支持的事务控制语句，已跳过`;
+    } else if (mode === "incremental" && executed === 0) {
+      // 增量模式把整批都过滤掉了
+      message = `增量模式下本批 ${compatibleSql.length} 条全部被跳过（${modeStats.droppedTables} 条 DROP TABLE + ${modeStats.droppedIndexes} 条 CREATE INDEX）`;
+    } else if (mode === "incremental") {
       const parts = [];
       if (modeStats.droppedTables)   parts.push(`跳过 ${modeStats.droppedTables} 条 DROP TABLE`);
       if (modeStats.droppedIndexes)  parts.push(`跳过 ${modeStats.droppedIndexes} 条 CREATE INDEX`);
@@ -224,7 +212,7 @@ export async function onRequestPost(context) {
       isLastChunk,
       mode,
       modeStats,
-      detail: results || null
+      detail: results
     }), { headers: { "Content-Type": "application/json" } });
   } catch (err) {
     return new Response(JSON.stringify({ success: false, error: err.message }), {

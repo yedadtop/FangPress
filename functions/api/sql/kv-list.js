@@ -44,8 +44,7 @@ export async function onRequestGet(context) {
 
     const list = await env.KV.list(opts);
 
-    // 探测全局总条数（受 prefix 影响）。当 prefix 为空时分页可能很长，
-    // 这里只对当前页范围内做"已扫描数 + 是否还有更多"判断
+    // 把当前页的 keys 整理为前端展示格式；list_complete / cursor 由调用方用来判断是否还有下一页
     const keys = (list.keys || []).map(k => ({
       name: k.name,
       // expiration / metadata 视 KV 兼容性返回
