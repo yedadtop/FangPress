@@ -180,7 +180,8 @@ export async function onRequestGet(context) {
     const result = await fetchPost(env, slug, context);
     if (!result.ok) {
         if (result.status === 404) return renderFallbackPage(env, request, url, 'not-found', context);
-        if (result.status === 400) return renderFallbackPage(env, request, 'bad-slug', context);
+        // ⚡ 修复：补上 url 参数，避免 400 路径掉进 'not-found' 默认分支
+        if (result.status === 400) return renderFallbackPage(env, request, url, 'bad-slug', context);
         return renderFallbackPage(env, request, url, 'error', context);
     }
     const post = result.post;

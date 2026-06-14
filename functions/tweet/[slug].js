@@ -4,7 +4,6 @@
 //   env.KV.get('post:content:<slug>')  -> { id, status, views, content, type, created_at }
 // 配合 template tweet.html
 // 关键校验：拒绝 type !== 'tweet' 的访问（让用户去 /post/{slug}）
-// 关键校验：拒绝 type !== 'tweet' 的访问（让用户去 /post/{slug}）
 
 import { getSettings } from '../lib/nav-render.js';
 import { escapeHtml, safeParseKV, renderTweetContent } from '../lib/list-render.js';
@@ -59,8 +58,9 @@ async function fetchTweet(env, slug, context) {
     const cached = safeParseKV(await env.KV.get(kvKey).catch(() => null));
     if (cached && cached.id != null && cached.status != null && cached.views != null) {
         if (cached.status !== 'published') return { ok: false, status: 404 };
-        // ⚡ 关键校验：必须是 tweet 类型，否则让用户去 /post/{slug}
-        if (cached.type && cached.type !== 'tweet') return { ok: false, status: 404 };
+        // ⚡ 修复：去掉 `cached.type &&` 前置守卫，否则老缓存/损坏缓存里没有 type 字段时
+        //   会被当作推文渲染。改成严格 !== 'tweet'，与下方 D1 分支行为一致。
+        if (cached.type !== 'tweet') return { ok: false, status: 404 };
 
         const newViews = (Number(cached.views) || 0) + 1;
 

@@ -21,7 +21,8 @@ const PAGE_TAB = 'tweets';
 export async function onRequestGet(context) {
     const { request, env } = context;
     const url = new URL(request.url);
-    // 推文页面无视 ?page=N：始终渲染首页（懒加载由前端处理）
+    // 推文页 SSR 始终先渲染第 1 页（前端 IntersectionObserver 懒加载翻页）
+    // 这里仍然按 page 取 KV 缓存键,便于预热/直接访问 /tweets?page=N
     let page = parseInt(url.searchParams.get('page') || '1', 10);
     if (isNaN(page) || page < 1) page = 1;
     const currentKvKey = KV_LIST_KEY_PREFIX + page;

@@ -1,13 +1,19 @@
 // ⚡ 修复 10：常量时间字符串比较，避免时序攻击泄露 hash 长度
+// 不做长度短路：迭代 max(a,b) 长度，差值参与异或，保证分支与执行时间恒定
 function constantTimeEqual(a, b) {
     if (typeof a !== 'string' || typeof b !== 'string') return false;
-    if (a.length !== b.length) return false;
-    let diff = 0;
-    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    const len = Math.max(a.length, b.length);
+    let diff = a.length ^ b.length; // 长度不等也纳入 diff，保持恒定时间
+    for (let i = 0; i < len; i++) {
+        const ac = i < a.length ? a.charCodeAt(i) : 0;
+        const bc = i < b.length ? b.charCodeAt(i) : 0;
+        diff |= ac ^ bc;
+    }
     return diff === 0;
 }
 
 // ⚡ 修复 10：极简 KV 限流（同一 username 在 5 分钟内最多 10 次错误尝试）
+// ⚡ 修复 2：纯只读检查，移除多余 KV.put，避免与 recordLoginFailure 产生写写竞态
 async function isRateLimited(env, username) {
     if (!env.KV) return false;
     const key = `rl:login:${String(username || '').toLowerCase()}`;
@@ -23,8 +29,6 @@ async function isRateLimited(env, username) {
             // 暴露重试时间（秒）
             return Math.ceil((windowMs - (now - fresh[0])) / 1000);
         }
-        // 把当前失败写回
-        await env.KV.put(key, JSON.stringify({ fails: fresh }), { expirationTtl: 360 });
         return 0;
     } catch (_) {
         return false; // KV 异常时不做拦截，宁可放过

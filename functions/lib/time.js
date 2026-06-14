@@ -12,7 +12,6 @@
  *  2. 显式 hourCycle: 'h23'，锁死 00-23，避免 'zh-CN' 在 hour12:false
  *     时的潜在 24:00 输出
  *  3. try-catch 兜底，Intl 异常时退回到 +8h 偏移
- *  4. console.log 调试日志，便于在 Cloudflare Pages Logs 里验证是否被调用
  */
 export function nowInShanghai() {
   const now = new Date();
@@ -39,9 +38,8 @@ export function nowInShanghai() {
 
     const out = `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}:${map.second}.${ms}+08:00`;
 
-    // 调试日志：Cloudflare Pages → Functions → Logs 里搜 [time] 可看到
-    console.log(`[time] nowInShanghai() = ${out} (host UTC = ${now.toISOString()})`);
-
+    // ⚡ 修复：移除生产环境 console.log，避免 Cloudflare Workers 按量计费的日志里
+    //   被这条调试信息刷屏（settings / navs / site_settings 每次写入都会调用一次）。
     return out;
   } catch (err) {
     // 兜底：Intl 不可用时退回到简单的 +8h 偏移，保证写入不中断
