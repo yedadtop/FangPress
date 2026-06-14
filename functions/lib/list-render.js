@@ -52,26 +52,35 @@ export function renderPostItem(post, i, showViews) {
     const type = post.type || 'post';
 
     // 推文渲染(混合列表场景,如首页 mix 模式):
-    //  - 采用 float 布局：日期靠右浮动，正文环绕，确保文字自然换行并包裹在日期下方
+    //  - 桌面端采用 float 布局:日期靠右浮动,正文环绕
+    //  - 移动端日期放到正文下方右对齐,与文章日期样式保持一致
     if (type === 'tweet') {
         const dateStr = formatDate(post.created_at);
-        
-        // 日期标签：设置为 float-right，加左边距让文字不紧贴，顶部微调对齐首行
-        const meta = dateStr
-            ? `<time class="float-right ml-4 mt-1 text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">${dateStr}</time>`
+
+        // 桌面端日期:float-right 嵌入正文容器
+        const dateDesktop = dateStr
+            ? `<time class="hidden md:inline float-right ml-4 mt-1 text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">${dateStr}</time>`
             : '';
 
-        // 正文容器：将 meta 直接塞入内部，使用 div 替换 p
+        // 移动端日期:与文章日期共用相同的容器与字体类,放到正文下方右对齐
+        const dateMobile = dateStr
+            ? `<div class="md:hidden flex items-center justify-end gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1">
+                 <time class="font-sans">${dateStr}</time>
+               </div>`
+            : '';
+
+        // 正文容器:桌面端 meta 浮在正文中,移动端 meta 单独放正文下方
         const excerpt = post.excerpt
             ? `<div class="font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">
-                 ${meta}
+                 ${dateDesktop}
                  ${escapeHtml(post.excerpt)}
-               </div>`
-            : meta;
+               </div>
+               ${dateMobile}`
+            : `${dateDesktop}${dateMobile}`;
 
         return `
             <article class="fade-up py-7 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
-                <a href="/post/${encodeURIComponent(slug)}" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">
+                <a href="/post/${encodeURIComponent(slug)}" class="block">
                     ${excerpt}
                 </a>
             </article>
