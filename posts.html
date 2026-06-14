@@ -202,7 +202,31 @@
             if (!results) return;
             if (!items.length) { showMessage('未找到相关文章'); return; }
             var html = items.map(function (p) {
-                var slug     = encodeURIComponent(p.slug || '');
+                var slug  = encodeURIComponent(p.slug || '');
+                var isTweet = p.type === 'tweet';
+                var href  = isTweet ? '/tweet/' + slug : '/post/' + slug;
+
+                if (isTweet) {
+                    // ⚡ 推文搜索结果：显示内容摘要 + 「推文」标签 + 日期
+                    var raw   = String(p.content || '');
+                    var excerpt = raw.length > 80 ? raw.slice(0, 80) + '…' : raw;
+                    var tweetBadge = '<span class="font-medium text-stone-500">推文</span>';
+                    var dateStr  = formatDate(p.created_at);
+                    var dateHTML = dateStr
+                        ? '<span class="tabular-nums">' + escapeHTML(dateStr) + '</span>'
+                        : '';
+                    var tweetSep = dateHTML ? '<span class="text-stone-300">·</span>' : '';
+                    return '<a href="' + href + '" class="block px-5 py-4 hover:bg-stone-100/60 transition-colors">' +
+                        '<p class="font-serif text-sm leading-relaxed text-stone-700 line-clamp-2 whitespace-pre-wrap break-words">' +
+                            escapeHTML(excerpt) +
+                        '</p>' +
+                        '<div class="mt-1.5 flex items-center gap-2 text-xs text-stone-400 tracking-wider font-sans">' +
+                            tweetBadge + tweetSep + dateHTML +
+                        '</div>' +
+                    '</a>';
+                }
+
+                // 文章搜索结果：标题 + 分类 + 日期（原逻辑）
                 var title    = escapeHTML(p.title || '');
                 var cat      = p.category ? '<span>' + escapeHTML(p.category) + '</span>' : '';
                 var dateStr  = formatDate(p.created_at);
@@ -215,7 +239,7 @@
                         cat + sep + dateHTML +
                       '</div>'
                     : '';
-                return '<a href="/post/' + slug + '" class="block px-5 py-4 hover:bg-stone-100/60 transition-colors">' +
+                return '<a href="' + href + '" class="block px-5 py-4 hover:bg-stone-100/60 transition-colors">' +
                     '<h3 class="font-serif text-base md:text-lg leading-snug text-stone-900 link-underline pb-0.5">' +
                         title +
                     '</h3>' +

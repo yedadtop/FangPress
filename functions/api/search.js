@@ -1,6 +1,6 @@
 // functions/api/search.js
 
-const SELECT_COLS = `id, title, slug, category, created_at, views`;
+const SELECT_COLS = `id, title, slug, category, type, content, created_at, views`;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const LIKE_ESCAPE_RE = /[\\%_]/g;
 
