@@ -43,8 +43,10 @@
 
 部署一个 FangPress 实例只需 5 步：
 
-1. **Fork / Clone** 本仓库到你的 GitHub。
-2. 在 **Cloudflare Dashboard** 创建一个 Pages 项目并连接该仓库（构建命令留空，构建输出目录留空即可，全是静态资源 + Functions）。
+> 💡 也可以不 Fork 仓库，**直接下载本项目压缩包 → Cloudflare Pages → Upload assets**（直接上传）也完全可以，绑定、SQL 初始化等步骤与下方一致。
+
+1. **Fork / Clone** 本仓库到你的 GitHub（或者下载 ZIP 压缩包）。
+2. 在 **Cloudflare Dashboard** 创建一个 Pages 项目并连接该仓库 / 上传压缩包（构建命令留空，构建输出目录留空即可，全是静态资源 + Functions）。
 3. 在 Cloudflare 创建 **D1 数据库**、**R2 存储桶**、**KV 命名空间**，并绑定到 Pages（详见下方 [☁️ Cloudflare 控制台配置](#️-cloudflare-控制台配置)）。
 4. 在 Pages 控制台的 **「设置 → 环境变量」** 配置 `API_TOKEN` 等（详见下方 [☁️ Cloudflare 控制台配置](#️-cloudflare-控制台配置)）。
 5. 首次部署完成后，进 D1 控制台的查询页面 **执行 [sql.txt](./sql.txt) 中的语句** 初始化表结构与默认管理员。
@@ -65,16 +67,11 @@
 ### 2. 创建 D1 / R2 / KV 资源
 
 > 这一步**不展开教程**，请自行 Cloudflare 后台操作（搜索「Cloudflare Pages 绑定 D1/R2/KV」即可查到大量图文），流程简述：
->
-> - **D1 数据库**：左侧 **Storage → D1 SQL Database → Create database**，名字自取（例：`blog-asia`）。
-> - **R2 存储桶**：左侧 **R2 → Create bucket**，名字自取（例：`blog-images`）；建好后进 **Settings → Public access → Allow Access**，记下公开访问域名（**末尾不要带 `/`**）。
-> - **KV 命名空间**：左侧 **Storage → KV → Create a namespace**，名字自取（例：`TEST_BLOG_KV`）。
->
 > 三者创建好后，回到 Pages 项目 → **Settings → Bindings** 添加绑定（详见下一节）。
 
 ### 3. 绑定到 Pages Functions（⚠️ 重点 ⚠️ ）
 
-进入 Pages 项目 → **Settings → Bindings → Add**，添加 **3 条绑定**。**这一步是整个部署最关键、最容易出错的环节**——代码里 `env.KV` / `env.DB` / `env.R2_BUCKET` 是**硬编码**的，你绑定时给的「变量名」必须**与下表一字不差**，否则 Functions 读不到资源，访问直接 500。
+进入 Pages 项目 → **Settings**，添加 **绑定**。绑定时给的「变量名」必须**与下表一字不差**，否则直接500。
 
 | 类型 | 变量名（**必须严格一致**） | 绑定到 |
 | --- | --- | --- |
@@ -82,18 +79,18 @@
 | R2 存储桶 | `R2_BUCKET` | 你上一步建的 R2 桶 |
 | KV 命名空间 | `KV` | 你上一步建的 KV |
 
-> 🔴 **强烈建议**：复制 `DB` / `R2_BUCKET` / `KV` 这 3 个名字到剪贴板再粘贴，**别手敲**。手敲容易把 `KV` 写成 `kv`、`R2_BUCKET` 写成 `R2_Bucket`，大小写 / 下划线差一点 Functions 就 500，排查起来很痛苦。
 
-### 4. 配置环境变量 / 密钥
+
+### 4. 配置环境变量 / 密钥（⚠️ 重点 ⚠️ ）
 
 Pages 项目 → **Settings → Variables and Secrets → Add**，添加 **2 个环境变量**：
 
-| 变量名（**必须严格一致**） | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `API_TOKEN` | 纯文本（Plaintext） | 推荐 | 任意随机强字符串；用此 token 调所有受保护接口（除 `/api/user/update`），适合脚本 / CI |
-| `R2_PUBLIC_URL` | 纯文本（Plaintext） | 必填 | R2 桶的公开访问域名，例：`https://pub-abc123.r2.dev`；用于从 Markdown 抽取 R2 图片 key |
+| 类型 | 名称 | 值（示例） |
+| --- | --- | --- |
+| 纯文本 | `API_TOKEN` | `GhzoDocLALRbPwhqztrhimYgkvEa`（任意随机强字符串） |
+| 纯文本 | `R2_PUBLIC_URL` | `https://xxxx.xxx`（你的 R2 桶公开访问域名，**末尾不要带 `/`**） |
 
-> ⚠️ **类型选错会读不到**：一定选「纯文本（Plaintext）」，不要选「加密（Encrypt）」，否则 Functions 端 `env.API_TOKEN` 拿不到值。改完一定要 **重新部署一次** 才生效。
+> ⚠️ 改完一定要 **重新部署一次** 才生效。
 
 ### 5. 初始化数据库（执行 SQL）
 
@@ -106,26 +103,6 @@ Pages 项目 → **Settings → Variables and Secrets → Add**，添加 **2 个
 
 4. 重新打开你的 Pages 站点，登录后请立刻通过 **控制台 → 账户** 改密并设置强密码。
 
-### 📸 配置面板对照
-
-下面是一份**真实可用的最小配置**（以 Cloudflare Pages → **Settings → Bindings / Variables and Secrets** 面板为准，照着填即可）：
-
-#### 变量和密钥
-
-| 类型 | 名称 | 值（示例） |
-| --- | --- | --- |
-| 纯文本 | `API_TOKEN` | `GhzoDocLALVRbPwhqztrezhim5YgkvyEa`（任意随机强字符串） |
-| 纯文本 | `R2_PUBLIC_URL` | `https://img.yedad.top`（你的 R2 桶公开访问域名，**末尾不要带 `/`**） |
-
-#### 绑定
-
-| 类型 | 名称 | 绑定到（值） |
-| --- | --- | --- |
-| KV 命名空间 | `KV` | `TEST_BLOG_KV` |
-| D1 数据库 | `DB` | `blog-asia` |
-| R2 存储桶 | `R2_BUCKET` | `blog-images` |
-
-> 🔴 **再次强调「变量名必须严格一致」**：截图里的 3 个绑定名 `KV` / `DB` / `R2_BUCKET` 和 2 个环境变量名 `API_TOKEN` / `R2_PUBLIC_URL` —— 这 5 个字符串**和代码里 `env.*` 的取名是一一对应的**，任何一处拼写 / 大小写 / 下划线不一致，部署后所有受保护接口 500。**建议直接复制粘贴，别手敲。**
 
 ---
 
