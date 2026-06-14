@@ -12,9 +12,54 @@
         }
         body { font-family: var(--font-sans); }
         .font-serif { font-family: var(--font-serif); }
+
+        /* === 上传中浮动提示（spinner + 文案） === */
+        .upload-toast {
+            position: fixed;
+            top: 80px;
+            right: 24px;
+            z-index: 70;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: #ffffff;
+            border: 1px solid #d6d3d1;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+            font-size: 13px;
+            color: #44403c;
+            transition: all 0.2s ease;
+        }
+        .upload-toast.show { display: flex; }
+        .upload-toast.error   { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+        .upload-toast.success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+
+        .upload-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: upload-spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes upload-spin { to { transform: rotate(360deg); } }
+
+        .avatar-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body class="bg-[#fafaf9] text-stone-800 min-h-screen">
+
+    <!-- ⚡️ 上传中浮动提示 -->
+    <div id="upload-toast" class="upload-toast" role="status" aria-live="polite">
+        <span class="upload-spinner" id="upload-toast-spinner"></span>
+        <span id="upload-toast-text">正在上传头像...</span>
+    </div>
 
     <div class="max-w-2xl mx-auto px-6 md:px-10 py-10 md:py-14">
 
@@ -79,12 +124,16 @@
                                 <input type="url" id="avatar" inputmode="url" autocomplete="off"
                                        class="flex-1 min-w-0 px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500"
                                        maxlength="2048" placeholder="https://..." />
+                                <button type="button" id="avatar-upload-btn" onclick="uploadAvatar()"
+                                        class="avatar-btn shrink-0 px-3 py-2.5 text-stone-500 hover:text-stone-900 border border-stone-200 rounded-md text-sm transition-colors cursor-pointer">
+                                    上传
+                                </button>
                                 <button type="button" id="avatar-clear-btn" onclick="clearAvatar()"
                                         class="hidden shrink-0 px-3 py-2.5 text-stone-500 hover:text-red-500 border border-stone-200 hover:border-red-200 rounded-md text-sm transition-colors cursor-pointer">
                                     清除
                                 </button>
                             </div>
-                            <p class="text-[11px] text-stone-400 leading-relaxed">仅支持 <code class="text-stone-500 font-mono">http://</code> / <code class="text-stone-500 font-mono">https://</code> 直链，公开页面与后台会展示此头像。留空则恢复默认占位。</p>
+                            <p class="text-[11px] text-stone-400 leading-relaxed">仅支持 <code class="text-stone-500 font-mono">http://</code> / <code class="text-stone-500 font-mono">https://</code> 直链，可直接粘贴外链，或点击「上传」从本机选择图片（不超过 2MB）。公开页面与后台会展示此头像。留空则恢复默认占位。</p>
                         </div>
                     </div>
                 </div>
@@ -126,6 +175,9 @@
                 <span id="status-text" class="ml-auto text-xs italic font-serif hidden"></span>
             </div>
         </form>
+
+        <!-- ⚡️ 头像上传用的隐藏文件输入 -->
+        <input type="file" id="avatar-upload-input" accept="image/*" class="hidden" onchange="handleAvatarUpload(event)">
     </div>
 
     <script>
@@ -186,6 +238,95 @@
         function clearAvatar() {
             applyAvatar('');
             document.getElementById('avatar').focus();
+        }
+
+        // ⚡️ 上传头像：触发文件选择
+        function uploadAvatar() {
+            const input = document.getElementById('avatar-upload-input');
+            if (input) input.click();
+        }
+
+        // ⚡️ 上传中浮动提示
+        function showUploadToast(msg, kind) {
+            const toast = document.getElementById('upload-toast');
+            const text  = document.getElementById('upload-toast-text');
+            const spin  = document.getElementById('upload-toast-spinner');
+            if (!toast || !text) return;
+
+            text.textContent = msg;
+            toast.className = 'upload-toast show';
+            if (kind === 'error')   toast.classList.add('error');
+            if (kind === 'success') toast.classList.add('success');
+            if (spin) spin.style.display = (kind === 'error' || kind === 'success') ? 'none' : 'inline-block';
+
+            if (kind === 'success') {
+                setTimeout(() => toast.classList.remove('show'), 1600);
+            }
+        }
+
+        // ⚡️ 锁定/解锁上传按钮
+        function setUploadButtonsDisabled(disabled) {
+            const btn = document.getElementById('avatar-upload-btn');
+            if (btn) btn.disabled = disabled;
+        }
+
+        // ⚡️ 头像上传处理：上传到 /api/upload，成功后调用 applyAvatar 把地址写入输入框 + 预览
+        async function handleAvatarUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            // 无论成功失败都先清空 value，允许重复上传同一文件
+            event.target.value = '';
+            if (!file) return;
+
+            // 头像限 2MB（不需要像文章图片那么大的尺寸）
+            if (file.size > 2 * 1024 * 1024) {
+                showUploadToast('头像不能超过 2MB', 'error');
+                setTimeout(() => {
+                    const t = document.getElementById('upload-toast');
+                    if (t) t.classList.remove('show');
+                }, 2400);
+                return;
+            }
+
+            const token = getToken();
+            if (!token) {
+                window.top.location.href = 'admin.html';
+                return;
+            }
+
+            setUploadButtonsDisabled(true);
+            showUploadToast('正在上传头像...', 'loading');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                const result = await res.json();
+
+                if (res.ok && result.success && result.url) {
+                    // ⚡️ 上传成功：把返回的 URL 写回输入框 + 实时预览
+                    applyAvatar(result.url);
+                    showUploadToast('头像已更新', 'success');
+                } else {
+                    showUploadToast('上传失败: ' + (result.error || `HTTP ${res.status}`), 'error');
+                    setTimeout(() => {
+                        const t = document.getElementById('upload-toast');
+                        if (t) t.classList.remove('show');
+                    }, 3000);
+                }
+            } catch (err) {
+                showUploadToast('上传失败: ' + err.message, 'error');
+                setTimeout(() => {
+                    const t = document.getElementById('upload-toast');
+                    if (t) t.classList.remove('show');
+                }, 3000);
+            } finally {
+                setUploadButtonsDisabled(false);
+            }
         }
 
         async function loadUser() {
