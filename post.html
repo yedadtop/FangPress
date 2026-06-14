@@ -77,10 +77,11 @@
         .prose-reader hr { border: 0; text-align: center; margin: 3rem 0; color: #d6d3d1; }
         .prose-reader hr::before { content: '···'; letter-spacing: 1em; }
         .prose-reader img {
-            max-width: 100%;
+            max-width: 70%;
             max-height: 30rem;
             border-radius: 6px;
-            margin: 1.8rem 0;
+            margin: 1.8rem auto;
+            display: block;
             cursor: zoom-in;
             -webkit-user-drag: none;
             user-select: none;
@@ -148,7 +149,7 @@
 
         function setupGallery(root) {
             var scope = root || document;
-            var containers = scope.querySelectorAll('article[data-ssr-item], .prose-reader');
+            var containers = scope.querySelectorAll('article[data-ssr-item], .prose-reader, #ssr-tweet-content');
             containers.forEach(function (container) {
                 var imgs = container.querySelectorAll('.tweet-img, .prose-reader img');
                 imgs.forEach(function (img) {
@@ -162,8 +163,17 @@
         function bind() {
             if (!window.Fancybox) return;
             setupGallery();
-            Fancybox.bind('[data-fancybox]', { Hash: false });
+            Fancybox.bind('[data-fancybox]');
         }
+
+        // 防御:在 capture 阶段先 preventDefault,挡掉外层 <a> 的默认跳转
+        document.addEventListener('click', function (e) {
+            var t = e.target;
+            if (!t || !t.closest) return;
+            if (t.closest('img[data-fancybox]')) {
+                e.preventDefault();
+            }
+        }, true);
 
         // 暴露给 tweets.html 懒加载后重新绑定
         window.rebindFancybox = function () { bind(); };

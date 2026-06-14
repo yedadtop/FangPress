@@ -402,11 +402,9 @@
     (function () {
         function gid() { return 'fb-' + Math.random().toString(36).slice(2, 9); }
 
-        // 为 article[data-ssr-item] / .prose-reader 容器内的图片生成独立 gallery,
-        // 这样同一推文/文章里的多张图可以左右滑动
         function setupGallery(root) {
             var scope = root || document;
-            var containers = scope.querySelectorAll('article[data-ssr-item], .prose-reader');
+            var containers = scope.querySelectorAll('article[data-ssr-item], .prose-reader, #ssr-tweet-content');
             containers.forEach(function (container) {
                 var imgs = container.querySelectorAll('.tweet-img, .prose-reader img');
                 imgs.forEach(function (img) {
@@ -420,8 +418,17 @@
         function bind() {
             if (!window.Fancybox) return;
             setupGallery();
-            Fancybox.bind('[data-fancybox]', { Hash: false });
+            Fancybox.bind('[data-fancybox]');
         }
+
+        // 防御:capture 阶段先 preventDefault,挡掉外层 <a> 的默认跳转
+        document.addEventListener('click', function (e) {
+            var t = e.target;
+            if (!t || !t.closest) return;
+            if (t.closest('img[data-fancybox]')) {
+                e.preventDefault();
+            }
+        }, true);
 
         // 暴露给 tweets.html 懒加载后重新绑定
         window.rebindFancybox = function () { bind(); };

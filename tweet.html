@@ -101,11 +101,14 @@
     (function () {
         function gid() { return 'fb-' + Math.random().toString(36).slice(2, 9); }
 
-        // 为 article[data-ssr-item] / .prose-reader 容器内的图片生成独立 gallery,
-        // 这样同一推文里的多张图可以左右滑动
+        // 把所有需要进灯箱的图片加 data-fancybox:
+        //   - article[data-ssr-item]  -> 列表里每条推文
+        //   - .prose-reader            -> 文章详情正文
+        //   - #ssr-tweet-content       -> 推文详情正文(这次漏的就是它)
+        // 同 gallery 的图片会按 data-fancybox 同值左右滑动
         function setupGallery(root) {
             var scope = root || document;
-            var containers = scope.querySelectorAll('article[data-ssr-item], .prose-reader');
+            var containers = scope.querySelectorAll('article[data-ssr-item], .prose-reader, #ssr-tweet-content');
             containers.forEach(function (container) {
                 var imgs = container.querySelectorAll('.tweet-img, .prose-reader img');
                 imgs.forEach(function (img) {
@@ -119,8 +122,19 @@
         function bind() {
             if (!window.Fancybox) return;
             setupGallery();
-            Fancybox.bind('[data-fancybox]', { Hash: false });
+            // 第二参是 userOptions,不再传 Hash(避免依赖 Hash 插件)
+            Fancybox.bind('[data-fancybox]');
         }
+
+        // 防御:在 capture 阶段先 preventDefault,把外层 <a href="/tweet/..."> 的
+        // 默认导航挡掉,避免浏览器跳转抢在 FancyBox 之前
+        document.addEventListener('click', function (e) {
+            var t = e.target;
+            if (!t || !t.closest) return;
+            if (t.closest('img[data-fancybox]')) {
+                e.preventDefault();
+            }
+        }, true);
 
         // 暴露给 tweets.html 懒加载后重新绑定
         window.rebindFancybox = function () { bind(); };
