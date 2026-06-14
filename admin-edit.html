@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/styles/github.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.min.js"></script>
     <style>
         :root {
             --font-serif: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -693,7 +694,7 @@
             event.target.value = '';
             if (!file) return;
 
-            // 客户端预校验：>5MB 直接拒绝
+            // 客户端预校验：>5MB 直接拒绝（压缩前的原图上限，避免给浏览器造成过大压力）
             if (file.size > 5 * 1024 * 1024) {
                 showStatus('图片不能超过 5MB', 'error');
                 return;
@@ -711,8 +712,25 @@
             const end = ta.selectionEnd;
             const selected = ta.value.substring(start, end);
 
+            // ⚡ 客户端压缩：转 WebP + 1600px + 0.85 画质 + 500KB 兜底
+            let compressedFile = file;
+            try {
+                showStatus('正在压缩图片...', 'ok');
+                compressedFile = await imageCompression(file, {
+                    fileType: 'image/webp',
+                    maxWidthOrHeight: 1600,
+                    initialQuality: 0.85,
+                    maxSizeMB: 0.5,
+                    useWebWorker: true
+                });
+            } catch (compressErr) {
+                // 压缩失败不阻塞上传，兜底使用原图
+                console.warn('图片压缩失败，将按原图上传:', compressErr);
+                compressedFile = file;
+            }
+
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', compressedFile, compressedFile.name || file.name);
             showStatus('正在上传图片...', 'ok');
 
             try {
