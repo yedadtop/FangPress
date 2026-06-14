@@ -87,11 +87,26 @@
         .modal-option:has(input:checked) .modal-radio { border-color: #0c0a09; }
         .modal-option:has(input:checked) .modal-radio-dot { opacity: 1; }
 
-        /* R2 存储卡片网格 */
+        /* R2 存储卡片网格 —— 手机端必须锁 2 列，避免单图占满全宽 */
         .r2-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 0.875rem;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.5rem;
+        }
+        @media (min-width: 480px) {
+            .r2-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+        @media (min-width: 640px) {
+            .r2-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                gap: 0.75rem;
+            }
+        }
+        @media (min-width: 1024px) {
+            .r2-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 0.875rem;
+            }
         }
         .r2-card {
             background: white;
@@ -154,6 +169,15 @@
             color: #a8a29e;
             font-variant-numeric: tabular-nums;
             line-height: 1.3;
+        }
+        /* 手机端 2 列时把卡片收紧一点，避免文件名 / 元信息被裁 */
+        @media (max-width: 479px) {
+            .r2-card-body { padding: 0.5rem 0.625rem 0.625rem; gap: 0.3rem; }
+            .r2-card-name { font-size: 0.75rem; }
+            .r2-card-meta { font-size: 0.625rem; }
+            .r2-card-actions button { padding: 0.25rem; font-size: 0.625rem; }
+            .r2-thumb-icon svg { width: 1.875rem; height: 1.875rem; }
+            .r2-thumb { aspect-ratio: 1 / 1; }
         }
         .r2-card-actions {
             display: flex;
