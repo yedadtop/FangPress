@@ -503,12 +503,44 @@
                 return r.json();
             })
             .then(function (json) {
-                if (json && json.success && Array.isArray(json.data)) {
-                    appendItems(json.data);
-                    nextPage++;
-                    list.setAttribute('data-next-page', String(nextPage));
-                    finish(json.has_more === true);
+                // 兼容多种后端返回结构：
+                //   1) 顶层数组             [ {...}, ... ]
+                //   2) { success, data, has_more }   ← 当前 list.js 实际返回
+                //   3) { data } / { items }（防缓存协议变动）
+                var items = null;
+                var hasNext = false;
+                if (Array.isArray(json)) {
+                    items = json;
+                } else if (json && typeof json === 'object') {
+                    // 明确 success:false 才视为业务失败
+                    if (json.success === false) {
+                        showError();
+                        return;
+                    }
+                    if (Array.isArray(json.data)) {
+                        items = json.data;
+                        hasNext = json.has_more === true;
+                    } else if (Array.isArray(json.items)) {
+                        items = json.items;
+                        hasNext = json.has_more === true || json.hasMore === true;
+                    }
+                }
+
+                // 拿到可解析的 data → 请求本身是成功的，清掉错误条
+                hideError();
+
+                if (Array.isArray(items)) {
+                    if (items.length) {
+                        appendItems(items);
+                        nextPage++;
+                        list.setAttribute('data-next-page', String(nextPage));
+                        finish(hasNext);
+                    } else {
+                        // 空数据：视为正常结束（已无更多）
+                        finish(false);
+                    }
                 } else {
+                    // 响应结构完全无法识别才报错
                     showError();
                 }
             })
