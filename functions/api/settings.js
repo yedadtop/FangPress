@@ -26,8 +26,10 @@ export async function onRequestGet(context) {
     context.waitUntil(env.KV.put(KV_SETTINGS_KEY, responseString));
 
     return new Response(responseString, { headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
-  } catch (err) { 
-    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 }); 
+  } catch (err) {
+    return new Response(JSON.stringify({ success: false, error: err.message }), {
+      status: 500, headers: { "Content-Type": "application/json" }
+    });
   }
 }
 
@@ -112,7 +114,14 @@ export async function onRequestPost(context) {
     // 使用 await 确保在响应前 KV 已经更新完毕，彻底抹除不同步
     await env.KV.put(KV_SETTINGS_KEY, JSON.stringify({ success: true, data: freshData }));
 
-    return new Response(JSON.stringify({ success: true, message: `已更新 ${touched} 项配置并联动清空全站缓存。` }), { headers: { "Content-Type": "application/json" } });
+    // ⚡ 修复：touched === 0 时不能再说"已更新 0 项配置"，会误导用户以为系统抽风了。
+    const message = touched > 0
+      ? `已更新 ${touched} 项配置并联动清空全站缓存。`
+      : `本次请求未包含可识别的配置项（白名单共 ${ALLOWED_KEYS.size} 项），仅联动清空全站缓存。`;
+
+    return new Response(JSON.stringify({ success: true, message }), {
+      headers: { "Content-Type": "application/json" }
+    });
   } catch (err) {
     return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
   }

@@ -37,7 +37,22 @@ export async function onRequestPost(context) {
       .bind(...idList)
       .all();
 
-    // 2) ⚡ 顺序安全擦除每篇文章的内容缓存
+    // ⚡ 修复：先做 D1 物理删除，确认有命中再清缓存；之前无论是否真的删了，
+    //   都会先扫遍 KV 删一堆缓存，idList 全是无效 id 时属于无谓的 IO。
+
+    // 2) 先执行 D1 的物理删除（同样用 IN，一次性搞定）
+    const result = await env.DB
+      .prepare(`DELETE FROM posts WHERE id IN (${placeholders})`)
+      .bind(...idList)
+      .run();
+
+    const deleted = (result.meta && typeof result.meta.changes === 'number') ? result.meta.changes : 0;
+    if (deleted === 0) {
+      return new Response(JSON.stringify({ success: false, error: "未找到任何待删文章" }), { status: 404 });
+    }
+
+    // 3) 确认删除成功后才擦缓存
+    // ⚡ 顺序安全擦除每篇文章的内容缓存
     try {
       for (const p of (posts.results || [])) {
         if (p && p.slug) {
@@ -86,18 +101,7 @@ export async function onRequestPost(context) {
       }
     } catch (_) {}
 
-    // 3) 最后执行 D1 的物理删除（同样用 IN，一次性搞定）
-    const result = await env.DB
-      .prepare(`DELETE FROM posts WHERE id IN (${placeholders})`)
-      .bind(...idList)
-      .run();
-
-    const deleted = (result.meta && typeof result.meta.changes === 'number') ? result.meta.changes : 0;
-    if (deleted === 0) {
-      return new Response(JSON.stringify({ success: false, error: "未找到任何待删文章" }), { status: 404 });
-    }
-
-    // ⚡ 4) 同步清理这些文章引用的 R2 图片（不抛错，R2 失败不影响主流程）
+    // 4) 同步清理这些文章引用的 R2 图片（不抛错，R2 失败不影响主流程）
     let r2Ok = 0, r2Fail = 0, r2Keys = 0;
     try {
       for (const p of (posts.results || [])) {

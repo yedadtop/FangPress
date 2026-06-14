@@ -49,7 +49,11 @@ export async function onRequestGet(context) {
           });
         }
 
-        const newViews = (Number(c.views) || 0) + 1;
+        // ⚡ 修复：草稿不再做内存补偿 +1 —— 之前的代码会让草稿的 views 在响应里虚高，
+        //   但 DB/KV 都不持久化，下一次请求又会回到原值，造成「幻象浏览量」。
+        const newViews = c.status === 'published'
+          ? (Number(c.views) || 0) + 1
+          : Number(c.views) || 0;
         const cachedType = c.type || 'post';
         const post = {
           title: c.title || null,
@@ -57,7 +61,6 @@ export async function onRequestGet(context) {
           category: c.category ?? null,
           type: cachedType,
           created_at: c.created_at,
-          // 内存补偿 +1,真实写入交给 waitUntil 异步完成
           views: newViews
         };
 

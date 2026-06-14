@@ -31,8 +31,7 @@ export async function onRequestGet(context) {
 
   const formattedCategory = categoryParam ? categoryParam.trim().toLowerCase() : null;
 
-  // ⚡ 核心判断：是否为管理后台的全量请求（无分类、无分页、无 type）
-  const isAdminQuery = !formattedCategory && !isPaginated && !normalizedType;
+  // ⚡ 核心判断：admin 全量请求时走特殊 KV 路径，下面 currentKvKey 全程保持 null 即可
 
   let currentKvKey = null;
   if (normalizedType === 'tweet' && formattedCategory) {
@@ -209,6 +208,6 @@ export async function onRequestGet(context) {
     });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
   }
 }

@@ -42,10 +42,12 @@ export function makeExcerpt(content, maxLen = 200) {
 export function makeExcerptKeepMedia(content, maxLen = 200) {
   if (!content) return '';
   // 仅去除代码块、行内代码、链接、标题、加粗、斜体、引用、列表、HTML,保留 ![alt](url)
+  // ⚡ 修复：用负向零宽断言 (?<!!) 排除「紧跟着 ! 的 [...]」，否则图片 markdown ![alt](url)
+  //   里的 [alt](url) 段会被普通链接规则吞掉，变成 !alt —— 图片引用丢失。
   const text = String(content)
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`([^`]+)`/g, '$1')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')  // 普通链接转纯文本
+    .replace(/(?<!!)\[([^\]]+)\]\(([^)]+)\)/g, '$1')  // 普通链接转纯文本（不影响图片）
     .replace(/^\s{0,3}#{1,6}\s+/gm, '')
     .replace(/(\*\*|__)(.+?)\1/g, '$2')
     .replace(/(\*|_)(.+?)\1/g, '$2')
