@@ -1,3 +1,11 @@
+<!--
+    页面：文章详情页（Post Detail）
+    作用：根据 URL 中的 slug 渲染单篇文章的标题、分类、阅读量、发布时间与正文
+    数据：SSR 注入到 #ssr-post-article（标题、分类、阅读量、时间、正文）
+    状态：#status-loading 加载中 / #status-bad-slug 缺 slug / #status-not-found 不存在 / #status-error 失败
+    说明：当前实现下，type=post 与 type=tweet 共用同一详情页骨架（/post/{slug}），
+          推文详情亦复用此模板。
+-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>

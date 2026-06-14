@@ -1,3 +1,9 @@
+<!--
+    页面：推文列表页（Tweets List）
+    作用：按懒加载展示 type=tweet 的推文流，滚动到底部自动追加下一页
+    数据：SSR 注入首屏到 #ssr-post-list，后续通过 /api/list?type=tweet&page=N 拉取
+    配套：#tweet-load-more-sentinel（哨兵）、#tweet-end（结束标记）、#tweet-load-error（重试入口）
+-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
