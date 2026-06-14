@@ -270,7 +270,7 @@ FangPress **公开页面（首页 `/`、文章列表 `/posts`、推文列表 `/t
 
 | 维度 | 公开页面（SSR） | 管理后台（CSR） |
 | --- | --- | --- |
-| 文件 | `index.html` / `posts.html` / `tweets.html` / `post.html` / `tweet.html` | `admin.html` + `admin-*.html` 6 个 |
+| 文件 | `index.html` / `posts.html` / `tweets.html` / `post.html` / `tweet.html` | `admin.html` + `admin-*.html` 8 个 |
 | 渲染时机 | **请求时**在 Cloudflare 边缘节点用 Functions 把 HTML 拼好再返回 | 浏览器端 JS fetch `/api/*` 后动态渲染 |
 | 首屏 | 一次性返回**完整 HTML**（含正文 / 标题 / 日期 / 摘要 / 导航） | 一个空壳 + 多次 fetch 拉数据 |
 | 改主题/样式 | **要改两处**（HTML 静态模板 + `functions/lib/*.js` 的 SSR 渲染器） | 只改 `admin-*.html` |
