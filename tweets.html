@@ -414,10 +414,8 @@
             if (!ts) return '';
             var d = new Date(ts);
             if (isNaN(d)) return '';
-            var y  = d.getFullYear();
-            var m  = String(d.getMonth() + 1).padStart(2, '0');
-            var dd = String(d.getDate()).padStart(2, '0');
-            return y + ' · ' + m + ' · ' + dd;
+            // ⚡️ 与主页一致:仅显示月-日(如 "6-14")
+            return (d.getMonth() + 1) + '-' + d.getDate();
         }
 
         var TWEET_IMG_RE = /!\[([^\]]*?)\]\((https?:\/\/[^)\s<]+|data:image\/[^)\s<]+)\)/gi;
