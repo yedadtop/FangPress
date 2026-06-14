@@ -66,10 +66,10 @@
 
 ### 2. 创建 D1 / R2 / KV 资源
 
-> 这一步**不展开教程**，请自行 Cloudflare 后台操作（搜索「Cloudflare Pages 绑定 D1/R2/KV」即可查到大量图文），流程简述：
+> 这一步**不展开教程**，请自行 Cloudflare 后台操作（搜索「Cloudflare Pages 创建 D1/R2/KV」即可查到大量图文），流程简述：
 > 三者创建好后，回到 Pages 项目 → **Settings → Bindings** 添加绑定（详见下一节）。
 
-### 3. 绑定到 Pages Functions（⚠️ 重点 ⚠️ ）
+### 3. 绑定到 Pages Functions（⚠️）
 
 进入 Pages 项目 → **Settings**，添加 **绑定**。绑定时给的「变量名」必须**与下表一字不差**，否则直接500。
 
@@ -81,11 +81,11 @@
 
 
 
-### 4. 配置环境变量 / 密钥（⚠️ 重点 ⚠️ ）
+### 4. 配置环境变量 / 密钥（⚠️）
 
 Pages 项目 → **Settings → Variables and Secrets → Add**，添加 **2 个环境变量**：
 
-| 类型 | 名称 | 值（示例） |
+| 类型 | 名称（**必须严格一致**） | 值（示例） |
 | --- | --- | --- |
 | 纯文本 | `API_TOKEN` | `GhzoDocLALRbPwhqztrhimYgkvEa`（任意随机强字符串） |
 | 纯文本 | `R2_PUBLIC_URL` | `https://xxxx.xxx`（你的 R2 桶公开访问域名，**末尾不要带 `/`**） |
@@ -95,20 +95,13 @@ Pages 项目 → **Settings → Variables and Secrets → Add**，添加 **2 个
 ### 5. 初始化数据库（执行 SQL）
 
 1. Cloudflare Dashboard → **Workers & Pages → Storage → D1** → 选中你建的 D1（例：`blog-asia`）→ **Console** 标签。
-2. 把 [sql.txt](./sql.txt) 里的 SQL 整段粘贴到输入框，点击 **Execute**。
+2. 把下方折叠的 **「👉 点击展开 sql.txt 完整 SQL」** 整段 SQL 复制出来，粘贴到输入框，点击 **Execute**（或者直接看 [sql.txt](./sql.txt) 源文件）。
 3. 成功后表结构与默认管理员已就绪：
    - 用户名：`admin`
    - 密码（明文）：`admin`
    - 密码（SHA-256）：`8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918`
 
 4. 重新打开你的 Pages 站点，登录后请立刻通过 **控制台 → 账户** 改密并设置强密码。
-
-
----
-
-## 🗄️ 数据库表结构（`sql.txt` 折叠）
-
-> 完整 SQL 较长，折叠如下。点击展开后整段复制到 D1 Console 执行即可。
 
 <details>
 <summary>👉 点击展开 <code>sql.txt</code> 完整 SQL</summary>
@@ -195,10 +188,7 @@ INSERT INTO site_navs (label, href, tab_key, open_in_new_tab, is_active, sort_or
 
 </details>
 
-> 📁 源文件路径：[sql.txt](./sql.txt)
-
 ---
-
 
 ## 📖 配套文档
 
