@@ -95,61 +95,42 @@
         — End of Tweet —
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.min.js"></script>
     <script>
-    // 推文图片灯箱:FancyBox 5(CDN)
-    // ⚠️ 关键发现:@fancyapps/ui@5.0.36 的 bundle 里根本没有静态 Fancybox.bind 方法,
-    //    只能自己写 click 代理 → Fancybox.fromSelector(selector, startNode)
+    // 统一图片灯箱代理：利用事件委托 + 编程式 API，完美支持懒加载，无需重新 bind
     (function () {
-        function gid() { return 'fb-' + Math.random().toString(36).slice(2, 9); }
-
-        // 把所有需要进灯箱的图片加 data-fancybox:
-        //   - article[data-ssr-item]  -> 列表里每条推文
-        //   - .prose-reader            -> 文章详情正文
-        //   - #ssr-tweet-content       -> 推文详情正文
-        // 同 gallery 的图片 data-fancybox 同值,左右滑动
-        function setupGallery(root) {
-            var scope = root || document;
-            var containers = scope.querySelectorAll('article[data-ssr-item], .prose-reader, #ssr-tweet-content');
-            containers.forEach(function (container) {
-                var imgs = container.querySelectorAll('.tweet-img, .prose-reader img');
-                imgs.forEach(function (img) {
-                    if (!img.hasAttribute('data-fancybox')) {
-                        img.setAttribute('data-fancybox', gid());
-                    }
-                });
-            });
-        }
-
-        // 委托 click:capture 阶段挡掉 <a> 默认跳转,然后手动调 Fancybox.fromSelector
-        function onImgClick(e) {
-            var t = e.target;
-            if (!t || !t.closest) return;
-            var img = t.closest('img[data-fancybox]');
+        document.addEventListener('click', function(e) {
+            // 1. 检查点击的是否是我们指定的图片
+            var img = e.target.closest('.tweet-img, .prose-reader img');
             if (!img) return;
+
+            // 2. 拦截默认行为（防止推文列表中的 <a> 标签发生页面跳转）
             e.preventDefault();
             e.stopPropagation();
-            if (!window.Fancybox || typeof Fancybox.fromSelector !== 'function') return;
-            var gidValue = img.getAttribute('data-fancybox');
-            if (!gidValue) return;
-            // fromSelector(selector, startNode) 会把同选择器的所有节点作为 gallery,
-            // 并从 startNode 所在位置开始显示
-            Fancybox.fromSelector('img[data-fancybox="' + gidValue + '"]', img);
-        }
 
-        function bind() {
             if (!window.Fancybox) return;
-            setupGallery();
-        }
 
-        document.addEventListener('click', onImgClick, true);
-        // 暴露给 tweets.html 懒加载后重新分组
-        window.rebindFancybox = function () { bind(); };
+            // 3. 确定分组边界（推文列表按单条推文分组，详情页按全文分组）
+            var container = img.closest('article[data-ssr-item], .prose-reader, #ssr-tweet-content');
+            var imgList = container ? Array.from(container.querySelectorAll('.tweet-img, .prose-reader img')) : [img];
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', bind);
-        } else {
-            bind();
-        }
+            // 4. 找到当前点击图片在组内的索引
+            var startIndex = imgList.indexOf(img);
+            if (startIndex === -1) startIndex = 0;
+
+            // 5. 构造 Fancybox 所需的数据源并拉起灯箱
+            var items = imgList.map(function(node) {
+                return {
+                    src: node.getAttribute('src') || node.src,
+                    type: 'image'
+                };
+            });
+
+            Fancybox.show(items, {
+                startIndex: startIndex,
+                dragToClose: true // 允许下拉关闭，体验更好
+            });
+        }, true); // 使用捕获阶段，确保在 <a> 标签生效前拦截
     })();
     </script>
 </body>
