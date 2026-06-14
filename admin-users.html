@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>用户管理 · 创作中心</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.min.js"></script>
     <style>
         :root {
             --font-serif: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -134,7 +135,7 @@
                                     清除
                                 </button>
                             </div>
-                            <p class="text-[11px] text-stone-400 leading-relaxed">仅支持 <code class="text-stone-500 font-mono">http://</code> / <code class="text-stone-500 font-mono">https://</code> 直链，可直接粘贴外链，或点击「上传」从本机选择图片（不超过 2MB）。公开页面与后台会展示此头像。留空则恢复默认占位。</p>
+                            <p class="text-[11px] text-stone-400 leading-relaxed">仅支持 <code class="text-stone-500 font-mono">http://</code> / <code class="text-stone-500 font-mono">https://</code> 直链，可直接粘贴外链，或点击「上传」从本机选择图片（原图不超过 5MB）。上传时会自动压缩为 WebP（512px 边长，约 100KB）。公开页面与后台会展示此头像。留空则恢复默认占位。</p>
                         </div>
                     </div>
                 </div>
@@ -279,9 +280,9 @@
             event.target.value = '';
             if (!file) return;
 
-            // 头像限 2MB（不需要像文章图片那么大的尺寸）
-            if (file.size > 2 * 1024 * 1024) {
-                showUploadToast('头像不能超过 2MB', 'error');
+            // 客户端预校验：>5MB 直接拒绝（压缩前的原图上限，与 admin-edit 一致）
+            if (file.size > 5 * 1024 * 1024) {
+                showUploadToast('头像不能超过 5MB', 'error');
                 setTimeout(() => {
                     const t = document.getElementById('upload-toast');
                     if (t) t.classList.remove('show');
@@ -296,10 +297,37 @@
             }
 
             setUploadButtonsDisabled(true);
-            showUploadToast('正在上传头像...', 'loading');
+            showUploadToast('正在压缩头像...', 'loading');
+
+            // ⚡ 客户端压缩：转 WebP + 512px + 0.85 画质 + 100KB 兜底
+            //   头像不需要文章图那么大的尺寸，512 边长足够覆盖 4K 屏幕下的展示需求
+            let compressedFile = file;
+            try {
+                compressedFile = await imageCompression(file, {
+                    fileType: 'image/webp',
+                    maxWidthOrHeight: 512,
+                    initialQuality: 0.85,
+                    maxSizeMB: 0.1,
+                    useWebWorker: true
+                });
+            } catch (compressErr) {
+                // 压缩失败不阻塞上传，兜底使用原图
+                console.warn('头像压缩失败，将按原图上传:', compressErr);
+                compressedFile = file;
+            }
 
             const formData = new FormData();
-            formData.append('file', file);
+            // ⚡ 修正：压缩后的 File.name 仍可能是原后缀（如 .png），必须按实际 MIME 修正后缀，
+            //   否则后端 upload.js 会按原扩展名生成 R2 key，导致浏览器收到 image/webp 却无法正确识别
+            let finalName = compressedFile.name || file.name;
+            if (compressedFile.type === 'image/webp' && !/\.webp$/i.test(finalName)) {
+                const lastDot = finalName.lastIndexOf('.');
+                finalName = (lastDot > 0 ? finalName.substring(0, lastDot) : finalName) + '.webp';
+            }
+            formData.append('file', compressedFile, finalName);
+
+            // ⚡️ 切换为「上传中」spinner
+            showUploadToast('正在上传头像...', 'loading');
 
             try {
                 const res = await fetch('/api/upload', {
