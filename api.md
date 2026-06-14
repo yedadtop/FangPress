@@ -651,6 +651,7 @@
 - `R2.delete()` 对不存在的 key 是 no-op（不抛错）
 
 成功响应 200：`{ "success": true, "deleted": 1, "key": "..." }`
+- `deleted` 为实际删除条数：`1` 表示 key 存在并已删除；`0` 表示 key 不存在（`head()` 探测为 null，仍执行 `delete()` 兜底）
 错误：`400 缺少 key 参数` / `400 非法的 key` / `500 "R2_BUCKET 未绑定"`
 
 ---
