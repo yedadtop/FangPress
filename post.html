@@ -76,39 +76,7 @@
 </head>
 <body class="min-h-screen selection:bg-stone-200">
 
-    <header id="site-header" class="fixed top-0 inset-x-0 w-full z-50">
-        <div class="absolute inset-0 bg-[hsla(40,23%,97%,0.85)] backdrop-blur-md border-b border-stone-200/40"></div>
-        <div class="relative max-w-screen-xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-6">
-                <a href="/" class="group inline-flex items-center" aria-label="返回首页">
-                    <span id="ssr-header-title" class="font-serif text-base md:text-lg text-stone-900 tracking-tight link-underline" style="font-weight: var(--reader-title-weight);">博客</span>
-                </a>
-                <nav class="hidden md:flex items-center gap-5 text-sm font-sans" id="ssr-header-nav-wrap">
-                    <div id="ssr-header-nav" data-ssr="header-nav" class="contents">
-                        <a href="/posts" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="posts">文章</a>
-                        <a href="/tweets" class="tab-link text-stone-500 hover:text-stone-900 transition-colors" data-tab="tweets">推文</a>
-                    </div>
-                </nav>
-            </div>
-            <div class="relative md:hidden">
-                <button id="menu-toggle" type="button" aria-label="菜单" class="p-2 -mr-2 text-stone-600 hover:text-stone-900 transition-colors duration-300">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <line x1="3.75" y1="6.75" x2="20.25" y2="6.75"></line>
-                        <line x1="3.75" y1="12" x2="20.25" y2="12"></line>
-                        <line x1="3.75" y1="17.25" x2="20.25" y2="17.25"></line>
-                    </svg>
-                </button>
-                <div id="mobile-menu" class="hidden absolute right-0 top-full mt-2 w-40 bg-[hsla(40,23%,97%,0.95)] backdrop-blur-md border border-stone-200/60 rounded-md shadow-lg overflow-hidden font-sans text-sm z-[55]">
-                    <div id="ssr-mobile-nav" data-ssr="mobile-nav">
-                        <a href="/posts" data-tab="posts" class="mobile-menu-link block px-4 py-2.5 text-stone-600 hover:bg-stone-100/60 hover:text-stone-900 transition-colors">文章</a>
-                        <a href="/tweets" data-tab="tweets" class="mobile-menu-link block px-4 py-2.5 text-stone-600 hover:bg-stone-100/60 hover:text-stone-900 transition-colors border-t border-stone-200/60">推文</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <div class="max-w-[49rem] mx-auto px-6 pt-24 md:pt-28 pb-20">
+    <div class="max-w-[49rem] mx-auto px-6 pt-12 pb-20">
 
         <article id="ssr-post-article" data-ssr="post-article" class="hidden">
             <header id="ssr-post-header" class="mb-10 pb-8 border-b border-stone-200/70">
@@ -153,25 +121,5 @@
     <footer class="max-w-[49rem] mx-auto px-6 pb-12 text-center text-stone-400 text-xs tracking-widest uppercase font-sans">
         — End of Post —
     </footer>
-
-    <script>
-    (function () {
-        var menuToggle = document.getElementById('menu-toggle');
-        var mobileMenu = document.getElementById('mobile-menu');
-        if (!menuToggle || !mobileMenu) return;
-
-        menuToggle.addEventListener('click', function (e) {
-            e.stopPropagation();
-            mobileMenu.classList.toggle('hidden');
-        });
-        document.addEventListener('click', function (e) {
-            if (!mobileMenu.classList.contains('hidden') &&
-                !mobileMenu.contains(e.target) &&
-                !menuToggle.contains(e.target)) {
-                mobileMenu.classList.add('hidden');
-            }
-        });
-    })();
-    </script>
 </body>
 </html>

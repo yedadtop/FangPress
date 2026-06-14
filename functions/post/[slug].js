@@ -5,7 +5,7 @@
 // 依赖：marked（边缘 Markdown→HTML）。请确保 package.json 含 "marked" 依赖。
 
 import { marked } from '../lib/marked.esm.js';
-import { renderHeaderNav, renderMobileMenu, getActiveNavs, getSettings } from '../lib/nav-render.js';
+import { getSettings } from '../lib/nav-render.js';
 import { escapeHtml, formatDate, safeParseKV } from '../lib/list-render.js';
 import { makeExcerpt } from '../api/helpers.js';
 
@@ -146,19 +146,8 @@ async function renderFallbackPage(env, request, url, type, context) {
         return new Response('Not Found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
 
-    const settings404 = await fetchSettings(env, context);
-    const siteTitle404 = (settings404 && settings404.site_title) ? settings404.site_title : 'Blog';
-    const navs404 = await getActiveNavs(env, context);
-    const headerNavHtml404 = renderHeaderNav(navs404);
-    const mobileNavHtml404 = renderMobileMenu(navs404);
-
     const rewriter = new HTMLRewriter()
         .on('title', { element: el => el.setInnerContent('404 - 文章不存在') })
-        // ⚡ 头部 logo 同步为站点主标题
-        .on('#ssr-header-title', { element: el => el.setInnerContent(escapeHtml(siteTitle404)) })
-        // ⚡ 注入动态导航
-        .on('#ssr-header-nav', { element: el => el.setInnerContent(headerNavHtml404, { html: true }) })
-        .on('#ssr-mobile-nav',  { element: el => el.setInnerContent(mobileNavHtml404, { html: true }) })
         // ⚡️ 修复点：保留 Tailwind 排版类名
         .on(`#${fallback.id}`, { element: el => el.setAttribute('class', fallback.cls) })
         .on('#ssr-post-article', { element: el => el.setAttribute('class', 'hidden') })
@@ -200,9 +189,6 @@ export async function onRequestGet(context) {
         return new Response('Internal Server Error: Missing Template', { status: 500 });
     }
     const settings = await fetchSettings(env, context);
-    const navs = await getActiveNavs(env, context);
-    const headerNavHtml = renderHeaderNav(navs);
-    const mobileNavHtml = renderMobileMenu(navs);
 
     // 4) 准备渲染数据
     const siteTitle     = settings.site_title || 'Blog';
@@ -215,8 +201,6 @@ export async function onRequestGet(context) {
     const safeDesc      = escapeHtml(makeExcerpt(post.content || '', 160));
     const dateStr       = isTweet ? formatDateTime(post.created_at) : formatDate(post.created_at);
     const showViews     = !isTweet && String(settings.show_views) === '1';
-    // ⚡ 头部 logo 始终显示站点主标题（不受文章标题影响）
-    const headerTitle   = escapeHtml(siteTitle);
 
     let contentHtml = '';
     try {
@@ -233,11 +217,6 @@ export async function onRequestGet(context) {
         .on('meta[name="description"]',       { element: el => el.setAttribute('content', safeDesc) })
         .on('meta[property="og:title"]',      { element: el => el.setAttribute('content', safeTitle) })
         .on('meta[property="og:description"]',{ element: el => el.setAttribute('content', safeDesc) })
-        // ⚡ 头部 logo 同步为站点主标题
-        .on('#ssr-header-title',              { element: el => el.setInnerContent(headerTitle) })
-        // ⚡ 注入动态导航
-        .on('#ssr-header-nav',                { element: el => el.setInnerContent(headerNavHtml, { html: true }) })
-        .on('#ssr-mobile-nav',                { element: el => el.setInnerContent(mobileNavHtml, { html: true }) })
         .on('#ssr-post-time',     { element: el => el.setInnerContent(dateStr) })
         .on('#ssr-post-content',  { element: el => el.setInnerContent(contentHtml, { html: true }) })
         .on('#ssr-post-article',  { element: el => el.setAttribute('class', 'mt-12') })

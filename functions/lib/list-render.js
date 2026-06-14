@@ -50,53 +50,40 @@ export function renderPostItem(post, i, showViews) {
     if (!post) return '';
     const slug = post.slug || '';
     const type = post.type || 'post';
+    const isTweet = type === 'tweet';
 
-    // 推文渲染(混合列表场景,如首页 mix 模式):
-    //  - 采用 float 布局：日期靠右浮动，正文环绕，确保文字自然换行并包裹在日期下方
-    if (type === 'tweet') {
-        const dateStr = formatDate(post.created_at);
-        
-        // 日期标签：设置为 float-right，加左边距让文字不紧贴，顶部微调对齐首行
-        const meta = dateStr
-            ? `<time class="float-right ml-4 mt-1 text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">${dateStr}</time>`
-            : '';
+    // === 统一结构：推文与文章共用同一布局，唯一区别是文章渲染标题 ===
+    const title = !isTweet && post.title ? escapeHtml(post.title) : null;
+    const excerpt = post.excerpt || '';
+    const dateStr = formatDate(post.created_at);
+    const viewsHtml = (showViews && !isTweet) ? renderViewsIcon(post.views) : '';
 
-        // 正文容器：将 meta 直接塞入内部，使用 div 替换 p
-        const excerpt = post.excerpt
-            ? `<div class="font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">
-                 ${meta}
-                 ${escapeHtml(post.excerpt)}
-               </div>`
-            : meta;
-
-        return `
-            <article class="fade-up py-7 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
-                <a href="/post/${encodeURIComponent(slug)}" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">
-                    ${excerpt}
-                </a>
-            </article>
-        `;
-    }
-
-    // 文章渲染：标题 + 日期(右侧同行) + 摘要
-    const title = escapeHtml(post.title || '未命名');
-    const excerpt = post.excerpt
-        ? `<p class="mt-2.5 font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">${escapeHtml(post.excerpt)}</p>`
+    // 标题(仅文章)
+    const titleHtml = title
+        ? `<h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors mb-2.5">
+             <span class="link-underline pb-0.5">${title}</span>
+           </h2>`
         : '';
-    const viewsHtml = showViews ? renderViewsIcon(post.views) : '';
+
+    // 摘要
+    const excerptHtml = excerpt
+        ? `<p class="font-serif text-stone-500 text-[0.95rem] leading-relaxed text-justify md:text-left" style="text-justify: inter-ideograph;">${escapeHtml(excerpt)}</p>`
+        : '';
+
+    // 元数据(日期 + 浏览量) 统一靠右下角展示
+    const metaParts = [];
+    if (viewsHtml) metaParts.push(viewsHtml);
+    if (dateStr)   metaParts.push(`<time class="font-sans">${dateStr}</time>`);
+    const metaLine = metaParts.length > 0
+        ? `<div class="flex items-center justify-end gap-3 text-xs text-stone-400 tabular-nums tracking-wider mt-2.5">${metaParts.join('')}</div>`
+        : '';
+
     return `
         <article class="fade-up py-7 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
-            <a href="/post/${encodeURIComponent(slug)}" class="block">
-                <div class="flex flex-col md:flex-row md:items-baseline justify-between gap-2 md:gap-6">
-                    <h2 class="font-serif text-xl md:text-[1.35rem] leading-snug text-stone-900 group-hover:text-stone-600 transition-colors">
-                        <span class="link-underline pb-0.5">${title}</span>
-                    </h2>
-                    <div class="flex items-center gap-3 text-xs text-stone-400 tabular-nums tracking-wider pt-1 md:pt-1.5">
-                        ${viewsHtml}
-                        <time class="font-sans">${formatDate(post.created_at)}</time>
-                    </div>
-                </div>
-                ${excerpt}
+            <a href="/post/${encodeURIComponent(slug)}" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">
+                ${titleHtml}
+                ${excerptHtml}
+                ${metaLine}
             </a>
         </article>
     `;
