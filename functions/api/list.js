@@ -3,6 +3,8 @@ import { makeExcerpt } from "./helpers.js";
 import { getSettings } from "../lib/nav-render.js";
 
 const KV_LIST_KEY_PREFIX = "site:posts:list:type:";
+// ⚡️ 推文专用 v2 缓存键：新增 author 字段，老缓存（无 author）自动失效
+const KV_LIST_KEY_PREFIX_TWEET_V2 = "site:posts:list:v2:type:tweet:";
 const KV_LIST_KEY_PREFIX_LEGACY = "site:posts:list:page:";
 const KV_CAT_KEY_PREFIX = "site:posts:list:cat:";
 const PAGE_SIZE = 10;
@@ -33,10 +35,17 @@ export async function onRequestGet(context) {
   const isAdminQuery = !formattedCategory && !isPaginated && !normalizedType;
 
   let currentKvKey = null;
-  if (normalizedType && formattedCategory) {
-    // 推文/文章 + 分类过滤（不常用，但保持一致）
+  if (normalizedType === 'tweet' && formattedCategory) {
+    // 推文 + 分类（推文走 v2 键，与 tweets.js 保持一致）
+    currentKvKey = `${KV_LIST_KEY_PREFIX_TWEET_V2}cat:${formattedCategory}`;
+  } else if (normalizedType === 'tweet' && isPaginated) {
+    // 推文分页（推文走 v2 键）
+    currentKvKey = `${KV_LIST_KEY_PREFIX_TWEET_V2}page:${page}`;
+  } else if (normalizedType && formattedCategory) {
+    // 文章 + 分类过滤
     currentKvKey = `${KV_LIST_KEY_PREFIX}${normalizedType}:cat:${formattedCategory}`;
   } else if (normalizedType && isPaginated) {
+    // 文章分页
     currentKvKey = `${KV_LIST_KEY_PREFIX}${normalizedType}:page:${page}`;
   } else if (formattedCategory && isPaginated) {
     // ⚡ 修复 1：分类 + 分页的独立缓存键（带 type 的情况在上面已处理）

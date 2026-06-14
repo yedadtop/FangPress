@@ -166,6 +166,17 @@ export async function onRequestPost(context) {
       console.error('[user/update] KV 写回失败:', e);
     }
 
+    // ⚡ 改昵称/头像/用户名后,推文列表的 v2 缓存里嵌着旧 author 字段,需要一并清掉
+    //    只清理 tweet 缓存(推文渲染依赖 author),其他列表缓存不受影响
+    try {
+      let isComplete = false, cursor = undefined;
+      while (!isComplete) {
+        const listKeys = await env.KV.list({ prefix: "site:posts:list:v2:type:tweet:", cursor });
+        for (const k of listKeys.keys) await env.KV.delete(k.name);
+        isComplete = listKeys.list_complete; cursor = listKeys.cursor;
+      }
+    } catch (_) {}
+
     const responseBody = { success: true, message: "账户信息已更新" };
     if (newToken) responseBody.newToken = newToken;
     return new Response(JSON.stringify(responseBody), {

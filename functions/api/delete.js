@@ -65,6 +65,16 @@ export async function onRequestPost(context) {
       }
     } catch (_) {}
 
+    // ⚡ 推文 v2 缓存键（带 author 字段）也要清掉
+    try {
+      let isComplete = false, cursor = undefined;
+      while (!isComplete) {
+        const listKeys = await env.KV.list({ prefix: "site:posts:list:v2:type:tweet:", cursor });
+        for (const k of listKeys.keys) await env.KV.delete(k.name);
+        isComplete = listKeys.list_complete; cursor = listKeys.cursor;
+      }
+    } catch (_) {}
+
     // 清理分类缓存
     try {
       let isComplete = false, cursor = undefined;

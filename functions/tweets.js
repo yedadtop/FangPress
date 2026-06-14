@@ -12,7 +12,8 @@ import { makeExcerpt } from './api/helpers.js';
 import { renderTweetItem, safeParseKV, escapeHtml } from './lib/list-render.js';
 import { renderHeaderNav, renderMobileMenu, getActiveNavs, getSettings } from './lib/nav-render.js';
 
-const KV_LIST_KEY_PREFIX = "site:posts:list:type:tweet:page:";
+// ⚡️ v2：新增 author 字段（昵称 + 头像），老缓存（无 author）自动失效
+const KV_LIST_KEY_PREFIX = "site:posts:list:v2:type:tweet:page:";
 const PAGE_SIZE = 10;
 
 const PAGE_TAB = 'tweets';
