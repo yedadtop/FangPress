@@ -1,4 +1,5 @@
 // functions/api/delete.js
+import { cleanupR2ImagesFromContent } from '../lib/r2-images.js';
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -28,11 +29,11 @@ export async function onRequestPost(context) {
       return new Response(JSON.stringify({ success: false, error: "缺少文章 id" }), { status: 400 });
     }
 
-    // 1) 先从 D1 拿到所有待删文章的 slug 用于清理相关 KV 链条
-    //    使用 IN (...) 一次性查，slug 为 null 的推文跳过 KV
+    // 1) 先从 D1 拿到所有待删文章的 slug 与 content，用于清理 KV 与 R2
+    //    slug 为 null 的推文跳过 KV；content 用于 R2 图片清理
     const placeholders = idList.map(() => "?").join(",");
     const posts = await env.DB
-      .prepare(`SELECT slug FROM posts WHERE id IN (${placeholders})`)
+      .prepare(`SELECT slug, content FROM posts WHERE id IN (${placeholders})`)
       .bind(...idList)
       .all();
 
@@ -96,11 +97,25 @@ export async function onRequestPost(context) {
       return new Response(JSON.stringify({ success: false, error: "未找到任何待删文章" }), { status: 404 });
     }
 
+    // ⚡ 4) 同步清理这些文章引用的 R2 图片（不抛错，R2 失败不影响主流程）
+    let r2Ok = 0, r2Fail = 0, r2Keys = 0;
+    try {
+      for (const p of (posts.results || [])) {
+        if (p && p.content) {
+          const res = await cleanupR2ImagesFromContent(env, p.content);
+          r2Ok += res.ok; r2Fail += res.fail; r2Keys += res.keys.length;
+        }
+      }
+    } catch (e) {
+      console.warn('R2 cleanup failed (delete.js):', e);
+    }
+
     // 批量场景下允许部分命中（deleted < idList.length），按实际成功数量返回
     return new Response(JSON.stringify({
       success: true,
       message: `已删除 ${deleted} 篇文章`,
-      deleted
+      deleted,
+      r2_cleanup: { keys: r2Keys, ok: r2Ok, fail: r2Fail }
     }), {
       headers: { "Content-Type": "application/json" }
     });

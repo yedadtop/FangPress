@@ -1,5 +1,6 @@
 // functions/api/update.js
 const POST_CACHE_TTL = 604800;
+import { extractR2Keys, deleteR2Images } from '../lib/r2-images.js';
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -28,7 +29,8 @@ export async function onRequestPost(context) {
     const targetStatus = (status && status.trim() === 'draft') ? 'draft' : 'published';
 
     // ⚡ 拉取旧记录以便做 type 一致性兜底（保持原 type，不允许编辑时改 type）
-    const oldPost = await env.DB.prepare("SELECT slug, type, created_at FROM posts WHERE id = ?").bind(id).first();
+    // 同步拉取旧 content，用于编辑后清理被移除的 R2 图片
+    const oldPost = await env.DB.prepare("SELECT slug, type, created_at, content FROM posts WHERE id = ?").bind(id).first();
     if (!oldPost) {
       return new Response(JSON.stringify({ success: false, error: "未找到该文章，可能已被删除" }), { status: 404 });
     }
@@ -123,7 +125,27 @@ export async function onRequestPost(context) {
       }
     }
 
-    return new Response(JSON.stringify({ success: true, message: "文章已更新" }), {
+    // ⚡ 清理被移除的 R2 图片：取新旧内容的 R2 key 差集（即旧文中有但新文中没有的）
+    // 失败不影响主流程
+    let r2Ok = 0, r2Fail = 0, r2Keys = 0;
+    try {
+      const oldKeys = new Set(extractR2Keys(oldPost && oldPost.content, env));
+      const newKeys = new Set(extractR2Keys(content, env));
+      const orphaned = [...oldKeys].filter(k => !newKeys.has(k));
+      if (orphaned.length > 0) {
+        r2Keys = orphaned.length;
+        const res = await deleteR2Images(env, orphaned);
+        r2Ok = res.ok; r2Fail = res.fail;
+      }
+    } catch (e) {
+      console.warn('R2 cleanup failed (update.js):', e);
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: "文章已更新",
+      r2_cleanup: { keys: r2Keys, ok: r2Ok, fail: r2Fail }
+    }), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (err) {
