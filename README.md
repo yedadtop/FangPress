@@ -1,4 +1,4 @@
-# Quinn's Space · 独立博客
+# FangPress · 独立博客
 
 > 基于 **Cloudflare Pages + D1（SQLite）+ R2 + KV** 的一套**零服务器、零成本、纯静态前端 + 边缘函数**的极简独立博客系统。
 > 主打「纯文字内容流」、强调阅读体验，配合 AI 写稿工作流与可视化后台，让单人独立博客的搭建与维护成本降到极限。
@@ -10,39 +10,17 @@
 
 ---
 
-## 📑 目录
-
-- [✨ 项目简介](#-项目简介)
-- [🚀 功能特性](#-功能特性)
-- [🧱 技术栈](#-技术栈)
-- [📂 目录结构](#-目录结构)
-- [🚀 快速开始](#-快速开始)
-- [☁️ Cloudflare 控制台配置](#️-cloudflare-控制台配置)
-  - [1. 创建 Pages 项目](#1-创建-pages-项目)
-  - [2. 绑定 D1 数据库](#2-绑定-d1-数据库)
-  - [3. 绑定 R2 存储桶](#3-绑定-r2-存储桶)
-  - [4. 绑定 KV 命名空间](#4-绑定-kv-命名空间)
-  - [5. 配置环境变量 / 密钥](#5-配置环境变量--密钥)
-  - [6. 初始化数据库（执行 SQL）](#6-初始化数据库执行-sql)
-- [🗄️ 数据库表结构（`sql.txt` 折叠）](#️-数据库表结构sqltxt-折叠)
-- [🧪 本地开发](#-本地开发)
-- [📖 配套文档](#-配套文档)
-- [🔐 默认账号与安全建议](#-默认账号与安全建议)
-- [❓ 常见问题](#-常见问题)
-- [📝 License](#-license)
-
----
-
 ## ✨ 项目简介
 
-**Quinn's Space** 是一套完全跑在 Cloudflare 边缘网络上的个人博客系统，前端是纯 HTML + 原生 JS + Tailwind CSS（CDN），后端逻辑全部用 **Pages Functions（Workers）** 实现，数据落地到 **D1**（Cloudflare 托管的 SQLite），图片落到 **R2** 对象存储，热点数据用 **KV** 做边缘缓存。
+**FangPress** 是一套完全跑在 Cloudflare 边缘网络上的个人博客系统，前端是纯 HTML + 原生 JS + Tailwind CSS（CDN），后端逻辑全部用 **Pages Functions（Workers）** 实现，数据落地到 **D1**（Cloudflare 托管的 SQLite），图片落到 **R2** 对象存储，热点数据用 **KV** 做边缘缓存。
 
 整套方案的特点：
 
 - **零服务器**：不需要任何 VPS / 容器 / 域名备案；
-- **零成本**：Cloudflare 免费额度（D1 5GB + R2 10GB + KV 100K 读/日 + Pages 无限请求）足够个人博客跑到天荒地老；
+- **零成本**：Cloudflare 免费额度足够个人博客跑到天荒地老；
 - **零运维**：部署即上线，写文章走后台或 API；
-- **AI 写稿**：内置 [prompt.md](./prompt.md) 工作流，直接喂给大模型即可生成符合本系统数据库结构的文章 JSON。
+- **本地发布**：支持本地php发布/修改文章，无需登录博客后台。
+- **Ai提示词**：带AI提示词提示词 [prompt.md](./prompt.md) ，直接喂给大模型即可生成符合本系统数据库结构的文章 JSON。
 
 ---
 
@@ -52,76 +30,26 @@
 | --- | --- |
 | 📝 文章管理 | 支持 Markdown 写作，文章 / 推文 `type` 分流，统一在 `/api/push` 一个端点写入 |
 | 🐦 推文（轻量短内容） | 与文章共用 `posts` 表，`type='tweet'`；自动生成 `t-<时间戳>-<随机>` slug，title 可空 |
-| 🗂️ 分类 | `category` 字段，公开读接口会把 `''` / `'未分类'` 归一为 `null` |
 | 🧭 站点导航 | `site_navs` 表，后台可视化增删改 + 拖拽排序 + 启用/禁用，KV 缓存 + SSR 即时生效 |
-| ⚙️ 站点设置 | `site_settings` KV 表，支持 `site_title` / `site_subtitle` / `show_views` / `excerpt_length` |
 | 🖼️ 图片管理 | 上传至 R2，Markdown 自动识别 `![alt](R2_PUBLIC_URL/...)` 形式的图片，删除文章时联动清理 R2 对象 |
 | 🔐 鉴权 | 单管理员模型，token = `SHA-256(password)`，支持环境变量 `API_TOKEN`（除账户接口外） |
 | 👤 账户管理 | 改用户名 / 昵称 / 头像 / 密码；头像仅接受 http/https 直链 |
 | 🗃️ 管理后台 | `admin*.html` 6 个页面（总览 / 文章 / 导航 / 设置 / 数据库 / 账户），零构建直接打开 |
 | 📊 数据导出 | 管理后台「数据库」页支持 KV + D1 双向导入导出，备份与迁移方便 |
-| 🔍 全文搜索 | 标题 + 正文 + slug 多字段模糊匹配，URL 参数 `?q=` |
-| 🪶 阅读体验 | 服务端算摘要，SSG 友好；FancyBox 5 灯箱；移动端 R2 卡片强制 2 列 |
-
----
-
-## 🧱 技术栈
-
-- **前端**：原生 HTML5 / Vanilla JS / [Tailwind CSS v4 (browser CDN)](https://tailwindcss.com/) / [FancyBox 5](https://fancyapps.com/) / [marked.js](https://marked.js.org/)
-- **边缘函数**：Cloudflare Pages Functions（`functions/` 目录，Node 兼容）
-- **存储**：Cloudflare D1（SQLite）、Cloudflare R2（对象存储）、Cloudflare KV（边缘缓存）
-- **鉴权**：Bearer Token（SHA-256 密码哈希 / 环境变量 `API_TOKEN`）
-- **可选本地开发**：[`php/`](./php) 目录附带 PHP 兜底，便于在无 CF 环境调试前端
-
----
-
-## 📂 目录结构
-
-```text
-blog/
-├── functions/                 # Cloudflare Pages Functions
-│   ├── api/                   # JSON API 端点
-│   │   ├── auth/login.js
-│   │   ├── user/update.js
-│   │   ├── sql/               # 数据备份 / 恢复
-│   │   ├── push.js            # 发布文章 / 推文
-│   │   ├── update.js          # 更新
-│   │   ├── delete.js          # 单删 / 批量删除
-│   │   ├── list.js / get.js   # 公开读
-│   │   ├── search.js          # 搜索
-│   │   ├── settings.js        # 站点设置
-│   │   ├── navs.js            # 导航管理
-│   │   ├── upload.js          # R2 上传
-│   │   └── ...
-│   ├── lib/                   # 复用工具
-│   ├── post/[slug].js         # 文章详情 SSR
-│   ├── tweet/[slug].js        # 推文详情 SSR
-│   ├── index.js / posts.js / tweets.js  # 列表 SSR
-│   └── ...
-├── php/                       # 本地 PHP 兜底（可选）
-├── admin*.html                # 管理后台（无需构建）
-├── index.html / posts.html / tweets.html
-├── post.html / tweet.html
-├── 404.html
-├── api.md                     # API 详细文档
-├── prompt.md                  # AI 写稿提示词
-├── sql.txt                    # 数据库初始化 SQL
-└── README.md                  # 你正在看这个
-```
 
 ---
 
 ## 🚀 快速开始
 
-部署一个 Quinn's Space 实例只需 5 步：
+部署一个 FangPress 实例只需 5 步：
 
 1. **Fork / Clone** 本仓库到你的 GitHub。
 2. 在 **Cloudflare Dashboard** 创建一个 Pages 项目并连接该仓库（构建命令留空，构建输出目录留空即可，全是静态资源 + Functions）。
-3. 在 Cloudflare 创建 **D1 数据库**、**R2 存储桶**、**KV 命名空间**，并绑定到 Pages（详见下文）。
+3. 在 Cloudflare 创建 **D1 数据库**、**R2 存储桶**、**KV 命名空间**，并绑定到 Pages。
 4. 在 Pages 控制台的 **「设置 → 环境变量」** 配置 `API_TOKEN` 等。
-5. 首次部署完成后，进 D1 控制台 **执行 [sql.txt](./sql.txt) 中的语句** 初始化表结构与默认管理员。
+5. 首次部署完成后，进 D1 控制台的查询页面 **执行 [sql.txt](./sql.txt) 中的语句** 初始化表结构与默认管理员。
 
-部署完成访问 `https://<your-project>.pages.dev`，默认账号 `admin / admin`，**登录后立刻改密码**。
+部署完成访问你的地址（默认地址 `https://<your-project>.pages.dev`），默认账号密码 `admin / admin`，**登录后立刻改密码**。
 
 ---
 
@@ -190,6 +118,31 @@ Pages 项目 → **Settings → Environment variables** → **Add**：
    - 密码（SHA-256）：`8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918`
 
 4. 重新打开你的 Pages 站点，登录后请立刻通过 **控制台 → 账户** 改密并设置强密码。
+
+### 📸 实际配置参考（截图对应）
+
+下面是一份**真实可用的最小配置**，与 Cloudflare Pages → **Settings → Variables and Secrets**、**Settings → Bindings** 两个面板的字段一一对应，照着填即可：
+
+#### 变量和密钥
+
+| 类型 | 名称 | 值（示例） |
+| --- | --- | --- |
+| 纯文本 | `API_TOKEN` | `GhzoDocLALVRbPwhqztrezhim5YgkvyEa`（任意随机强字符串） |
+| 纯文本 | `R2_PUBLIC_URL` | `https://img.yedad.top`（你的 R2 桶公开访问域名，**末尾不要带 `/`**） |
+
+#### 绑定
+
+| 类型 | 名称 | 绑定到（值） |
+| --- | --- | --- |
+| KV 命名空间 | `KV` | `TEST_BLOG_KV`（先在 **Storage → KV** 创建一个 Namespace，名字自取） |
+| D1 数据库 | `DB` | `blog-asia`（先在 **Storage → D1** 创建一个 Database，名字自取） |
+| R2 存储桶 | `R2_BUCKET` | `blog-images`（先在 **R2 → Create bucket** 创建一个桶，名字自取） |
+
+> ⚠️ 几个**强约束**（写错代码读不到资源，直接 500）：
+> 1. **变量名必须严格一致**：`KV` / `DB` / `R2_BUCKET` / `API_TOKEN` / `R2_PUBLIC_URL` —— 代码里 `env.KV`、`env.DB`、`env.R2_BUCKET` 就是按这几个名字取的。
+> 2. **类型不要选错**：API_TOKEN / R2_PUBLIC_URL 选「纯文本（Plaintext）」即可，不要选「加密（Encrypt）」，否则 Functions 端读不到。
+> 3. **绑定生效需要重新部署一次**（Save 完回到 **Deployments → Retry deployment**），仅保存不会自动热加载。
+> 4. **R2 公开域名要先开**：进 R2 → 选中 `blog-images` → **Settings → Public access → Allow Access**，拿到形如 `https://pub-XXXXXX.r2.dev` 的域名；如果你用自己的 CDN / 鉴权域名（如图里的 `https://img.yedad.top`），同样直接填进 `R2_PUBLIC_URL` 即可。
 
 ---
 
