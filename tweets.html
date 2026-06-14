@@ -420,7 +420,18 @@
             return y + ' · ' + m + ' · ' + dd;
         }
 
-        // ⚠️ 推特式样渲染项生成器:与 SSR 的 renderTweetItem 保持一致
+        var TWEET_IMG_RE = /!\[([^\]]*?)\]\((https?:\/\/[^)\s<]+|data:image\/[^)\s<]+)\)/gi;
+
+        function renderTweetContent(escapedHtml) {
+            return String(escapedHtml == null ? '' : escapedHtml).replace(
+                TWEET_IMG_RE,
+                function (m, alt, url) {
+                    return '<img class="tweet-img" src="' + url + '" alt="' + alt + '" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'" />';
+                }
+            );
+        }
+
+        
         function renderItem(p) {
             var slug   = encodeURIComponent(p.slug || '');
             var raw    = (p.content != null && p.content !== '') ? p.content : (p.excerpt || '');
