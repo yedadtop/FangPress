@@ -20,7 +20,7 @@
 - **零成本**：Cloudflare 免费额度足够个人博客跑到天荒地老；
 - **零运维**：部署即上线，写文章走后台或 API；
 - **本地发布**：支持本地php发布/修改文章，无需登录博客后台。
-- **Ai提示词**：带AI提示词提示词 [prompt.md](./prompt.md) ，直接喂给大模型即可生成符合本系统数据库结构的文章 JSON。
+- **Ai提示词**：带AI提示词 [prompt.md](./prompt.md) ，直接喂给大模型即可生成符合本系统数据库结构的文章 JSON。
 
 ---
 
@@ -45,7 +45,7 @@
 
 1. **Fork / Clone** 本仓库到你的 GitHub。
 2. 在 **Cloudflare Dashboard** 创建一个 Pages 项目并连接该仓库（构建命令留空，构建输出目录留空即可，全是静态资源 + Functions）。
-3. 在 Cloudflare 创建 **D1 数据库**、**R2 存储桶**、**KV 命名空间**，并绑定到 Pages。
+3. 在 Cloudflare 创建 **D1 数据库**、**R2 存储桶**、**KV 命名空间**，并绑定到 Pages（详见下方 [☁️ Cloudflare 控制台配置](#️-cloudflare-控制台配置)）。
 4. 在 Pages 控制台的 **「设置 → 环境变量」** 配置 `API_TOKEN` 等。
 5. 首次部署完成后，进 D1 控制台的查询页面 **执行 [sql.txt](./sql.txt) 中的语句** 初始化表结构与默认管理员。
 
@@ -62,55 +62,42 @@
 3. **Build command** 留空，**Build output directory** 留空（项目无构建步骤，纯静态 + Functions）。
 4. 点击 **Save and Deploy**，等首次部署完成（此时 Functions 会因尚未绑定资源而 500，**正常**）。
 
-### 2. 绑定 D1 数据库
+### 2. 创建 D1 / R2 / KV 资源
 
-1. 左侧菜单 **Workers & Pages → Storage → D1 SQL Database → Create database**。
-2. 名称建议：`blog-db`（或自定义），记下 **Database ID**。
-3. 回到 Pages 项目 → **Settings → Functions → D1 database bindings** → **Add binding**：
-   - Variable name: **`DB`**
-   - D1 database: 选择上一步创建的数据库
-4. 保存。
+> 这一步**不展开教程**，请自行 Cloudflare 后台操作（搜索「Cloudflare Pages 绑定 D1/R2/KV」即可查到大量图文），流程简述：
+>
+> - **D1 数据库**：左侧 **Storage → D1 SQL Database → Create database**，名字自取（例：`blog-asia`）。
+> - **R2 存储桶**：左侧 **R2 → Create bucket**，名字自取（例：`blog-images`）；建好后进 **Settings → Public access → Allow Access**，记下公开访问域名（**末尾不要带 `/`**）。
+> - **KV 命名空间**：左侧 **Storage → KV → Create a namespace**，名字自取（例：`TEST_BLOG_KV`）。
+>
+> 三者创建好后，回到 Pages 项目 → **Settings → Bindings** 添加绑定（详见下一节）。
 
-> 绑定变量名必须叫 `DB`，代码中 `env.DB.prepare(...).bind(...)` 即此绑定。
+### 3. 绑定到 Pages Functions（⚠️ 重点 ⚠️ ）
 
-### 3. 绑定 R2 存储桶
+进入 Pages 项目 → **Settings → Bindings → Add**，添加 **3 条绑定**。**这一步是整个部署最关键、最容易出错的环节**——代码里 `env.KV` / `env.DB` / `env.R2_BUCKET` 是**硬编码**的，你绑定时给的「变量名」必须**与下表一字不差**，否则 Functions 读不到资源，访问直接 500。
 
-1. 左侧 **R2 → Create bucket**，名称建议：`blog-images`。
-2. 回到 Pages 项目 → **Settings → Functions → R2 bucket bindings** → **Add binding**：
-   - Variable name: **`R2_BUCKET`**
-   - R2 bucket: 选择上一步创建的桶
-3. （可选）为 R2 桶配置**公开访问**：
-   - 进入 R2 → 选中 `blog-images` → **Settings → Public access → Allow Access**。
-   - 记下形如 `https://pub-XXXXXX.r2.dev` 的 **公开访问域名**，下一步用。
+| 类型 | 变量名（**必须严格一致**） | 绑定到 |
+| --- | --- | --- |
+| D1 数据库 | `DB` | 你上一步建的 D1 |
+| R2 存储桶 | `R2_BUCKET` | 你上一步建的 R2 桶 |
+| KV 命名空间 | `KV` | 你上一步建的 KV |
 
-> 绑定变量名必须叫 `R2_BUCKET`。
+> 🔴 **强烈建议**：复制 `DB` / `R2_BUCKET` / `KV` 这 3 个名字到剪贴板再粘贴，**别手敲**。手敲容易把 `KV` 写成 `kv`、`R2_BUCKET` 写成 `R2_Bucket`，大小写 / 下划线差一点 Functions 就 500，排查起来很痛苦。
 
-### 4. 绑定 KV 命名空间
+### 4. 配置环境变量 / 密钥
 
-1. 左侧 **Workers & Pages → Storage → KV → Create a namespace**。
-2. 名称建议：`blog-kv`。
-3. 回到 Pages 项目 → **Settings → Functions → KV namespace bindings** → **Add binding**：
-   - Variable name: **`KV`**
-   - KV namespace: 选择上一步创建的命名空间
-4. 保存。
+Pages 项目 → **Settings → Variables and Secrets → Add**，添加 **2 个环境变量**：
 
-> 绑定变量名必须叫 `KV`。
-
-### 5. 配置环境变量 / 密钥
-
-Pages 项目 → **Settings → Environment variables** → **Add**：
-
-| 变量名 | 类型 | 必填 | 说明 |
+| 变量名（**必须严格一致**） | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
-| `API_TOKEN` | 纯文本 | 推荐 | 任意非空字符串；用此 token 调所有受保护接口（除 `/api/user/update`），适合脚本 / CI |
-| `R2_PUBLIC_URL` | 纯文本 | 必填 | 第 3 步 R2 桶的公开访问域名，例：`https://pub-abc123.r2.dev`；用于从 Markdown 抽取 R2 图片 key |
-| `CUSTOM_DOMAIN` | 纯文本 | 可选 | 仅备忘用；想用自定义域名，在 **Custom domains** 里绑定即可 |
+| `API_TOKEN` | 纯文本（Plaintext） | 推荐 | 任意随机强字符串；用此 token 调所有受保护接口（除 `/api/user/update`），适合脚本 / CI |
+| `R2_PUBLIC_URL` | 纯文本（Plaintext） | 必填 | R2 桶的公开访问域名，例：`https://pub-abc123.r2.dev`；用于从 Markdown 抽取 R2 图片 key |
 
-> ⚠️ 改完环境变量一定要 **重新部署** 一次才生效。
+> ⚠️ **类型选错会读不到**：一定选「纯文本（Plaintext）」，不要选「加密（Encrypt）」，否则 Functions 端 `env.API_TOKEN` 拿不到值。改完一定要 **重新部署一次** 才生效。
 
-### 6. 初始化数据库（执行 SQL）
+### 5. 初始化数据库（执行 SQL）
 
-1. Cloudflare Dashboard → **Workers & Pages → Storage → D1** → 选中 `blog-db` → **Console** 标签。
+1. Cloudflare Dashboard → **Workers & Pages → Storage → D1** → 选中你建的 D1（例：`blog-asia`）→ **Console** 标签。
 2. 把 [sql.txt](./sql.txt) 里的 SQL 整段粘贴到输入框，点击 **Execute**。
 3. 成功后表结构与默认管理员已就绪：
    - 用户名：`admin`
@@ -119,9 +106,9 @@ Pages 项目 → **Settings → Environment variables** → **Add**：
 
 4. 重新打开你的 Pages 站点，登录后请立刻通过 **控制台 → 账户** 改密并设置强密码。
 
-### 📸 实际配置参考（截图对应）
+### 📸 配置面板对照
 
-下面是一份**真实可用的最小配置**，与 Cloudflare Pages → **Settings → Variables and Secrets**、**Settings → Bindings** 两个面板的字段一一对应，照着填即可：
+下面是一份**真实可用的最小配置**（以 Cloudflare Pages → **Settings → Bindings / Variables and Secrets** 面板为准，照着填即可）：
 
 #### 变量和密钥
 
@@ -134,15 +121,11 @@ Pages 项目 → **Settings → Environment variables** → **Add**：
 
 | 类型 | 名称 | 绑定到（值） |
 | --- | --- | --- |
-| KV 命名空间 | `KV` | `TEST_BLOG_KV`（先在 **Storage → KV** 创建一个 Namespace，名字自取） |
-| D1 数据库 | `DB` | `blog-asia`（先在 **Storage → D1** 创建一个 Database，名字自取） |
-| R2 存储桶 | `R2_BUCKET` | `blog-images`（先在 **R2 → Create bucket** 创建一个桶，名字自取） |
+| KV 命名空间 | `KV` | `TEST_BLOG_KV` |
+| D1 数据库 | `DB` | `blog-asia` |
+| R2 存储桶 | `R2_BUCKET` | `blog-images` |
 
-> ⚠️ 几个**强约束**（写错代码读不到资源，直接 500）：
-> 1. **变量名必须严格一致**：`KV` / `DB` / `R2_BUCKET` / `API_TOKEN` / `R2_PUBLIC_URL` —— 代码里 `env.KV`、`env.DB`、`env.R2_BUCKET` 就是按这几个名字取的。
-> 2. **类型不要选错**：API_TOKEN / R2_PUBLIC_URL 选「纯文本（Plaintext）」即可，不要选「加密（Encrypt）」，否则 Functions 端读不到。
-> 3. **绑定生效需要重新部署一次**（Save 完回到 **Deployments → Retry deployment**），仅保存不会自动热加载。
-> 4. **R2 公开域名要先开**：进 R2 → 选中 `blog-images` → **Settings → Public access → Allow Access**，拿到形如 `https://pub-XXXXXX.r2.dev` 的域名；如果你用自己的 CDN / 鉴权域名（如图里的 `https://img.yedad.top`），同样直接填进 `R2_PUBLIC_URL` 即可。
+> 🔴 **再次强调「变量名必须严格一致」**：截图里的 3 个绑定名 `KV` / `DB` / `R2_BUCKET` 和 2 个环境变量名 `API_TOKEN` / `R2_PUBLIC_URL` —— 这 5 个字符串**和代码里 `env.*` 的取名是一一对应的**，任何一处拼写 / 大小写 / 下划线不一致，部署后所有受保护接口 500。**建议直接复制粘贴，别手敲。**
 
 ---
 
@@ -239,24 +222,6 @@ INSERT INTO site_navs (label, href, tab_key, open_in_new_tab, is_active, sort_or
 
 ---
 
-## 🧪 本地开发
-
-Cloudflare Pages Functions 推荐用 [`wrangler`](https://developers.cloudflare.com/workers/wrangler/) 起本地服务：
-
-```bash
-# 安装 wrangler（如未安装）
-npm install -g wrangler
-
-# 在项目根目录起本地 Pages 模拟器（端口 8788）
-wrangler pages dev . --port 8788
-```
-
-> 由于本地没有真实的 D1 / R2 / KV，本地预览时大部分 API 会 500。
-> 真要本地起全套请使用 **Cloudflare 远程绑定**（`wrangler pages dev --remote`），需要登录 CF 账号。
-
-如果只是想看前端样式与 SSR 渲染，**最简单的方式**是进 [`php/`](./php) 起一个 `php -S 0.0.0.0:8000`，配合一个 mock 的 `/api` 路由就能跑。
-
----
 
 ## 📖 配套文档
 
