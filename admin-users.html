@@ -271,7 +271,8 @@
             if (btn) btn.disabled = disabled;
         }
 
-        // ⚡️ 头像上传处理：上传到 /api/upload，成功后调用 applyAvatar 把地址写入输入框 + 预览
+        // ⚡️ 头像上传处理：上传到 /api/upload，成功后调用 applyAvatar 同步输入框 + 预览，
+        //   再走标准 saveUser 流程把头像地址写进 D1 数据库 + KV 缓存（与修改/保存走同一条路径）
         async function handleAvatarUpload(event) {
             const file = event.target.files && event.target.files[0];
             // 无论成功失败都先清空 value，允许重复上传同一文件
@@ -309,9 +310,22 @@
                 const result = await res.json();
 
                 if (res.ok && result.success && result.url) {
-                    // ⚡️ 上传成功：把返回的 URL 写回输入框 + 实时预览
+                    // 1) 把返回的 URL 写回输入框 + 实时预览
                     applyAvatar(result.url);
-                    showUploadToast('头像已更新', 'success');
+
+                    // 2) 走标准保存逻辑：与点「保存修改」一致，
+                    //    后端会把头像地址写进 D1 数据库并同步到 KV 缓存
+                    showUploadToast('正在保存到数据库...', 'loading');
+                    const saved = await saveUser();
+                    if (saved) {
+                        showUploadToast('头像已更新', 'success');
+                    } else {
+                        showUploadToast('保存失败，请检查后重试', 'error');
+                        setTimeout(() => {
+                            const t = document.getElementById('upload-toast');
+                            if (t) t.classList.remove('show');
+                        }, 3000);
+                    }
                 } else {
                     showUploadToast('上传失败: ' + (result.error || `HTTP ${res.status}`), 'error');
                     setTimeout(() => {
@@ -360,7 +374,7 @@
 
         async function saveUser() {
             const token = getToken();
-            if (!token) return;
+            if (!token) return false;
 
             const username = document.getElementById('username').value.trim();
             const nickname = document.getElementById('nickname').value.trim();
@@ -370,12 +384,12 @@
 
             if (!username) {
                 showStatus('用户名不能为空', 'error');
-                return;
+                return false;
             }
             if (password) {
                 if (password !== passwordConfirm) {
                     showStatus('两次输入的密码不一致', 'error');
-                    return;
+                    return false;
                 }
             }
 
@@ -423,11 +437,14 @@
                     localStorage.setItem('admin_avatar', avatar || '');
 
                     showStatus(result.message || '已保存', 'ok');
+                    return true;
                 } else {
                     showStatus('失败: ' + (result.error || '未知错误'), 'error');
+                    return false;
                 }
             } catch (e) {
                 showStatus('网络异常，请稍后重试', 'error');
+                return false;
             } finally {
                 btn.disabled = false;
                 btn.classList.remove('opacity-60', 'cursor-wait');
