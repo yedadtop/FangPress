@@ -113,30 +113,46 @@ export function renderPostItem(post, i, showViews) {
 
 /**
  * 推文专用渲染器(用于 /tweets 页面)
- * - 展示完整正文(优先 post.content,缺失时回退 excerpt)
- * - 同样应用了 float-right 布局，保持推文展现形式的全局统一
+ * - 推特式样: 头像 + 昵称 + 发布时间 + 正文(去除左侧 border-l 竖杠)
+ * - avatar 缺省时回退到占位 SVG;<img> 加载失败时也回退到占位
+ * - 数据契约: post.author = { nickname: string|null, avatar: string|null } | null
  */
 export function renderTweetItem(post, i) {
     if (!post) return '';
     const slug = post.slug || '';
     const raw = (post.content != null && post.content !== '') ? post.content : (post.excerpt || '');
     const dateStr = formatDate(post.created_at);
+    const author = post.author || null;
+    const nickname = (author && author.nickname) ? author.nickname : 'Admin';
+    const avatar = (author && author.avatar) ? author.avatar : null;
 
-    // 日期：放在右上角,独立一行,不再用 float,避免短文本贴着日期右侧显示
-    const meta = dateStr
-        ? `<div class="flex justify-end mb-1.5"><time class="text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">${dateStr}</time></div>`
-        : '';
+    // 头像区: 有 URL → <img> + 占位 SVG(hidden); 无 URL → 仅占位
+    const placeholderPath = 'M12 12c2.7 0 4.875-2.175 4.875-4.875S14.7 2.25 12 2.25 7.125 4.425 7.125 7.125 9.3 12 12 12zm0 2.25c-3.45 0-10.125 1.725-10.125 5.25v2.25h20.25v-2.25c0-3.525-6.675-5.25-10.125-5.25z';
+    const avatarInner = avatar
+        ? `<img class="w-full h-full object-cover" src="${escapeHtml(avatar)}" alt="" referrerpolicy="no-referrer" onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden');" />
+           <svg class="w-5 h-5 text-stone-300 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="${placeholderPath}"/></svg>`
+        : `<svg class="w-5 h-5 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="${placeholderPath}"/></svg>`;
 
-    // 正文：始终从新行开始左对齐
-    const body = raw
-        ? `<div class="font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words">${escapeHtml(raw)}</div>`
+    const timeHTML = dateStr
+        ? `<time class="text-stone-400 text-xs font-sans tabular-nums whitespace-nowrap">${dateStr}</time>`
         : '';
 
     return `
-        <article class="fade-up py-5 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
-            <a href="/post/${encodeURIComponent(slug)}" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">
-                ${meta}
-                ${body}
+        <article class="fade-up group" style="animation-delay: ${i * 40}ms" data-ssr-item>
+            <a href="/post/${encodeURIComponent(slug)}" class="flex gap-3 px-3 py-3 -mx-3 rounded-lg hover:bg-stone-100/60 transition-colors">
+                <div class="shrink-0">
+                    <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-stone-100 border border-stone-200/60 overflow-hidden flex items-center justify-center">
+                        ${avatarInner}
+                    </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-baseline gap-2 flex-wrap text-sm leading-tight">
+                        <span class="font-medium text-stone-900 truncate">${escapeHtml(nickname)}</span>
+                        <span class="text-stone-300 text-xs">·</span>
+                        ${timeHTML}
+                    </div>
+                    <div class="font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words mt-1">${escapeHtml(raw)}</div>
+                </div>
             </a>
         </article>
     `;

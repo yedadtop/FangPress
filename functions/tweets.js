@@ -51,15 +51,25 @@ export async function onRequestGet(context) {
     if (posts.length === 0) {
         try {
             const offset = (page - 1) * PAGE_SIZE;
-            const { results } = await env.DB.prepare(
-                `SELECT id, title, slug, content, category, type, views, created_at
-                 FROM posts
-                 WHERE type = 'tweet' AND status = 'published'
-                 ORDER BY created_at DESC
-                 LIMIT ${PAGE_SIZE + 1} OFFSET ${offset}`
-            ).all();
+            // ⚡ 与首条用户并行查询,单用户系统下作为所有推文的 author 回退
+            const [postsResult, userRow] = await Promise.all([
+                env.DB.prepare(
+                    `SELECT id, title, slug, content, category, type, views, created_at
+                     FROM posts
+                     WHERE type = 'tweet' AND status = 'published'
+                     ORDER BY created_at DESC
+                     LIMIT ${PAGE_SIZE + 1} OFFSET ${offset}`
+                ).all(),
+                env.DB.prepare(
+                    `SELECT nickname, avatar FROM users ORDER BY id ASC LIMIT 1`
+                ).first().catch(() => null)
+            ]);
+            const results = postsResult.results || [];
+            const author = userRow
+                ? { nickname: userRow.nickname || null, avatar: userRow.avatar || null }
+                : null;
 
-            if (results && results.length > 0) {
+            if (results.length > 0) {
                 hasNextPage = results.length > PAGE_SIZE;
                 const excerptLength = settings.excerpt_length ? parseInt(settings.excerpt_length, 10) : 200;
                 const pageResults = hasNextPage ? results.slice(0, PAGE_SIZE) : results;
@@ -74,7 +84,9 @@ export async function onRequestGet(context) {
                     created_at: p.created_at,
                     // 推文列表需要完整正文（前端懒加载同样依赖此字段）
                     content: p.content || '',
-                    excerpt: makeExcerpt(p.content || '', excerptLength)
+                    excerpt: makeExcerpt(p.content || '', excerptLength),
+                    // ⚡ 推特式样所需: 头像 + 昵称(单用户系统下全部沿用首条用户)
+                    author
                 }));
 
                 context.waitUntil(

@@ -378,25 +378,42 @@
             return y + ' · ' + m + ' · ' + dd;
         }
 
-        // ⚠️ 修复后的渲染项生成器
+        // ⚠️ 推特式样渲染项生成器:与 SSR 的 renderTweetItem 保持一致
         function renderItem(p) {
-            var slug = encodeURIComponent(p.slug || '');
-            var raw  = (p.content != null && p.content !== '') ? p.content : (p.excerpt || '');
-            var d = formatDate(p.created_at);
-            
-            // 采用 float-right 并单行拼接
-            var metaHTML = d
-                ? '<time class="float-right ml-4 mt-1.5 text-xs text-stone-400 tabular-nums tracking-wider font-sans whitespace-nowrap">' + escapeHTML(d) + '</time>'
+            var slug   = encodeURIComponent(p.slug || '');
+            var raw    = (p.content != null && p.content !== '') ? p.content : (p.excerpt || '');
+            var d      = formatDate(p.created_at);
+            var author = p.author || null;
+            var nickname = (author && author.nickname) ? author.nickname : 'Admin';
+            var avatar   = (author && author.avatar)   ? author.avatar   : null;
+
+            var placeholderPath = 'M12 12c2.7 0 4.875-2.175 4.875-4.875S14.7 2.25 12 2.25 7.125 4.425 7.125 7.125 9.3 12 12 12zm0 2.25c-3.45 0-10.125 1.725-10.125 5.25v2.25h20.25v-2.25c0-3.525-6.675-5.25-10.125-5.25z';
+
+            // 头像内联:有 URL → img + hidden 占位;无 URL → 直接占位
+            var avatarInner = avatar
+                ? '<img class="w-full h-full object-cover" src="' + escapeHTML(avatar) + '" alt="" referrerpolicy="no-referrer" onerror="this.classList.add(\'hidden\'); this.nextElementSibling.classList.remove(\'hidden\');" />' +
+                  '<svg class="w-5 h-5 text-stone-300 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="' + placeholderPath + '"/></svg>'
+                : '<svg class="w-5 h-5 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="' + placeholderPath + '"/></svg>';
+
+            var timeHTML = d
+                ? '<time class="text-stone-400 text-xs font-sans tabular-nums whitespace-nowrap">' + escapeHTML(d) + '</time>'
                 : '';
-                
-            // 单行拼接文本与日期，防止 whitespace-pre-wrap 引入空白
-            var body = raw
-                ? '<div class="font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words text-justify" style="text-justify: inter-ideograph;">' + metaHTML + escapeHTML(raw) + '</div>'
-                : metaHTML;
-                
-            return '<article class="fade-up py-5 group" data-ssr-item>' +
-                '<a href="/post/' + slug + '" class="block pl-4 border-l-2 border-stone-300 hover:border-stone-500 transition-colors">' +
-                    body +
+
+            return '<article class="fade-up group" data-ssr-item>' +
+                '<a href="/post/' + slug + '" class="flex gap-3 px-3 py-3 -mx-3 rounded-lg hover:bg-stone-100/60 transition-colors">' +
+                    '<div class="shrink-0">' +
+                        '<div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-stone-100 border border-stone-200/60 overflow-hidden flex items-center justify-center">' +
+                            avatarInner +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="flex-1 min-w-0">' +
+                        '<div class="flex items-baseline gap-2 flex-wrap text-sm leading-tight">' +
+                            '<span class="font-medium text-stone-900 truncate">' + escapeHTML(nickname) + '</span>' +
+                            '<span class="text-stone-300 text-xs">·</span>' +
+                            timeHTML +
+                        '</div>' +
+                        '<div class="font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words mt-1">' + escapeHTML(raw) + '</div>' +
+                    '</div>' +
                 '</a>' +
             '</article>';
         }

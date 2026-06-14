@@ -144,6 +144,19 @@ export async function onRequestGet(context) {
       if (hasMore) pageResults = rawResults.slice(0, PAGE_SIZE);
     }
 
+    // ⚡ 推特式样所需: 仅当查询包含推文时,才去 D1 取一次首条用户的昵称+头像
+    //   单用户系统下所有推文共用同一 author;其他类型不带 author 保持 payload 精简
+    const needsAuthor = pageResults.some(p => (p.type || 'post') === 'tweet');
+    let author = null;
+    if (needsAuthor) {
+      try {
+        const userRow = await env.DB.prepare(
+          `SELECT nickname, avatar FROM users ORDER BY id ASC LIMIT 1`
+        ).first();
+        if (userRow) author = { nickname: userRow.nickname || null, avatar: userRow.avatar || null };
+      } catch (_) { /* 静默,允许 author 为 null,前端会显示默认昵称 + 占位头像 */ }
+    }
+
     const data = pageResults.map(p => {
       const base = {
         id: p.id,
@@ -159,6 +172,10 @@ export async function onRequestGet(context) {
       // 推文专用:/tweets 页面需要展示完整正文,因此对 tweet 类型额外带回 content 字段
       if ((p.type || 'post') === 'tweet' && p.content) {
         base.content = p.content;
+      }
+      // 推文专用: 附上作者昵称 + 头像(单用户系统下共用同一 author)
+      if ((p.type || 'post') === 'tweet') {
+        base.author = author;
       }
       return base;
     });
