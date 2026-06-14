@@ -373,6 +373,9 @@
                             <button type="button" class="toolbar-btn" onclick="insertLine('![alt](url)')" title="图片">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                             </button>
+                            <button type="button" class="toolbar-btn" onclick="uploadImage()" title="上传图片（插入到光标位置）">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            </button>
                             <button type="button" class="toolbar-btn" onclick="insertTable()" title="表格">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18M10 3v18M14 3v18M3 3h18v18H3z"></path></svg>
                             </button>
@@ -409,6 +412,8 @@
                        class="px-3 py-2.5 text-stone-500 hover:text-stone-900 text-sm transition-colors">取消</a>
                     <span id="status-text" class="ml-auto text-xs text-stone-400 italic font-serif hidden"></span>
                 </div>
+
+                <input type="file" id="image-upload-input" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
             </form>
         </div>
     </div>
@@ -476,6 +481,9 @@
                 </button>
                 <button type="button" class="toolbar-btn" onclick="insertLine('![alt](url)')" title="图片">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                </button>
+                <button type="button" class="toolbar-btn" onclick="uploadImage()" title="上传图片（插入到光标位置）">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                 </button>
                 <button type="button" class="toolbar-btn" onclick="insertTable()" title="表格">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18M10 3v18M14 3v18M3 3h18v18H3z"></path></svg>
@@ -670,6 +678,68 @@
             ta.focus();
             updatePreview();
             updateWordCount();
+        }
+
+        // ⚡ 上传图片：触发文件选择
+        function uploadImage() {
+            const input = document.getElementById('image-upload-input');
+            if (input) input.click();
+        }
+
+        // ⚡ 上传图片：上传到 /api/upload 并把返回的外链以 Markdown 形式插入到光标位置
+        async function handleImageUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            // 无论成功失败都先清空 value，允许重复上传同一文件
+            event.target.value = '';
+            if (!file) return;
+
+            // 客户端预校验：>5MB 直接拒绝
+            if (file.size > 5 * 1024 * 1024) {
+                showStatus('图片不能超过 5MB', 'error');
+                return;
+            }
+
+            const token = getToken();
+            if (!token) {
+                window.top.location.href = 'admin.html';
+                return;
+            }
+
+            const ta = getTextarea();
+            // 记住光标位置（用户可能在选完文件前移动过光标）
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            const selected = ta.value.substring(start, end);
+
+            const formData = new FormData();
+            formData.append('file', file);
+            showStatus('正在上传图片...', 'ok');
+
+            try {
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                const result = await res.json();
+
+                if (res.ok && result.success && result.url) {
+                    // 以选中文字作为 alt；若没有选中则用「图片」
+                    const altText = (selected && selected.trim()) ? selected.trim() : '图片';
+                    const imageMd = `![${altText}](${result.url})`;
+                    ta.value = ta.value.substring(0, start) + imageMd + ta.value.substring(end);
+                    const cursor = start + imageMd.length;
+                    ta.selectionStart = ta.selectionEnd = cursor;
+                    ta.focus();
+                    updatePreview();
+                    updateWordCount();
+                    showStatus('图片已插入', 'ok');
+                } else {
+                    showStatus('上传失败: ' + (result.error || `HTTP ${res.status}`), 'error');
+                }
+            } catch (err) {
+                showStatus('上传失败: ' + err.message, 'error');
+            }
         }
 
         function enterFullscreen() {
