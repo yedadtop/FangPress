@@ -46,7 +46,7 @@
 1. **Fork / Clone** 本仓库到你的 GitHub。
 2. 在 **Cloudflare Dashboard** 创建一个 Pages 项目并连接该仓库（构建命令留空，构建输出目录留空即可，全是静态资源 + Functions）。
 3. 在 Cloudflare 创建 **D1 数据库**、**R2 存储桶**、**KV 命名空间**，并绑定到 Pages（详见下方 [☁️ Cloudflare 控制台配置](#️-cloudflare-控制台配置)）。
-4. 在 Pages 控制台的 **「设置 → 环境变量」** 配置 `API_TOKEN` 等。
+4. 在 Pages 控制台的 **「设置 → 环境变量」** 配置 `API_TOKEN` 等（详见下方 [☁️ Cloudflare 控制台配置](#️-cloudflare-控制台配置)）。
 5. 首次部署完成后，进 D1 控制台的查询页面 **执行 [sql.txt](./sql.txt) 中的语句** 初始化表结构与默认管理员。
 
 部署完成访问你的地址（默认地址 `https://<your-project>.pages.dev`），默认账号密码 `admin / admin`，**登录后立刻改密码**。
