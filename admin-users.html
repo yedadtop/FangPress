@@ -13,23 +13,24 @@
         body { font-family: var(--font-sans); }
         .font-serif { font-family: var(--font-serif); }
 
-        /* === 上传中浮动提示（spinner + 文案） === */
+        /* === 上传中浮动提示（屏幕正中） === */
         .upload-toast {
             position: fixed;
-            top: 80px;
-            right: 24px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             z-index: 70;
             display: none;
             align-items: center;
             gap: 10px;
-            padding: 10px 16px;
+            padding: 12px 20px;
             background: #ffffff;
             border: 1px solid #d6d3d1;
             border-radius: 10px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-            font-size: 13px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+            font-size: 14px;
             color: #44403c;
-            transition: all 0.2s ease;
+            transition: opacity 0.2s ease, transform 0.2s ease;
         }
         .upload-toast.show { display: flex; }
         .upload-toast.error   { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
