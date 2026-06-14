@@ -18,11 +18,14 @@ export function formatDate(ts) {
     try {
         const formatter = new Intl.DateTimeFormat('zh-CN', {
             timeZone: 'Asia/Shanghai',
-            year: 'numeric', month: '2-digit', day: '2-digit'
+            month: 'numeric', day: 'numeric'
         });
         const parts = formatter.formatToParts(d);
         const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
-        return `${map.year} · ${map.month} · ${map.day}`;
+        // ⚡️ 主页风格:仅显示月-日(如 "6-14"),去年份 + dash 分隔,更紧凑
+        const m   = (map.month || '').replace(/[^0-9]/g, '');
+        const day = (map.day   || '').replace(/[^0-9]/g, '');
+        return `${parseInt(m, 10)}-${parseInt(day, 10)}`;
     } catch (_) {
         return '';
     }
