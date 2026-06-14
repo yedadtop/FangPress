@@ -730,7 +730,14 @@
             }
 
             const formData = new FormData();
-            formData.append('file', compressedFile, compressedFile.name || file.name);
+            // ⚡ 修正：压缩后的 File.name 仍可能是原后缀（如 .png），必须按实际 MIME 修正后缀，
+            //   否则后端 upload.js 会按原扩展名生成 R2 key，导致浏览器收到 image/webp 却无法正确识别
+            let finalName = compressedFile.name || file.name;
+            if (compressedFile.type === 'image/webp' && !/\.webp$/i.test(finalName)) {
+                const lastDot = finalName.lastIndexOf('.');
+                finalName = (lastDot > 0 ? finalName.substring(0, lastDot) : finalName) + '.webp';
+            }
+            formData.append('file', compressedFile, finalName);
             showStatus('正在上传图片...', 'ok');
 
             try {
