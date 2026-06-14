@@ -175,10 +175,22 @@ export async function onRequestGet(context) {
     const result = await fetchPost(env, slug, context);
     if (!result.ok) {
         if (result.status === 404) return renderFallbackPage(env, request, url, 'not-found', context);
-        if (result.status === 400) return renderFallbackPage(env, request, url, 'bad-slug', context);
+        if (result.status === 400) return renderFallbackPage(env, request, 'bad-slug', context);
         return renderFallbackPage(env, request, url, 'error', context);
     }
     const post = result.post;
+
+    // ⚡️ 推文不再复用 post.html，301 跳到 /tweet/{slug}（保持 SEO + 老链接兼容）
+    if (post.type === 'tweet') {
+        const normalized = String(slug || '').trim().toLowerCase();
+        return new Response(null, {
+            status: 301,
+            headers: {
+                'Location': `/tweet/${encodeURIComponent(normalized)}`,
+                'Cache-Control': 'public, max-age=3600'
+            }
+        });
+    }
 
     // 3) 并行拉取模板 + 设置
     // ⚡️ 修复点：防止 ASSETS fetch 异常导致的白屏死机

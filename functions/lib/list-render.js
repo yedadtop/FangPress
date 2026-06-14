@@ -80,7 +80,7 @@ export function renderPostItem(post, i, showViews) {
 
         return `
             <article class="fade-up py-7 group" style="animation-delay: ${i * 40}ms" data-ssr-item>
-                <a href="/post/${encodeURIComponent(slug)}" class="block">
+                <a href="/tweet/${encodeURIComponent(slug)}" class="block">
                     ${excerpt}
                 </a>
             </article>
@@ -139,7 +139,7 @@ export function renderTweetItem(post, i) {
 
     return `
         <article class="fade-up group" style="animation-delay: ${i * 40}ms" data-ssr-item>
-            <a href="/post/${encodeURIComponent(slug)}" class="flex gap-3 px-3 py-3 -mx-3 rounded-lg hover:bg-stone-100/60 transition-colors">
+            <a href="/tweet/${encodeURIComponent(slug)}" class="flex gap-3 px-3 py-3 -mx-3 rounded-lg hover:bg-stone-100/60 transition-colors">
                 <div class="shrink-0">
                     <div class="w-10 h-10 md:w-11 md:h-11 rounded-full bg-stone-100 border border-stone-200/60 overflow-hidden flex items-center justify-center">
                         ${avatarInner}
