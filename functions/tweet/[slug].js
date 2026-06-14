@@ -229,7 +229,9 @@ export async function onRequestGet(context) {
         .on('#ssr-tweet-avatar', { element: el => el.setInnerContent(renderAvatarInner(avatar, nickname), { html: true }) })
         .on('#ssr-tweet-nickname', { element: el => el.setInnerContent(escapeHtml(nickname)) })
         .on('#ssr-tweet-time', { element: el => el.setInnerContent(dateStr) })
-        .on('#ssr-tweet-content', { element: el => el.setInnerContent(safeContent) })
+        // ⚡️ setInnerContent 第二参数必须 { html: true } 才把字符串当 HTML 解析,
+        //    否则 <img> 标签会作为字面量写进 DOM(典型表现:页面显示 "<img src=... />" 整段文本)
+        .on('#ssr-tweet-content', { element: el => el.setInnerContent(safeContent, { html: true }) })
         .on('#ssr-tweet-article', { element: el => el.removeAttribute('class') });
 
     const response = rewriter.transform(templateResp);
