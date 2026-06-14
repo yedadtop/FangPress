@@ -72,7 +72,8 @@
   "success": true,
   "message": "登录成功",
   "token": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
-  "nickname": "Admin"
+  "nickname": "Admin",
+  "avatar": "https://cdn.example.com/avatar.png"   // 或 null
 }
 ```
 错误：
@@ -197,6 +198,7 @@
 |---|---|---|---|
 | `getActiveNavs(env, context)` | `site:navs:list:active` | SSR 公开页头部导航 | 硬编码「文章 / 推文」 |
 | `getSettings(env, context)`   | `site:settings:data`   | SSR 公开页 + 公开 /api/list 摘要长度 | `{}` |
+| `GET /api/user` (内联)         | `site:user:profile:data`| 单用户后台「账户信息」面板 + 头像 | 直接 401 让前端重新登录 |
 
 **调用链**：
 1. `env.KV.get(key)` —— 命中且 JSON 合法 → 直接返回
@@ -314,35 +316,40 @@
     "id": 1,
     "username": "admin",
     "nickname": "Admin",
+    "avatar": "https://cdn.example.com/avatar.png",   // 或 null
     "created_at": "..."
   }
 }
 ```
 > 不返回 `password_hash`。
 > token 不匹配时返 `401 { success:false, error:"口令失效，请重新登录" }`。
+> ⚡ 缓存：KV 键 `site:user:profile:data`，存「整行（含 password_hash）」用于校验 token 是否仍对应缓存里的用户；命中时由 GET 端点的 token 过滤逻辑保证旧 token 不会读到新用户的数据。D1 兜底后会 `context.waitUntil` 异步回填 KV。
 
 ---
 
-### 2.6 `POST /api/user/update` — 改用户名 / 昵称 / 密码
+### 2.6 `POST /api/user/update` — 改用户名 / 昵称 / 头像 / 密码
 请求体（任选）：
 ```json
 {
   "username": "新用户名（可选）",
   "nickname": "新昵称（可选，null 表示清空）",
+  "avatar":   "https://cdn.example.com/avatar.png",  // 头像直链 URL（http/https），可选；null / "" 表示清空
   "password": "新密码（可选，传入即触发改密并轮换 token）"
 }
 ```
 - 用户名不能为空字符串
+- 头像仅接受 `http://` / `https://` 直链；其他协议（`javascript:` / `data:` / `file:` …）一律 400 拒绝；长度上限 2048
 - 改密时 token 会变（`newHash` = `SHA-256(newPassword)`），响应里 `newToken` 字段必须写回 localStorage
 - 至少传一个字段，否则返 `400 "没有任何修改"`
 - **此接口禁止使用 API_TOKEN**，否则返回 `403`
+- ⚡ 写完 D1 后会立刻 `SELECT` 最新整行并 `KV.put('site:user:profile:data', ...)` 覆盖，**任何字段的变更（avatar / nickname / username / password）都会让 GET /api/user 在下一次请求直接命中新值**
 
 成功响应 200：
 ```json
 { "success": true, "message": "账户信息已更新", "newToken": "..." /* 改密时才有 */ }
 ```
 错误：
-- `400` 用户名为空 / 无修改 / username 已被占用
+- `400` 用户名为空 / 头像非法 / 无修改 / username 已被占用
 - `401` token 失效
 - `403` 使用了 API_TOKEN
 
@@ -543,6 +550,7 @@ site_navs(
 
 ---
 
-> 文档版本：2026-06-13
-> 新增：导航管理（`/api/navs`，支持 KV 缓存 + 拖拽排序 + 启用/禁用）、推文（`type='tweet'`）支持、`/posts` 与 `/tweets` 独立列表页、API list 支持 `type` / `page` 参数、`/api/delete` 支持 `ids` 批量删除
+> 文档版本：2026-06-14
+> 新增：用户头像直链（`users.avatar` 字段）。`/api/user` 返回 `avatar`，`POST /api/user/update` 支持 `avatar` 字段（仅接受 http/https 直链，写 D1 后立刻覆盖 KV `site:user:profile:data`），`/api/auth/login` 登录响应同步带回 `avatar`。
+> 上版：导航管理（`/api/navs`，支持 KV 缓存 + 拖拽排序 + 启用/禁用）、推文（`type='tweet'`）支持、`/posts` 与 `/tweets` 独立列表页、API list 支持 `type` / `page` 参数、`/api/delete` 支持 `ids` 批量删除
 > 维护者：随源码演进同步更新

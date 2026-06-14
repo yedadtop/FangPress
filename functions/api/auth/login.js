@@ -77,7 +77,7 @@ export async function onRequestPost(context) {
         const dummyHash = "0000000000000000000000000000000000000000000000000000000000000000";
 
         // 2. 数据库匹配
-        const user = await env.DB.prepare("SELECT id, username, password_hash, nickname FROM users WHERE username = ?")
+        const user = await env.DB.prepare("SELECT id, username, password_hash, nickname, avatar FROM users WHERE username = ?")
             .bind(username)
             .first();
 
@@ -99,7 +99,8 @@ export async function onRequestPost(context) {
             success: true,
             message: "登录成功",
             token: user.password_hash, // 替代旧的明文 env.API_TOKEN
-            nickname: user.nickname
+            nickname: user.nickname,
+            avatar: user.avatar || null
         }), {
             headers: { "Content-Type": "application/json" }
         });

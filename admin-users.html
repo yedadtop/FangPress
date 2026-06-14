@@ -60,6 +60,37 @@
             </section>
 
             <section>
+                <h2 class="text-[10px] uppercase tracking-widest text-stone-400 mb-3">对外展示</h2>
+                <div class="bg-white border border-stone-200/60 rounded-2xl p-6">
+                    <div class="flex items-start gap-5">
+                        <!-- 头像预览 -->
+                        <div class="shrink-0">
+                            <div id="avatar-preview-wrap" class="w-20 h-20 rounded-full bg-stone-100 border border-stone-200/60 overflow-hidden flex items-center justify-center">
+                                <img id="avatar-preview" class="w-full h-full object-cover hidden" alt="" referrerpolicy="no-referrer" />
+                                <svg id="avatar-placeholder" class="w-9 h-9 text-stone-300" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 12c2.7 0 4.875-2.175 4.875-4.875S14.7 2.25 12 2.25 7.125 4.425 7.125 7.125 9.3 12 12 12zm0 2.25c-3.45 0-10.125 1.725-10.125 5.25v2.25h20.25v-2.25c0-3.525-6.675-5.25-10.125-5.25z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <!-- URL 输入 -->
+                        <div class="flex-1 min-w-0 space-y-1.5">
+                            <label class="block text-xs text-stone-600">头像链接</label>
+                            <div class="flex items-stretch gap-2">
+                                <input type="url" id="avatar" inputmode="url" autocomplete="off"
+                                       class="flex-1 min-w-0 px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-mono focus:outline-none focus:border-stone-500"
+                                       maxlength="2048" placeholder="https://..." />
+                                <button type="button" id="avatar-clear-btn" onclick="clearAvatar()"
+                                        class="hidden shrink-0 px-3 py-2.5 text-stone-500 hover:text-red-500 border border-stone-200 hover:border-red-200 rounded-md text-sm transition-colors cursor-pointer">
+                                    清除
+                                </button>
+                            </div>
+                            <p class="text-[11px] text-stone-400 leading-relaxed">仅支持 <code class="text-stone-500 font-mono">http://</code> / <code class="text-stone-500 font-mono">https://</code> 直链，公开页面与后台会展示此头像。留空则恢复默认占位。</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section>
                 <h2 class="text-[10px] uppercase tracking-widest text-stone-400 mb-3">密码</h2>
                 <div class="bg-white border border-stone-200/60 rounded-2xl p-6 space-y-5">
                     <div>
@@ -118,6 +149,45 @@
             return `${d.getFullYear()} · ${String(d.getMonth() + 1).padStart(2, '0')} · ${String(d.getDate()).padStart(2, '0')}`;
         }
 
+        // -------- 头像预览 --------
+        function isValidAvatarUrl(url) {
+            if (!url) return false;
+            try {
+                const u = new URL(url);
+                return (u.protocol === 'http:' || u.protocol === 'https:') && !!u.hostname;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function applyAvatar(url) {
+            const input = document.getElementById('avatar');
+            const img = document.getElementById('avatar-preview');
+            const placeholder = document.getElementById('avatar-placeholder');
+            const clearBtn = document.getElementById('avatar-clear-btn');
+
+            const trimmed = (url || '').trim();
+            if (isValidAvatarUrl(trimmed)) {
+                // 仅当 src 真的变化才赋值，避免每输入一字符都重新加载
+                if (img.getAttribute('src') !== trimmed) {
+                    img.setAttribute('src', trimmed);
+                }
+                img.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                img.removeAttribute('src');
+                img.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            }
+            clearBtn.classList.toggle('hidden', !trimmed);
+            if (input.value !== trimmed) input.value = trimmed;
+        }
+
+        function clearAvatar() {
+            applyAvatar('');
+            document.getElementById('avatar').focus();
+        }
+
         async function loadUser() {
             if (!getToken()) return;
 
@@ -131,6 +201,7 @@
                     const u = result.data;
                     document.getElementById('username').value = u.username || '';
                     document.getElementById('nickname').value = u.nickname || '';
+                    applyAvatar(u.avatar || '');
                     document.getElementById('meta-id').textContent = '#' + (u.id || '—');
                     document.getElementById('meta-created').textContent = formatDate(u.created_at) || '—';
 
@@ -151,6 +222,7 @@
 
             const username = document.getElementById('username').value.trim();
             const nickname = document.getElementById('nickname').value.trim();
+            const avatar = document.getElementById('avatar').value.trim();
             const password = document.getElementById('password').value;
             const passwordConfirm = document.getElementById('password-confirm').value;
 
@@ -165,7 +237,8 @@
                 }
             }
 
-            const body = { username, nickname };
+            // ⚡ 头像始终随表单一起提交（空串 → 后端清空 D1 字段 + KV 同步）
+            const body = { username, nickname, avatar };
             if (password) {
                 body.password = password;
                 // ⚡ 修复 11：把后端强制要 passwordConfirm 一并提交
@@ -204,6 +277,9 @@
                         if (nameEl) nameEl.textContent = displayName;
                     } catch (e) { /* 忽略 */ }
 
+                    // 同步头像到 localStorage，便于侧栏 / 其它后台页面直接读
+                    localStorage.setItem('admin_avatar', avatar || '');
+
                     showStatus(result.message || '已保存', 'ok');
                 } else {
                     showStatus('失败: ' + (result.error || '未知错误'), 'error');
@@ -216,7 +292,26 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', loadUser);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUser();
+
+            // 头像输入实时预览（debounce 200ms，避免每输入一字符都重设 src）
+            let timer = null;
+            const avatarInput = document.getElementById('avatar');
+            avatarInput.addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => applyAvatar(avatarInput.value), 200);
+            });
+            // 失焦立即同步一次（保证清空 / 粘贴后立刻生效）
+            avatarInput.addEventListener('blur', () => applyAvatar(avatarInput.value));
+
+            // 头像图片加载失败 → 回退到占位（不阻断用户编辑）
+            const avatarImg = document.getElementById('avatar-preview');
+            avatarImg.addEventListener('error', () => {
+                avatarImg.classList.add('hidden');
+                document.getElementById('avatar-placeholder').classList.remove('hidden');
+            });
+        });
     </script>
 </body>
 </html>
