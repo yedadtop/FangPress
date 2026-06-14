@@ -234,9 +234,54 @@
         .fullscreen-mode .enter-fullscreen-btn {
             display: none;
         }
+
+        /* === 上传中浮动提示（spinner + 文案） === */
+        .upload-toast {
+            position: fixed;
+            top: 80px;
+            right: 24px;
+            z-index: 70;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: #ffffff;
+            border: 1px solid #d6d3d1;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+            font-size: 13px;
+            color: #44403c;
+            transition: all 0.2s ease;
+        }
+        .upload-toast.show { display: flex; }
+        .upload-toast.error   { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+        .upload-toast.success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+
+        .upload-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: upload-spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes upload-spin { to { transform: rotate(360deg); } }
+
+        .toolbar-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body class="bg-[#fafaf9] text-stone-800">
+
+    <!-- ⚡️ 上传中浮动提示：压缩 / 上传 / 完成 / 失败 全程可见 -->
+    <div id="upload-toast" class="upload-toast" role="status" aria-live="polite">
+        <span class="upload-spinner" id="upload-toast-spinner"></span>
+        <span id="upload-toast-text">正在上传图片...</span>
+    </div>
 
     <div id="normal-mode">
         <div class="max-w-6xl mx-auto px-6 md:px-10 py-10 md:py-14">
@@ -696,7 +741,11 @@
 
             // 客户端预校验：>5MB 直接拒绝（压缩前的原图上限，避免给浏览器造成过大压力）
             if (file.size > 5 * 1024 * 1024) {
-                showStatus('图片不能超过 5MB', 'error');
+                showUploadToast('图片不能超过 5MB', 'error');
+                setTimeout(() => {
+                    const t = document.getElementById('upload-toast');
+                    if (t) t.classList.remove('show');
+                }, 2400);
                 return;
             }
 
@@ -712,10 +761,13 @@
             const end = ta.selectionEnd;
             const selected = ta.value.substring(start, end);
 
+            // ⚡️ 锁定上传按钮，避免重复触发；显示「压缩中」spinner
+            setUploadButtonsDisabled(true);
+            showUploadToast('正在压缩图片...', 'loading');
+
             // ⚡ 客户端压缩：转 WebP + 1600px + 0.85 画质 + 500KB 兜底
             let compressedFile = file;
             try {
-                showStatus('正在压缩图片...', 'ok');
                 compressedFile = await imageCompression(file, {
                     fileType: 'image/webp',
                     maxWidthOrHeight: 1600,
@@ -738,7 +790,9 @@
                 finalName = (lastDot > 0 ? finalName.substring(0, lastDot) : finalName) + '.webp';
             }
             formData.append('file', compressedFile, finalName);
-            showStatus('正在上传图片...', 'ok');
+
+            // ⚡️ 切换为「上传中」spinner
+            showUploadToast('正在上传图片...', 'loading');
 
             try {
                 const res = await fetch('/api/upload', {
@@ -758,12 +812,23 @@
                     ta.focus();
                     updatePreview();
                     updateWordCount();
-                    showStatus('图片已插入', 'ok');
+                    showUploadToast('图片已插入', 'success');
                 } else {
-                    showStatus('上传失败: ' + (result.error || `HTTP ${res.status}`), 'error');
+                    showUploadToast('上传失败: ' + (result.error || `HTTP ${res.status}`), 'error');
+                    setTimeout(() => {
+                        const t = document.getElementById('upload-toast');
+                        if (t) t.classList.remove('show');
+                    }, 3000);
                 }
             } catch (err) {
-                showStatus('上传失败: ' + err.message, 'error');
+                showUploadToast('上传失败: ' + err.message, 'error');
+                setTimeout(() => {
+                    const t = document.getElementById('upload-toast');
+                    if (t) t.classList.remove('show');
+                }, 3000);
+            } finally {
+                // ⚡️ 无论成功失败都解锁按钮
+                setUploadButtonsDisabled(false);
             }
         }
 
@@ -818,6 +883,36 @@
             if (kind !== 'error') {
                 setTimeout(() => el.classList.add('hidden'), 2400);
             }
+        }
+
+        // ⚡️ 上传中浮动提示：loading（spinner）/ success / error
+        function showUploadToast(msg, kind) {
+            const toast = document.getElementById('upload-toast');
+            const text  = document.getElementById('upload-toast-text');
+            const spin  = document.getElementById('upload-toast-spinner');
+            if (!toast || !text) return;
+
+            text.textContent = msg;
+            toast.className = 'upload-toast show';
+            if (kind === 'error') {
+                toast.classList.add('error');
+            } else if (kind === 'success') {
+                toast.classList.add('success');
+            }
+            // 成功 / 失败不显示 spinner
+            if (spin) spin.style.display = (kind === 'error' || kind === 'success') ? 'none' : 'inline-block';
+
+            // 成功 1.6s 后自动隐藏，错误由调用方控制隐藏时机
+            if (kind === 'success') {
+                setTimeout(() => toast.classList.remove('show'), 1600);
+            }
+        }
+
+        // ⚡️ 锁定/解锁两个模式下的「上传图片」按钮，避免重复触发
+        function setUploadButtonsDisabled(disabled) {
+            document.querySelectorAll('button[onclick="uploadImage()"]').forEach(function (btn) {
+                btn.disabled = disabled;
+            });
         }
 
         // ⚡ 类型徽标：标题为空 → 推文，标题有内容 → 文章。无下拉框，纯联动。
