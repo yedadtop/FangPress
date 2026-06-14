@@ -18,12 +18,17 @@ function formatDateTime(ts) {
     try {
         const formatter = new Intl.DateTimeFormat('zh-CN', {
             timeZone: 'Asia/Shanghai',
-            year: 'numeric', month: '2-digit', day: '2-digit',
+            year: 'numeric', month: 'numeric', day: 'numeric',
             hour: '2-digit', minute: '2-digit', hour12: false
         });
         const parts = formatter.formatToParts(d);
         const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
-        return `${map.year} · ${map.month} · ${map.day} ${map.hour}:${map.minute}`;
+        // ⚡️ 详情页风格:年-月-日 时:分(如 "2026-6-14 13:47"),无前导零,dash 分隔
+        const m   = (map.month  || '').replace(/[^0-9]/g, '');
+        const day = (map.day    || '').replace(/[^0-9]/g, '');
+        const h   = (map.hour   || '').replace(/[^0-9]/g, '');
+        const min = (map.minute || '').replace(/[^0-9]/g, '');
+        return `${map.year}-${parseInt(m, 10)}-${parseInt(day, 10)} ${parseInt(h, 10)}:${parseInt(min, 10)}`;
     } catch (_) {
         return '';
     }
