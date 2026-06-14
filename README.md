@@ -209,8 +209,7 @@ INSERT INTO site_navs (label, href, tab_key, open_in_new_tab, is_active, sort_or
 | 密码（SHA-256） | `8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918` |
 
 ⚠️ **首次登录后请立即**：
-1. 进入 **控制台 → 账户信息** 修改密码；
-2. 在 **Cloudflare Pages → 环境变量** 设置一个强随机的 `API_TOKEN`，用于脚本自动化；
+1. 进入 **控制台 → 账户信息** 修改用户名/密码；
 
 ---
 
