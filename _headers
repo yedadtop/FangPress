@@ -12,3 +12,27 @@
 
 /tweet-card.js
   Cache-Control: public, max-age=31536000, immutable
+
+# === 公开页 HTML 缓存 ===
+# 浏览器侧 max-age=10 防止快速刷新打爆 Workers
+# 边缘节点 s-maxage=300 让 SSR 渲染结果复用 5 分钟,显著降低冷启动
+# 推文/文章发布后,最多 5 分钟被边缘节点刷新,可接受
+
+/index.html
+  Cache-Control: public, max-age=10, s-maxage=300
+
+/posts.html
+  Cache-Control: public, max-age=10, s-maxage=300
+
+/tweets.html
+  Cache-Control: public, max-age=10, s-maxage=300
+
+/post.html
+  Cache-Control: public, max-age=10, s-maxage=300
+
+/tweet.html
+  Cache-Control: public, max-age=10, s-maxage=300
+
+/404.html
+  Cache-Control: public, max-age=10, s-maxage=300
+
