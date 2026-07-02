@@ -20,14 +20,45 @@
     <link rel="preload" href="/tailwind.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="/tailwind.css"></noscript>
     <style>
-        /* === 详情页独有:文章正文排版系统(由 marked 输出的 HTML 通过 .prose-reader 套上样式) === */
-        .prose-reader { font-family: var(--reader-body-font); color: var(--reader-text); font-size: 1.2rem; line-height: 1.85; letter-spacing: var(--reader-letter-spacing); }
+        :root {
+            /* === 基于调试面板锁定的核心视觉变量 === */
+            --reader-bg: hsl(40, 23%, 97%);           /* 纸张背景明度 97% */
+            --reader-text: hsl(24, 10%, 0%);          /* 墨质字色暗度 0% (纯黑) */
+            --reader-size: 1.2rem;                    /* 正文字号 1.2rem */
+            --reader-line-height: 1.85;               /* 呼吸行高 1.85 */
+            --reader-width: 49rem;                    /* 容器黄金行宽 49rem */
+            --reader-paragraph-spacing: 1.40em;       /* 段落底部间距 */
+            --reader-letter-spacing: 0.02em;          /* 字间距微调 */
+            --reader-title-weight: 700;               /* 标题加粗字重 */
+
+            /* 字体栈 */
+            --font-serif-stack: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            --font-sans-stack: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+            /* 字体映射 */
+            --reader-title-font: var(--font-serif-stack);
+            --reader-body-font: var(--font-serif-stack);
+        }
+
+        body { font-family: var(--reader-body-font); background-color: var(--reader-bg); color: var(--reader-text); letter-spacing: var(--reader-letter-spacing); }
+
+        .font-sans { font-family: var(--font-sans-stack); }
+
+        /* === 扁平化自定义滚动条 === */
+        html { scrollbar-width: thin; scrollbar-color: hsl(40, 10%, 80%) var(--reader-bg); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--reader-bg); }
+        ::-webkit-scrollbar-thumb { background: hsl(40, 10%, 82%); border-radius: 0; }
+        ::-webkit-scrollbar-thumb:hover { background: hsl(40, 10%, 70%); }
+
+        /* === 阅读区排版系统 === */
+        .prose-reader { font-family: var(--reader-body-font); color: var(--reader-text); font-size: var(--reader-size); line-height: var(--reader-line-height); letter-spacing: var(--reader-letter-spacing); }
         .prose-reader h1, .prose-reader h2, .prose-reader h3, .prose-reader h4 { font-family: var(--reader-title-font); font-weight: var(--reader-title-weight); color: hsl(24, 10%, 0%); letter-spacing: -0.01em; line-height: 1.3; }
         .prose-reader h1 { font-size: 1.8em; margin: 2.5rem 0 1.2rem; }
         .prose-reader h2 { font-size: 1.45em; margin: 2.2rem 0 1rem; }
         .prose-reader h3 { font-size: 1.2em;  margin: 1.8rem 0 0.8rem; }
         .prose-reader h4 { font-size: 1.05em; margin: 1.5rem 0 0.5rem; }
-        .prose-reader p { margin-top: 0; margin-bottom: 1.4em; }
+        .prose-reader p { margin-top: 0; margin-bottom: var(--reader-paragraph-spacing); }
         @media (max-width: 767px) {
             .prose-reader p { text-align: justify; text-justify: inter-ideograph; }
         }
@@ -39,7 +70,7 @@
         .prose-reader code { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.88em; background: rgba(0, 0, 0, 0.04); padding: 0.15em 0.4em; border-radius: 4px; }
         .prose-reader pre { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.85em; line-height: 1.6; background: rgba(0, 0, 0, 0.03); padding: 1.2rem 1.5rem; border-radius: 8px; overflow-x: auto; margin: 1.8rem 0; }
         .prose-reader pre code { background: transparent; padding: 0; font-size: inherit; }
-        .prose-reader ul, .prose-reader ol { padding-left: 1.5rem; margin-bottom: 1.4em; }
+        .prose-reader ul, .prose-reader ol { padding-left: 1.5rem; margin-bottom: var(--reader-paragraph-spacing); }
         .prose-reader ul { list-style: disc; }
         .prose-reader ol { list-style: decimal; }
         .prose-reader li { margin: 0.5em 0; }
@@ -56,7 +87,9 @@
             user-select: none;
             border: 1px solid rgba(0, 0, 0, 0.06);
         }
-        /* 公共排版（:root 变量、滚动条、link-underline、fade 动画、tweet-img）已挪到 /tailwind.css */
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation: fadeIn 0.4s ease-out both; }
     </style>
 </head>
 <body class="min-h-screen selection:bg-stone-200">

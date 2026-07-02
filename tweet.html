@@ -21,7 +21,33 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preload" href="/tailwind.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="/tailwind.css"></noscript>
-    <!-- 公共排版（:root 变量、滚动条、link-underline、fade 动画、tweet-img、详情页推文图片 max-height）已挪到 /tailwind.css -->
+    <style>
+        :root {
+            --font-serif: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+        body { font-family: var(--font-sans); }
+        .font-serif { font-family: var(--font-serif); }
+
+        /* === 推文正文图片:响应式 + 点击查看 === */
+        #ssr-tweet-content .tweet-img,
+        .tweet-detail-content .tweet-img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            max-height: 28rem;
+            margin: 0.875rem 0 0.25rem;
+            border-radius: 0.625rem;
+            cursor: zoom-in;
+            background: rgba(0, 0, 0, 0.04);
+            -webkit-user-drag: none;
+            user-select: none;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation: fadeIn 0.4s ease-out both; }
+    </style>
 </head>
 <body class="bg-[#fafaf9] text-stone-800 min-h-screen selection:bg-stone-200">
 

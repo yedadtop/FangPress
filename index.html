@@ -13,7 +13,72 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preload" href="/tailwind.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="/tailwind.css"></noscript>
-    <!-- 公共排版（:root 变量、滚动条、link-underline、fade 动画、tweet-img）已挪到 /tailwind.css -->
+    <style>
+        :root {
+            /* === 基于调试面板锁定的核心视觉变量 === */
+            --reader-bg: hsl(40, 23%, 97%);           /* 纸张背景明度 97% */
+            --reader-text: hsl(24, 10%, 0%);          /* 墨质字色暗度 0% (纯黑) */
+            --reader-size: 1.2rem;                    /* 正文字号 1.2rem */
+            --reader-line-height: 1.85;               /* 呼吸行高 1.85 */
+            --reader-width: 44rem;                    /* 容器黄金行宽 44rem */
+            --reader-paragraph-spacing: 1.40em;       /* 段落底部间距 */
+            --reader-letter-spacing: 0.02em;          /* 字间距微调 */
+            --reader-title-weight: 700;               /* 标题加粗字重 */
+
+            /* 字体栈 */
+            --font-serif-stack: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            --font-sans-stack: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+            /* 字体映射：标题与正文均采用优雅衬线体 */
+            --reader-title-font: var(--font-serif-stack);
+            --reader-body-font: var(--font-serif-stack);
+        }
+
+        body { font-family: var(--reader-body-font); background-color: var(--reader-bg); color: var(--reader-text); letter-spacing: var(--reader-letter-spacing); }
+
+        .font-serif { font-family: var(--reader-title-font); }
+        .font-sans { font-family: var(--font-sans-stack); }
+
+        /* === 扁平化自定义滚动条 === */
+        html { scrollbar-width: thin; scrollbar-color: hsl(40, 10%, 80%) var(--reader-bg); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--reader-bg); }
+        ::-webkit-scrollbar-thumb { background: hsl(40, 10%, 82%); border-radius: 0; }
+        ::-webkit-scrollbar-thumb:hover { background: hsl(40, 10%, 70%); }
+
+        /* 优雅的下划线动画 */
+        .link-underline { background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1px; background-repeat: no-repeat; background-position: 0 100%; transition: background-size 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+        .group:hover .link-underline, .link-underline:hover { background-size: 100% 1px; }
+
+        /* 列表/组件入场动画 */
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-up { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+        /* 遮罩层渐显动画 */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation: fadeIn 0.4s ease-out both; }
+
+        /* 顶部 tab 高亮 */
+        .tab-link[data-active="true"] { color: #0c0a09; }
+
+        /* === 推文正文图片:响应式 + 点击查看 === */
+        #ssr-post-list .tweet-img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            max-height: 18rem;
+            margin: 0.625rem 0 0.125rem;
+            border-radius: 0.5rem;
+            cursor: zoom-in;
+            background: rgba(0, 0, 0, 0.04);
+            -webkit-user-drag: none;
+            user-select: none;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation: fadeIn 0.4s ease-out both; }
+    </style>
 </head>
 <body class="min-h-screen selection:bg-stone-200">
 
