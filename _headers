@@ -3,3 +3,6 @@
 
 /verify-optimize.js
   Cache-Control: public, max-age=3600
+
+/fancybox-loader.js
+  Cache-Control: public, max-age=31536000, immutable

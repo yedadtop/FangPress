@@ -11,8 +11,6 @@
     <meta name="description" content="">
     <title data-ssr="site-title"></title>
     <link rel="stylesheet" href="/tailwind.css">
-    <!-- FancyBox 5 灯箱样式 (CDN) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css">
     <style>
         :root {
             /* === 基于调试面板锁定的核心视觉变量 === */
@@ -396,54 +394,7 @@
     })();
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.min.js"></script>
-    <script>
-    // 推文/文章图片灯箱:FancyBox 5(CDN)
-    // ⚠️ @fancyapps/ui@5.0.36 没有静态 Fancybox.bind,只能自己写 click 代理
-    (function () {
-        function gid() { return 'fb-' + Math.random().toString(36).slice(2, 9); }
-
-        function setupGallery(root) {
-            var scope = root || document;
-            var containers = scope.querySelectorAll('article[data-ssr-item], .prose-reader, #ssr-tweet-content');
-            containers.forEach(function (container) {
-                var imgs = container.querySelectorAll('.tweet-img, .prose-reader img');
-                imgs.forEach(function (img) {
-                    if (!img.hasAttribute('data-fancybox')) {
-                        img.setAttribute('data-fancybox', gid());
-                    }
-                });
-            });
-        }
-
-        function onImgClick(e) {
-            var t = e.target;
-            if (!t || !t.closest) return;
-            var img = t.closest('img[data-fancybox]');
-            if (!img) return;
-            e.preventDefault();
-            e.stopPropagation();
-            if (!window.Fancybox || typeof Fancybox.fromSelector !== 'function') return;
-            var gidValue = img.getAttribute('data-fancybox');
-            if (!gidValue) return;
-            Fancybox.fromSelector('img[data-fancybox="' + gidValue + '"]', img);
-        }
-
-        function bind() {
-            if (!window.Fancybox) return;
-            setupGallery();
-        }
-
-        document.addEventListener('click', onImgClick, true);
-        window.rebindFancybox = function () { bind(); };
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', bind);
-        } else {
-            bind();
-        }
-    })();
-    </script>
+    <script src="/fancybox-loader.js" defer></script>
     <script src="/verify-optimize.js" defer></script>
 </body>
 </html>

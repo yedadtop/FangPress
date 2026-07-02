@@ -12,8 +12,6 @@
     <meta name="description" content="">
     <title data-ssr="site-title">推文</title>
     <link rel="stylesheet" href="/tailwind.css">
-    <!-- FancyBox 5 灯箱样式 (CDN) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css">
     <style>
         :root {
             --reader-bg: hsl(40, 23%, 97%);
@@ -598,44 +596,7 @@
     })();
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.min.js"></script>
-    <script>
-    // 统一图片灯箱代理：利用事件委托 + 编程式 API，完美支持懒加载，无需重新 bind
-    (function () {
-        document.addEventListener('click', function(e) {
-            // 1. 检查点击的是否是我们指定的图片
-            var img = e.target.closest('.tweet-img, .prose-reader img');
-            if (!img) return;
-
-            // 2. 拦截默认行为（防止推文列表中的 <a> 标签发生页面跳转）
-            e.preventDefault();
-            e.stopPropagation();
-
-            if (!window.Fancybox) return;
-
-            // 3. 确定分组边界（推文列表按单条推文分组，详情页按全文分组）
-            var container = img.closest('article[data-ssr-item], .prose-reader, #ssr-tweet-content');
-            var imgList = container ? Array.from(container.querySelectorAll('.tweet-img, .prose-reader img')) : [img];
-
-            // 4. 找到当前点击图片在组内的索引
-            var startIndex = imgList.indexOf(img);
-            if (startIndex === -1) startIndex = 0;
-
-            // 5. 构造 Fancybox 所需的数据源并拉起灯箱
-            var items = imgList.map(function(node) {
-                return {
-                    src: node.getAttribute('src') || node.src,
-                    type: 'image'
-                };
-            });
-
-            Fancybox.show(items, {
-                startIndex: startIndex,
-                dragToClose: true // 允许下拉关闭，体验更好
-            });
-        }, true); // 使用捕获阶段，确保在 <a> 标签生效前拦截
-    })();
-    </script>
+    <script src="/fancybox-loader.js" defer></script>
     <script src="/verify-optimize.js" defer></script>
 </body>
 </html>
