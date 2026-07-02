@@ -26,6 +26,17 @@
         body { margin: 0; min-height: 100vh; }
         .font-serif { font-family: var(--reader-title-font); }
         .font-sans  { font-family: var(--font-sans-stack); }
+        /* === 全站兜底:避免 FOUC 期间 #status-* / overlay 等元素错误显示 === */
+        body .hidden { display: none; }
+        body img.tweet-img { display: block; max-width: 100%; height: auto; border-radius: 0.5rem; }
+        body .max-w-\[44rem\] { max-width: 44rem; }
+        body .max-w-\[49rem\] { max-width: 49rem; }
+        body .mx-auto { margin-left: auto; margin-right: auto; }
+        body .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+        body .pt-20 { padding-top: 5rem; } body .md\:pt-28 { padding-top: 7rem; }
+        body .pb-20 { padding-bottom: 5rem; } body .md\:pb-28 { padding-bottom: 7rem; }
+        body .text-center { text-align: center; }
+        /* === header 排版 === */
         #site-header { position: fixed; top: 0; left: 0; right: 0; width: 100%; z-index: 50; }
         #site-header > .relative { position: relative; max-width: 1280px; margin-left: auto; margin-right: auto; padding: 0 1.5rem; height: 4rem; display: flex; align-items: center; justify-content: space-between; }
         @media (min-width: 768px) { #site-header > .relative { padding: 0 2.5rem; } }
@@ -45,7 +56,6 @@
         #site-header .tracking-tight { letter-spacing: -0.025em; }
         #site-header .p-2 { padding: 0.5rem; }
         #site-header .-mr-2 { margin-right: -0.5rem; }
-        #site-header .hidden { display: none; }
         @media (min-width: 768px) { #site-header .md\:flex { display: flex; } #site-header .md\:hidden { display: none; } }
         .link-underline { background-image: linear-gradient(currentColor,currentColor); background-size: 0% 1px; background-repeat: no-repeat; background-position: 0 100%; transition: background-size 0.4s cubic-bezier(0.22,1,0.36,1); }
         .link-underline:hover, .group:hover .link-underline { background-size: 100% 1px; }
