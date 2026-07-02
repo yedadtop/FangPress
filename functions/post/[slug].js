@@ -284,6 +284,6 @@ export async function onRequestGet(context) {
     // 6) 输出
     const response = rewriter.transform(templateResp);
     const headers = new Headers(response.headers);
-    headers.set('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=600');
+    headers.set('Cache-Control', 'public, max-age=10, s-maxage=300, stale-while-revalidate=3600');
     return new Response(response.body, { status: 200, headers });
 }
