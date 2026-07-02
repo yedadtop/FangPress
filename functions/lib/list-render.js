@@ -171,7 +171,6 @@ export function renderTweetItem(post, i) {
                 <div class="flex-1 min-w-0">
                     <div class="flex items-baseline gap-2 flex-wrap text-sm leading-tight">
                         <span class="font-medium text-stone-900 truncate">${escapeHtml(nickname)}</span>
-                        <span class="text-stone-300 text-xs">·</span>
                         ${timeHTML}
                     </div>
                     <div class="font-serif text-stone-700 text-base leading-relaxed whitespace-pre-wrap break-words mt-1">${renderTweetContent(escapeHtml(raw))}</div>
