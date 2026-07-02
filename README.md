@@ -133,7 +133,6 @@ npx @tailwindcss/cli -i ./src/input.css -o ./tailwind.css --minify
 <script src="/ui-common.js" defer></script>
 <script src="/search-overlay.js" defer></script>
 <script src="/fancybox-loader.js" defer></script>
-<script src="/verify-optimize.js" defer></script>
 <script type="module" src="/tweet-card.js"></script>  <!-- 仅 tweets.html -->
 ```
 
@@ -159,24 +158,6 @@ HTML 页面有内容更新需求（发了新文章 / 改了导航），不能像
 - 浏览器：`max-age=10`（10 秒内不重复请求，最多省一次 RTT）；
 - CDN：`s-maxage=300`（边缘 5 分钟缓存，给全球所有用户复用）；
 - 后台写操作（`/api/push` 等）里**主动 purge 对应 KV 键**，确保用户感知**准实时**生效。
-
-### 7. 浏览器端一键验证
-
-公开页底部挂了 [verify-optimize.js](./verify-optimize.js)，打开 DevTools Console 会看到一份**自动生成的优化报告**：
-
-```
-⚡ Tailwind v4 预编译优化 · 验证报告
-✓ PASS 旧版 JIT 编译器已彻底移除 (节省 ~300KB JS + 200-500ms 主线程阻塞)
-✓ PASS tailwind.css 已通过 <link rel="stylesheet"> 加载 { 传输大小(gzip): 38.42 KB, 浏览器缓存: 命中(二次访问 0 网络) }
-✓ PASS 无运行时 JIT 注入
-⏱ FCP 423 ms
-✓ PASS search-overlay.js 已外置 + 命中缓存 (二次访问 0 字节)
-✓ PASS ui-common.js 已外置 + 命中缓存 (二次访问 0 字节)
-✓ PASS tweet-card.js 已外置 + 命中缓存 (二次访问 0 字节)
-💰 收益估算：节省 ~262 KB（87.2%）
-```
-
-可以直接对照**实际跑出来的数字**和上面的「目标值」。
 
 ---
 
