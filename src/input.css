@@ -4,3 +4,89 @@
 @source "../**/*.html";
 @source "../functions/**/*.js";
 @source "../*.js";
+
+/* =============================================================
+   全局共用排版（被所有公开页 + 404 共用）
+   之前在每个 HTML 的 <style> 里逐字复制,现在统一进 tailwind.css,
+   浏览器只需要解析一次,所有页面共享同一份样式。
+   ============================================================= */
+
+@layer base {
+    /* === 读者体验核心变量(5 个公开页都引用) === */
+    :root {
+        --reader-bg: hsl(40, 23%, 97%);
+        --reader-text: hsl(24, 10%, 0%);
+        --reader-title-weight: 700;
+        --reader-letter-spacing: 0.02em;
+
+        --font-serif-stack: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+        --font-sans-stack:  system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+        --reader-title-font: var(--font-serif-stack);
+        --reader-body-font:  var(--font-serif-stack);
+    }
+
+    /* 站点默认字色 + 背景(墨纸风) */
+    body {
+        font-family: var(--reader-body-font);
+        background-color: var(--reader-bg);
+        color: var(--reader-text);
+        letter-spacing: var(--reader-letter-spacing);
+    }
+
+    .font-serif { font-family: var(--reader-title-font); }
+    .font-sans  { font-family: var(--font-sans-stack);  }
+
+    /* === 扁平化自定义滚动条(4 个 HTML 重复) === */
+    html { scrollbar-width: thin; scrollbar-color: hsl(40, 10%, 80%) var(--reader-bg); }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--reader-bg); }
+    ::-webkit-scrollbar-thumb { background: hsl(40, 10%, 82%); border-radius: 0; }
+    ::-webkit-scrollbar-thumb:hover { background: hsl(40, 10%, 70%); }
+
+    /* === 优雅下划线动画(4 个 HTML 重复) === */
+    .link-underline {
+        background-image: linear-gradient(currentColor, currentColor);
+        background-size: 0% 1px;
+        background-repeat: no-repeat;
+        background-position: 0 100%;
+        transition: background-size 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .group:hover .link-underline,
+    .link-underline:hover { background-size: 100% 1px; }
+
+    /* === 入场动画关键帧(4 个 HTML 重复) === */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .fade-in { animation: fadeIn 0.4s ease-out both; }
+
+    /* === 顶部 Tab 高亮(由 ui-common.js 切 data-active="true",所有公开页都依赖) === */
+    .tab-link[data-active="true"] { color: #0c0a09; }
+    .mobile-menu-link[data-active="true"] { color: #0c0a09; background-color: rgba(0, 0, 0, 0.04); }
+}
+
+/* === 推文正文图片:响应式 + 点击查看(5 个 HTML 重复,内联在 SSR 渲染的 <img> 上) === */
+@layer components {
+    .tweet-img {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        max-height: 18rem;
+        margin: 0.625rem 0 0.125rem;
+        border-radius: 0.5rem;
+        cursor: zoom-in;
+        background: rgba(0, 0, 0, 0.04);
+        -webkit-user-drag: none;
+        user-select: none;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    /* 详情页推文正文区域(tweet.html 用的容器)给图片更大空间 */
+    .tweet-detail-content .tweet-img {
+        max-height: 28rem;
+        margin: 0.875rem 0 0.25rem;
+        border-radius: 0.625rem;
+    }
+}
