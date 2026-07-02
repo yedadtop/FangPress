@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
-/* 显式声明扫描源 —— 包含 HTML 静态文件 + Functions 里的 JS 模板字符串 */
+/* 显式声明扫描源 —— 包含 HTML 静态文件 + Functions 里的 JS 模板字符串 + 项目根的同构 JS */
 @source "../**/*.html";
 @source "../functions/**/*.js";
+@source "../*.js";

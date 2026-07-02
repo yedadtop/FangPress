@@ -96,6 +96,29 @@
             else warn('tailwind.css 加载耗时 ' + fmt(d) + ' ms (可能受 CDN/网络影响)');
         }
 
+        // ===== 抽取脚本检测 =====
+        var extracted = ['search-overlay.js', 'ui-common.js', 'tweet-card.js'];
+        var extractedHits = 0;
+        var inlineScripts = document.querySelectorAll('script:not([src])').length;
+        for (var e = 0; e < extracted.length; e++) {
+            var name = extracted[e];
+            var found = null;
+            for (var j = 0; j < resources.length; j++) {
+                if (resources[j].name.indexOf(name) !== -1) { found = resources[j]; break; }
+            }
+            if (found) {
+                extractedHits++;
+                var hit = found.transferSize === 0;
+                if (hit) pass(name + ' 已外置 + 命中缓存 (二次访问 0 字节)', { '耗时': fmt(found.duration) + ' ms' });
+                else pass(name + ' 已外置 (首次访问 ' + bytes(found.transferSize) + ')', { '耗时': fmt(found.duration) + ' ms' });
+            } else {
+                // 本页可能用不到,跳过警告
+            }
+        }
+        if (extractedHits > 0) {
+            info('🧩', '内联 <script> 数量: ' + inlineScripts + ' 个 (改前 ~4 个 IIFE / 文件)');
+        }
+
         // 收益估算
         if (newCss) {
             var cssBytes = newCss.transferSize || newCss.encodedBodySize || 0;
