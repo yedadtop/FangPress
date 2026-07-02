@@ -13,6 +13,25 @@ const FALLBACK_NAVS = [
     { id: 0, label: '推文', href: '/tweets', tab_key: 'tweets', open_in_new_tab: false, is_active: true, sort_order: 20 }
 ];
 
+// === V8 Isolate 内模块级缓存 ===
+// 旧实现:每次 SSR 都要 2 次 KV 读(settings + navs),即便 KV 命中,仍是网络往返
+// 改成:同 V8 Isolate 内 60s 内的重复请求直接吃内存,KV 调用次数下降一个量级
+// 60s TTL 远低于 Cloudflare Isolate 寿命(~15min),Isolate 回收后模块状态归零,无需手动清理
+// 风险:设置变更最多延迟 60s 生效(可接受,因为这些数据极少改)
+const MODULE_TTL_MS = 60000;
+let _navsCache = null;
+let _navsCacheExpireAt = 0;
+let _settingsCache = null;
+let _settingsCacheExpireAt = 0;
+
+function readCache(cache, expireAt) {
+    if (cache != null && expireAt > Date.now()) return cache;
+    return null;
+}
+function writeCache(value, ttlMs) {
+    return { value, expireAt: Date.now() + ttlMs };
+}
+
 // 将 DB 行（0/1 整数）转成前端友好的标准化对象
 export function normalizeNavRow(row) {
     if (!row) return null;
@@ -41,14 +60,22 @@ export function sortActiveNavs(list) {
 // SSR 共用：KV 优先 → D1 降级并异步回填 → 硬编码兜底（绝不返回空数组）
 //   - context 可选；传入后会用 context.waitUntil 回填 KV（不阻塞响应）
 //   - 返回值始终是「启用项」按 sort_order 升序的数组
+//   - 模块级缓存:同 V8 Isolate 60s 内的重复请求直接吃内存,跳过 KV/D1
 export async function getActiveNavs(env, context) {
+    // 0) 模块级缓存命中
+    const cached = readCache(_navsCache, _navsCacheExpireAt);
+    if (cached) return cached;
+
     // 1) 先读 KV
     const raw = await env.KV.get(KV_NAVS_KEY).catch(() => null);
     if (raw) {
         try {
             const obj = JSON.parse(raw);
             if (obj && obj.success && Array.isArray(obj.data) && obj.data.length > 0) {
-                return obj.data;
+                const entry = writeCache(obj.data, MODULE_TTL_MS);
+                _navsCache = entry.value;
+                _navsCacheExpireAt = entry.expireAt;
+                return _navsCache;
             }
         } catch (_) { /* 损坏就继续走 D1 */ }
     }
@@ -72,27 +99,38 @@ export async function getActiveNavs(env, context) {
             } else {
                 await put;
             }
-            return list;
+            const entry = writeCache(list, MODULE_TTL_MS);
+            _navsCache = entry.value;
+            _navsCacheExpireAt = entry.expireAt;
+            return _navsCache;
         }
     } catch (err) {
         console.error('[navs] D1 降级失败:', err);
     }
 
-    // 3) 终极兜底：硬编码默认值，绝不返回空
+    // 3) 终极兜底：硬编码默认值，绝不返回空（不缓存,避免污染 fallback 状态）
     return FALLBACK_NAVS;
 }
 
 // SSR / API 共用：读取站点设置。KV 优先 → D1 兜底并异步回填 → 空对象兜底
 //   - context 可选；传入后会用 context.waitUntil 回填 KV（不阻塞响应）
 //   - 返回值始终是普通对象（可能为 {}，但绝不会抛错）
+//   - 模块级缓存:同 V8 Isolate 60s 内的重复请求直接吃内存,跳过 KV/D1
 export async function getSettings(env, context) {
+    // 0) 模块级缓存命中
+    const cached = readCache(_settingsCache, _settingsCacheExpireAt);
+    if (cached) return cached;
+
     // 1) 先读 KV
     const raw = await env.KV.get(KV_SETTINGS_KEY).catch(() => null);
     if (raw) {
         try {
             const obj = JSON.parse(raw);
             if (obj && obj.data && typeof obj.data === 'object') {
-                return obj.data;
+                const entry = writeCache(obj.data, MODULE_TTL_MS);
+                _settingsCache = entry.value;
+                _settingsCacheExpireAt = entry.expireAt;
+                return _settingsCache;
             }
         } catch (_) { /* 损坏就继续走 D1 */ }
     }
@@ -113,12 +151,15 @@ export async function getSettings(env, context) {
         } else {
             await put;
         }
-        return data;
+        const entry = writeCache(data, MODULE_TTL_MS);
+        _settingsCache = entry.value;
+        _settingsCacheExpireAt = entry.expireAt;
+        return _settingsCache;
     } catch (err) {
         console.error('[settings] D1 降级失败:', err);
     }
 
-    // 3) 终极兜底
+    // 3) 终极兜底（不缓存,避免返回空对象污染状态）
     return {};
 }
 

@@ -6,35 +6,14 @@
 
 import { marked } from '../lib/marked.esm.js';
 import { getSettings } from '../lib/nav-render.js';
-import { escapeHtml, formatDate, safeParseKV } from '../lib/list-render.js';
+import { escapeHtml, formatDate, formatDateTime, safeParseKV } from '../lib/list-render.js';
 import { makeExcerpt } from '../api/helpers.js';
 
 // ============== HTML 工具 ==============
 // ⚡ 修复 14：escapeHtml / formatDate / safeParseKV 已在 lib/list-render.js 导出，
 //   stripMarkdown / makeExcerpt 已在 api/helpers.js 导出，删掉本地重复定义。
-
-function formatDateTime(ts) {
-    if (!ts) return '';
-    const d = new Date(ts);
-    if (isNaN(d)) return '';
-    try {
-        const formatter = new Intl.DateTimeFormat('zh-CN', {
-            timeZone: 'Asia/Shanghai',
-            year: 'numeric', month: 'numeric', day: 'numeric',
-            hour: '2-digit', minute: '2-digit', hour12: false
-        });
-        const parts = formatter.formatToParts(d);
-        const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
-        // ⚡️ 详情页风格:年-月-日 时:分(如 "2026-6-14 13:47"),无前导零,dash 分隔
-        const m   = (map.month  || '').replace(/[^0-9]/g, '');
-        const day = (map.day    || '').replace(/[^0-9]/g, '');
-        const h   = (map.hour   || '').replace(/[^0-9]/g, '');
-        const min = (map.minute || '').replace(/[^0-9]/g, '');
-        return `${map.year}-${parseInt(m, 10)}-${parseInt(day, 10)} ${parseInt(h, 10)}:${parseInt(min, 10)}`;
-    } catch (_) {
-        return '';
-    }
-}
+// ⚡ formatDateTime 同样从 list-render.js 引入，复用其 Intl.DateTimeFormat 单例
+//   （每条详情页 1 次调用,但单例本身在 V8 Isolate 内只构造 1 次）。
 
 function renderViewsInner(views) {
     return `<svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">

@@ -11,21 +11,64 @@ export function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+// === Intl.DateTimeFormat 单例 ===
+// 列表页每页 10 条推文,旧实现每次 formatDate 都 new Intl.DateTimeFormat,
+// V8 下每次构造 50-200μs,累计 1-2ms CPU/请求。改为模块级懒单例,
+// 整个 V8 Isolate 生命周期内只构造一次,后续请求零成本。
+// try/catch 兜底:如果 Intl 不可用,回退到无格式化(空字符串),与原行为一致。
+let _shortDateFormatter = null;
+let _longDateFormatter  = null;
+function getShortDateFormatter() {
+    if (!_shortDateFormatter) {
+        _shortDateFormatter = new Intl.DateTimeFormat('zh-CN', {
+            timeZone: 'Asia/Shanghai',
+            month: 'numeric', day: 'numeric'
+        });
+    }
+    return _shortDateFormatter;
+}
+function getLongDateFormatter() {
+    if (!_longDateFormatter) {
+        _longDateFormatter = new Intl.DateTimeFormat('zh-CN', {
+            timeZone: 'Asia/Shanghai',
+            year: 'numeric', month: 'numeric', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: false
+        });
+    }
+    return _longDateFormatter;
+}
+
 export function formatDate(ts) {
     if (!ts) return '';
     const d = new Date(ts);
     if (isNaN(d)) return '';
     try {
-        const formatter = new Intl.DateTimeFormat('zh-CN', {
-            timeZone: 'Asia/Shanghai',
-            month: 'numeric', day: 'numeric'
-        });
-        const parts = formatter.formatToParts(d);
-        const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
         // ⚡️ 主页风格:仅显示月-日(如 "6-14"),去年份 + dash 分隔,更紧凑
+        const parts = getShortDateFormatter().formatToParts(d);
+        const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
         const m   = (map.month || '').replace(/[^0-9]/g, '');
         const day = (map.day   || '').replace(/[^0-9]/g, '');
         return `${parseInt(m, 10)}-${parseInt(day, 10)}`;
+    } catch (_) {
+        return '';
+    }
+}
+
+// 详情页风格:年-月-日 时:分(如 "2026-6-14 13:47"),无前导零,dash 分隔
+// 与 formatDate 共享 Intl 单例机制;原 post/[slug].js / tweet/[slug].js 内联
+// 实现完全等价,集中到这里便于单点维护 + 单例复用。
+export function formatDateTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (isNaN(d)) return '';
+    try {
+        const parts = getLongDateFormatter().formatToParts(d);
+        const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+        const m   = (map.month  || '').replace(/[^0-9]/g, '');
+        const day = (map.day    || '').replace(/[^0-9]/g, '');
+        const h   = (map.hour   || '').replace(/[^0-9]/g, '');
+        const min = (map.minute || '').replace(/[^0-9]/g, '');
+        return `${map.year}-${parseInt(m, 10)}-${parseInt(day, 10)} ${parseInt(h, 10)}:${parseInt(min, 10)}`;
     } catch (_) {
         return '';
     }

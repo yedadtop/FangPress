@@ -5,12 +5,19 @@
 //   - 任何页面只要存在 #search-toggle + #search-overlay 节点,本脚本自动接管
 //   - 与原行为完全一致:防抖 350ms、竞态 token、键盘 Esc 关闭、点 backdrop 关闭
 //   - 推文与文章共用同一结果列表(根据 p.type 区分渲染)
+//   - escapeHTML/formatDate 改用 window.UI(ui-common.js 暴露),
+//     避免在多个 IIFE 中重复实现
 (function () {
     'use strict';
 
     var toggle = document.getElementById('search-toggle');
     var overlay = document.getElementById('search-overlay');
     if (!toggle || !overlay) return;
+
+    // 依赖 ui-common.js 必须先加载(defer 顺序保证)
+    var UI = window.UI || {};
+    var escapeHTML = UI.escapeHTML || function (s) { return String(s == null ? '' : s); };
+    var formatDate = UI.formatDate || function () { return ''; };
 
     var closeBtn = document.getElementById('search-close');
     var backdrop = document.getElementById('search-backdrop');
@@ -20,22 +27,6 @@
     var debounceTimer = null;
     var currentToken = 0;
     var DEBOUNCE_MS = 350;
-
-    function escapeHTML(s) {
-        return String(s == null ? '' : s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    function formatDate(ts) {
-        var d = new Date(ts);
-        if (isNaN(d)) return '';
-        // ⚡️ 主页风格:仅显示月-日(如 "6-14")
-        return (d.getMonth() + 1) + '-' + d.getDate();
-    }
 
     function clearResults() {
         if (!results) return;

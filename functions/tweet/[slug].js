@@ -6,32 +6,11 @@
 // 关键校验：拒绝 type !== 'tweet' 的访问（让用户去 /post/{slug}）
 
 import { getSettings } from '../lib/nav-render.js';
-import { escapeHtml, safeParseKV, renderTweetContent } from '../lib/list-render.js';
+import { escapeHtml, safeParseKV, renderTweetContent, formatDateTime } from '../lib/list-render.js';
 
 // ============== 工具 ==============
-
-function formatDateTime(ts) {
-    if (!ts) return '';
-    const d = new Date(ts);
-    if (isNaN(d)) return '';
-    try {
-        const formatter = new Intl.DateTimeFormat('zh-CN', {
-            timeZone: 'Asia/Shanghai',
-            year: 'numeric', month: 'numeric', day: 'numeric',
-            hour: '2-digit', minute: '2-digit', hour12: false
-        });
-        const parts = formatter.formatToParts(d);
-        const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
-        // ⚡️ 详情页风格:年-月-日 时:分(如 "2026-6-14 13:47"),无前导零,dash 分隔
-        const m   = (map.month  || '').replace(/[^0-9]/g, '');
-        const day = (map.day    || '').replace(/[^0-9]/g, '');
-        const h   = (map.hour   || '').replace(/[^0-9]/g, '');
-        const min = (map.minute || '').replace(/[^0-9]/g, '');
-        return `${map.year}-${parseInt(m, 10)}-${parseInt(day, 10)} ${parseInt(h, 10)}:${parseInt(min, 10)}`;
-    } catch (_) {
-        return '';
-    }
-}
+// ⚡ formatDateTime 已在 lib/list-render.js 导出,直接复用其 Intl 单例
+//   (本文件原本内联的 formatDateTime 与之完全等价,集中后便于单点维护)。
 
 function renderAvatarInner(avatarUrl, nickname) {
     const placeholderPath = 'M12 12c2.7 0 4.875-2.175 4.875-4.875S14.7 2.25 12 2.25 7.125 4.425 7.125 7.125 9.3 12 12 12zm0 2.25c-3.45 0-10.125 1.725-10.125 5.25v2.25h20.25v-2.25c0-3.525-6.675-5.25-10.125-5.25z';
